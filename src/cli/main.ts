@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { MoleculeError } from "../core/errors.js";
+import { runReplayDemo } from "../replay/index.js";
 import {
   runToolHandler,
   toolFailureFromError,
@@ -61,18 +64,44 @@ const commandToTool: Record<string, ToolName> = {
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
   const parsed = parseArgs(argv);
   const command = parsed.command;
+  if (command === "replay-demo") {
+    try {
+      const result = await runReplayDemo(await replayDemoInput(parsed));
+      return {
+        exitCode: result.verification.ok ? 0 : 1,
+        stdout: `${JSON.stringify(result, null, 2)}\n`,
+      };
+    } catch (error) {
+      const result = toolFailureFromError("replay-demo", error);
+      return {
+        exitCode: 1,
+        stdout: `${JSON.stringify(result, null, 2)}\n`,
+      };
+    }
+  }
   const tool = command ? commandToTool[command] : undefined;
 
   const result = tool === undefined
     ? toolFailureFromError("cli", new MoleculeError("INVALID_ARGUMENT", "Unknown or missing command.", {
         command,
-        commands: Object.keys(commandToTool),
+        commands: [...Object.keys(commandToTool), "replay-demo"],
       }))
     : await runToolHandler(tool, await inputForTool(tool, parsed) as never);
 
   return {
     exitCode: result.ok ? 0 : 1,
     stdout: `${JSON.stringify(result, null, 2)}\n`,
+  };
+}
+
+async function replayDemoInput(parsed: ParsedArgs): Promise<{ inputPath: string; workspaceDir: string; moleculeId?: string; bundleId?: string }> {
+  const inputPath = stringFlag(parsed, "input-path") ?? parsed.positional[0] ?? "";
+  const workspaceDir = stringFlag(parsed, "workspace-dir") ?? await fs.mkdtemp(path.join(os.tmpdir(), "mol-replay-demo-"));
+  return {
+    inputPath,
+    workspaceDir,
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "bundle-id") ? { bundleId: stringFlag(parsed, "bundle-id") } : {}),
   };
 }
 

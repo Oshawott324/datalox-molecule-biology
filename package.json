@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
+    "replay:demo": "npm run build --silent && node dist/src/cli/main.js replay-demo --input-path fixtures/fasta/single.fa --molecule-id mol_replay_demo",
     "test": "vitest run"
   },
   "devDependencies": {

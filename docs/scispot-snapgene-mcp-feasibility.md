@@ -1311,6 +1311,16 @@ verify_replay_bundle
 replay_tool_io
 ```
 
+Current command path:
+
+```bash
+npm run replay:demo
+```
+
+The command runs the four-tool demo through existing tool handlers, writes a
+bundle under `<workspaceDir>/.datalox/replay-bundles/<bundleId>/`, verifies the
+bundle, and replays one stored tool observation from the record JSON.
+
 Pass criteria:
 
 - A complete molecule task produces tool I/O records.

@@ -125,3 +125,27 @@ export type {
   UpsertPrimerInput,
   WorkspaceInput,
 } from "./tools/index.js";
+export {
+  createReplayRecorder,
+  packReplayBundle,
+  recordToolCall,
+  replayToolObservation,
+  runReplayDemo,
+  sha256Json,
+  stableJsonStringify,
+  verifyReplayBundle,
+} from "./replay/index.js";
+export type {
+  JsonPrimitive,
+  JsonValue,
+  PackReplayBundleOptions,
+  PackReplayBundleResult,
+  ReplayBundleManifest,
+  ReplayManifestRecord,
+  ReplayRecorder,
+  ReplayToolRecord,
+  ReplayWorkspaceSummary,
+  RunReplayDemoOptions,
+  RunReplayDemoResult,
+  VerifyReplayBundleResult,
+} from "./replay/index.js";
