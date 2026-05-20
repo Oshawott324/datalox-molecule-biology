@@ -1,0 +1,28 @@
+{
+  "name": "@datalox/molecule-biology",
+  "version": "0.1.0",
+  "description": "Agent-native molecule biology workspace scaffold and deterministic sequence import.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "molecule-biology": "dist/src/cli/main.js"
+  },
+  "files": [
+    "dist/src/**/*",
+    "docs/**/*.md",
+    "fixtures/**/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8"
+  }
+}

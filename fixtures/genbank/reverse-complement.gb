@@ -1,0 +1,10 @@
+LOCUS       pReverse       24 bp    DNA     linear   18-MAY-2026
+DEFINITION  Reverse complement feature test plasmid.
+FEATURES             Location/Qualifiers
+     CDS             complement(5..12)
+                     /gene="rev"
+     misc_feature    complement(join(2..4,15..18))
+                     /label="rev_join"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgt
+//

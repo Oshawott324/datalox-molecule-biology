@@ -1,0 +1,229 @@
+export type JsonSchemaObject = {
+  type: "object";
+  properties: Record<string, unknown>;
+  required?: string[];
+  additionalProperties: false;
+};
+
+export type ToolDescriptor = {
+  name: string;
+  description: string;
+  inputSchema: JsonSchemaObject;
+};
+
+const workspaceProperties = {
+  workspacePath: { type: "string", description: "Path to molecule.workspace.json." },
+  workspaceDir: { type: "string", description: "Directory containing molecule.workspace.json." },
+  checkSequenceDigests: { type: "boolean", description: "Validate stored sequence file digests while reading." },
+};
+
+const expectedRevisionProperty = { type: "integer", minimum: 0 };
+const moleculeProperties = {
+  workspacePath: workspaceProperties.workspacePath,
+  workspaceDir: workspaceProperties.workspaceDir,
+  moleculeId: { type: "string" },
+  molecule: { type: "string", description: "Alias for moleculeId." },
+};
+
+export const moleculeToolDescriptors = [
+  {
+    name: "open_sequence",
+    description: "Import a FASTA or GenBank sequence file into a molecule workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["inputPath", "workspaceDir"],
+      additionalProperties: false,
+      properties: {
+        inputPath: { type: "string", description: "Path to a FASTA or GenBank sequence file." },
+        workspaceDir: workspaceProperties.workspaceDir,
+        format: { type: "string", enum: ["auto", "fasta", "genbank"] },
+        moleculeId: { type: "string" },
+        expectedRevision: { type: "integer", minimum: 0 },
+      },
+    },
+  },
+  {
+    name: "open_workspace",
+    description: "Open and validate a molecule workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: workspaceProperties,
+    },
+  },
+  {
+    name: "open_sequence_editor",
+    description: "Open a compact local sequence and plasmid workspace editor.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: {
+        ...workspaceProperties,
+        moleculeId: { type: "string" },
+        host: { type: "string" },
+        port: { type: "integer", minimum: 0 },
+      },
+    },
+  },
+  {
+    name: "read_workspace",
+    description: "Read and validate a molecule workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: workspaceProperties,
+    },
+  },
+  {
+    name: "validate_workspace",
+    description: "Validate a molecule workspace and return structured validation issues.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: workspaceProperties,
+    },
+  },
+  {
+    name: "list_molecules",
+    description: "List molecules in a validated workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+      },
+    },
+  },
+  {
+    name: "get_sequence_context",
+    description: "Read molecule context, features, primers, and optional sequence for a region.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: {
+        ...moleculeProperties,
+        start: { type: "integer", minimum: 1 },
+        end: { type: "integer", minimum: 1 },
+        strand: { type: "string", enum: ["+", "-", "none"] },
+        includeSequence: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "upsert_feature",
+    description: "Create or update a feature through a revision-safe workspace write.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "expectedRevision", "feature"],
+      additionalProperties: false,
+      properties: { ...workspaceProperties, expectedRevision: expectedRevisionProperty, feature: { type: "object" } },
+    },
+  },
+  {
+    name: "delete_feature",
+    description: "Delete a feature through a revision-safe workspace write.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "expectedRevision", "featureId"],
+      additionalProperties: false,
+      properties: { ...workspaceProperties, expectedRevision: expectedRevisionProperty, featureId: { type: "string" } },
+    },
+  },
+  {
+    name: "upsert_primer",
+    description: "Create or update a primer through a revision-safe workspace write.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "expectedRevision", "primer"],
+      additionalProperties: false,
+      properties: { ...workspaceProperties, expectedRevision: expectedRevisionProperty, primer: { type: "object" }, bindToMolecule: { type: "boolean" } },
+    },
+  },
+  {
+    name: "delete_primer",
+    description: "Delete a primer through a revision-safe workspace write.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "expectedRevision", "primerId"],
+      additionalProperties: false,
+      properties: { ...workspaceProperties, expectedRevision: expectedRevisionProperty, primerId: { type: "string" } },
+    },
+  },
+  {
+    name: "reverse_complement",
+    description: "Return the reverse complement of an explicit DNA/RNA sequence.",
+    inputSchema: {
+      type: "object",
+      required: ["sequence"],
+      additionalProperties: false,
+      properties: { sequence: { type: "string" } },
+    },
+  },
+  {
+    name: "translate_region",
+    description: "Translate a DNA region using the standard genetic code.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "start", "end"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, start: { type: "integer", minimum: 1 }, end: { type: "integer", minimum: 1 }, strand: { type: "string", enum: ["+", "-", "none"] }, geneticCode: { type: "string", enum: ["standard"] } },
+    },
+  },
+  {
+    name: "find_orfs",
+    description: "Find deterministic ORFs in a DNA molecule.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, minAa: { type: "integer", minimum: 0 }, startCodons: { type: "array", items: { type: "string" } }, stopCodons: { type: "array", items: { type: "string" } }, strands: { type: "array", items: { type: "string", enum: ["+", "-"] } } },
+    },
+  },
+  {
+    name: "find_restriction_sites",
+    description: "Find restriction enzyme sites from the deterministic local enzyme table.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "enzymes"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, enzymes: { type: "array", items: { type: "string" } } },
+    },
+  },
+  {
+    name: "simulate_digest",
+    description: "Simulate a deterministic restriction digest.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "enzymes"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, enzymes: { type: "array", items: { type: "string" } } },
+    },
+  },
+  {
+    name: "simulate_pcr",
+    description: "Simulate deterministic exact-match PCR.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "forwardPrimer", "reversePrimer"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, forwardPrimer: { type: "string" }, reversePrimer: { type: "string" } },
+    },
+  },
+  {
+    name: "export_genbank",
+    description: "Export a molecule and workspace features to GenBank.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "outputPath"],
+      additionalProperties: false,
+      properties: { ...moleculeProperties, outputPath: { type: "string" } },
+    },
+  },
+] satisfies ToolDescriptor[];

@@ -1,0 +1,8 @@
+LOCUS       pFuzzy         20 bp    DNA     linear   18-MAY-2026
+DEFINITION  Unsupported fuzzy coordinate test.
+FEATURES             Location/Qualifiers
+     gene            <1..10
+                     /gene="fuzzy"
+ORIGIN
+        1 acgtacgtac gtacgtacgt
+//

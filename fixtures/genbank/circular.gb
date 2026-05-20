@@ -1,0 +1,8 @@
+LOCUS       pCircular      24 bp    DNA     circular 18-MAY-2026
+DEFINITION  Circular test plasmid.
+FEATURES             Location/Qualifiers
+     source          1..24
+                     /note="complete sequence"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgt
+//

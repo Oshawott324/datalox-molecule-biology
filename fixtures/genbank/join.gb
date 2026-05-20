@@ -1,0 +1,8 @@
+LOCUS       pJoin          24 bp    DNA     linear   18-MAY-2026
+DEFINITION  Join feature test plasmid.
+FEATURES             Location/Qualifiers
+     misc_feature    join(1..4,10..12)
+                     /label="joined"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgt
+//

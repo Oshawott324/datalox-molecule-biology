@@ -1,0 +1,10 @@
+LOCUS       pLinear        30 bp    DNA     linear   18-MAY-2026
+DEFINITION  Linear test plasmid.
+FEATURES             Location/Qualifiers
+     gene            1..6
+                     /gene="alpha"
+     CDS             10..18
+                     /product="peptide"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgtacgtac
+//
