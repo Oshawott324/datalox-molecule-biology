@@ -171,6 +171,54 @@ describe("sequence import", () => {
     expect(workspace.molecules[0].topology).toBe("circular");
   });
 
+  it("imports the authentic pUC19 fixture with parser-safe core annotations", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const result = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_puc19",
+    });
+    const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
+
+    expect(workspace.molecules[0]).toMatchObject({
+      id: "mol_puc19",
+      name: "pUC19",
+      sourceFormat: "genbank",
+      topology: "circular",
+      length: 2686,
+      sequenceDigest: "sha256:b9a2a34a731ff693bc6cf30c517bf98ce22708fa4d4379c4ed9ee79b4004c571",
+      description: "Cloning vector pUC19c, complete sequence.",
+    });
+    expect(workspace.features).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: "lacZalpha",
+        type: "misc_feature",
+        segments: [
+          { start: 238, end: 395, strand: "-" },
+          { start: 455, end: 682, strand: "-" },
+        ],
+      }),
+      expect.objectContaining({
+        name: "MCS",
+        type: "misc_feature",
+        segments: [{ start: 396, end: 452, strand: "+" }],
+      }),
+      expect.objectContaining({
+        name: "pMB1 ori",
+        type: "rep_origin",
+        segments: [{ start: 866, end: 866, strand: "+" }],
+      }),
+      expect.objectContaining({
+        name: "bla",
+        type: "CDS",
+        segments: [{ start: 1629, end: 2417, strand: "-" }],
+        qualifiers: { gene: "bla", product: "beta-lactamase" },
+      }),
+    ]));
+    expect(workspace.features.some((feature) => "translation" in (feature.qualifiers ?? {}))).toBe(false);
+  });
+
   it("imports GenBank join coordinates as multiple ordered segments", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({

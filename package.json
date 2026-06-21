@@ -18,12 +18,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
+    "demo:puc19:mcp": "npm run build --silent && node scripts/demo-puc19-mcp.mjs",
     "replay:demo": "npm run build --silent && node dist/src/cli/main.js replay-demo --input-path fixtures/fasta/single.fa --molecule-id mol_replay_demo",
+    "smoke:mcp": "npm run build --silent && node scripts/smoke-mcp.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.8"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

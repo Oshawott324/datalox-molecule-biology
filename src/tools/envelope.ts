@@ -22,6 +22,13 @@ export type ToolNextAction = {
   arguments: Record<string, unknown>;
 };
 
+export type ToolArtifact = {
+  kind: string;
+  path: string;
+  mimeType?: string;
+  description?: string;
+};
+
 export type ToolSuccessEnvelope<T> = {
   ok: true;
   tool: string;
@@ -29,6 +36,7 @@ export type ToolSuccessEnvelope<T> = {
   data: T;
   workspacePath?: string;
   revision?: number;
+  artifacts?: ToolArtifact[];
   nextAction?: ToolNextAction;
 };
 
@@ -47,7 +55,7 @@ export const moleculeAgentContract: AgentContract = {
 export function toolSuccess<T>(
   tool: string,
   data: T,
-  metadata: Pick<ToolSuccessEnvelope<T>, "workspacePath" | "revision" | "nextAction"> = {},
+  metadata: Pick<ToolSuccessEnvelope<T>, "workspacePath" | "revision" | "artifacts" | "nextAction"> = {},
 ): ToolSuccessEnvelope<T> {
   return { ok: true, tool, agentContract: moleculeAgentContract, data, ...metadata };
 }

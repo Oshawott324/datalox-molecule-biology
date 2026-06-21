@@ -78,4 +78,34 @@ describe("compact sequence editor server", () => {
       await server.close();
     }
   });
+
+  it("serves a plasmid map SVG for circular GenBank workspaces", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const imported = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_puc19",
+    });
+    const server = await startSequenceEditorServer({ workspacePath: imported.workspacePath, moleculeId: "mol_puc19" });
+
+    try {
+      const map = await jsonFetch(new URL("/api/map?moleculeId=mol_puc19", server.url).toString());
+      expect(map).toMatchObject({
+        ok: true,
+        moleculeId: "mol_puc19",
+        mimeType: "image/svg+xml",
+        renderedFeatureIds: expect.arrayContaining([
+          "feat_mol_puc19_laczalpha",
+          "feat_mol_puc19_mcs",
+          "feat_mol_puc19_pmb1_ori",
+          "feat_mol_puc19_bla",
+        ]),
+      });
+      expect(map.svg).toEqual(expect.stringContaining("<svg"));
+      expect(map.svg).toEqual(expect.stringContaining("pUC19"));
+    } finally {
+      await server.close();
+    }
+  });
 });

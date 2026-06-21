@@ -11,6 +11,8 @@ import {
   importSequenceFile,
   readMoleculeSequence,
   readWorkspace,
+  RESTRICTION_ENZYMES,
+  RESTRICTION_ENZYME_TABLE_VERSION,
   reverseComplement,
   sequenceDigest,
   simulateDigest,
@@ -38,9 +40,46 @@ async function importGenBank(content: string): Promise<{ workspaceDir: string; w
   return { workspaceDir, workspacePath: result.workspacePath, moleculeId: result.moleculeIds[0] };
 }
 
+async function importGenBankFixture(relativePath: string, moleculeId: string): Promise<{ workspaceDir: string; workspacePath: string; moleculeId: string }> {
+  const workspaceDir = await tempDir("mol-det-gb-fixture-");
+  const result = await importSequenceFile({
+    inputPath: path.resolve(relativePath),
+    workspaceDir,
+    format: "genbank",
+    moleculeId,
+  });
+  return { workspaceDir, workspacePath: result.workspacePath, moleculeId: result.moleculeIds[0] };
+}
+
 describe("deterministic biology core", () => {
   it("keeps reverse complement deterministic for ambiguous DNA bases", () => {
     expect(reverseComplement("ACGTRYSWKMBDHVN")).toBe("NBDHVKMWSRYACGT");
+  });
+
+  it("pins the common REBASE-derived restriction enzyme table", () => {
+    expect(RESTRICTION_ENZYME_TABLE_VERSION).toBe("datalox_rebase_common_v2");
+    expect(RESTRICTION_ENZYMES).toMatchObject({
+      ApaI: { recognitionSequence: "GGGCCC", cutOffset: 5 },
+      BamHI: { recognitionSequence: "GGATCC", cutOffset: 1 },
+      BglII: { recognitionSequence: "AGATCT", cutOffset: 1 },
+      ClaI: { recognitionSequence: "ATCGAT", cutOffset: 2 },
+      EcoRI: { recognitionSequence: "GAATTC", cutOffset: 1 },
+      HindIII: { recognitionSequence: "AAGCTT", cutOffset: 1 },
+      KpnI: { recognitionSequence: "GGTACC", cutOffset: 5 },
+      NcoI: { recognitionSequence: "CCATGG", cutOffset: 1 },
+      NdeI: { recognitionSequence: "CATATG", cutOffset: 2 },
+      NheI: { recognitionSequence: "GCTAGC", cutOffset: 1 },
+      NotI: { recognitionSequence: "GCGGCCGC", cutOffset: 2 },
+      PstI: { recognitionSequence: "CTGCAG", cutOffset: 5 },
+      SacI: { recognitionSequence: "GAGCTC", cutOffset: 5 },
+      SalI: { recognitionSequence: "GTCGAC", cutOffset: 1 },
+      SmaI: { recognitionSequence: "CCCGGG", cutOffset: 3 },
+      SpeI: { recognitionSequence: "ACTAGT", cutOffset: 1 },
+      SphI: { recognitionSequence: "GCATGC", cutOffset: 5 },
+      XbaI: { recognitionSequence: "TCTAGA", cutOffset: 1 },
+      XhoI: { recognitionSequence: "CTCGAG", cutOffset: 1 },
+      XmaI: { recognitionSequence: "CCCGGG", cutOffset: 1 },
+    });
   });
 
   it("translates known forward, reverse, ambiguous, and partial regions", async () => {
@@ -84,7 +123,7 @@ describe("deterministic biology core", () => {
       { enzyme: "HindIII", start: 11, end: 16, cutPosition: 11 },
       { enzyme: "BamHI", start: 17, end: 22, cutPosition: 17 },
     ]);
-    expect(sites.every((site) => site.enzymeTableVersion === "datalox_rebase_minimal_v1")).toBe(true);
+    expect(sites.every((site) => site.enzymeTableVersion === "datalox_rebase_common_v2")).toBe(true);
 
     const none = await findRestrictionSites(workspacePath, moleculeId, ["EcoRI"], {});
     expect(none.filter((site) => site.start > 100)).toEqual([]);
@@ -142,6 +181,37 @@ ORIGIN
     const twoDigest = await simulateDigest(twoCutterCircular.workspacePath, twoCutterCircular.moleculeId, ["EcoRI", "BamHI"]);
     expect(twoDigest.fragments.map((fragment) => fragment.size)).toEqual([10, 14]);
     expect(twoDigest.fragments.reduce((sum, fragment) => sum + fragment.size, 0)).toBe(twoDigest.length);
+  });
+
+  it("pins pUC19 MCS restriction sites and digest fragments against the authentic fixture", async () => {
+    const puc19 = await importGenBankFixture("fixtures/genbank/puc19.gb", "mol_puc19");
+    const sites = await findRestrictionSites(puc19.workspacePath, puc19.moleculeId, ["EcoRI", "BamHI", "HindIII"]);
+
+    expect(sites.map((site) => ({
+      enzyme: site.enzyme,
+      recognitionSequence: site.recognitionSequence,
+      start: site.start,
+      end: site.end,
+      cutPosition: site.cutPosition,
+    }))).toEqual([
+      { enzyme: "EcoRI", recognitionSequence: "GAATTC", start: 396, end: 401, cutPosition: 396 },
+      { enzyme: "BamHI", recognitionSequence: "GGATCC", start: 417, end: 422, cutPosition: 417 },
+      { enzyme: "HindIII", recognitionSequence: "AAGCTT", start: 447, end: 452, cutPosition: 447 },
+    ]);
+
+    const digest = await simulateDigest(puc19.workspacePath, puc19.moleculeId, ["EcoRI", "BamHI", "HindIII"]);
+    expect(digest.length).toBe(2686);
+    expect(digest.fragments.map((fragment) => ({
+      size: fragment.size,
+      start: fragment.start,
+      end: fragment.end,
+      circular: fragment.circular,
+    }))).toEqual([
+      { size: 21, start: 397, end: 417, circular: false },
+      { size: 30, start: 418, end: 447, circular: false },
+      { size: 2635, start: 448, end: 396, circular: true },
+    ]);
+    expect(digest.fragments.reduce((sum, fragment) => sum + fragment.size, 0)).toBe(2686);
   });
 
   it("simulates exact PCR products and returns no-product cases without guessing", async () => {

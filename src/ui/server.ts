@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { getSequenceContext, listMoleculeSummaries } from "../core/context.js";
 import { MoleculeError } from "../core/errors.js";
+import { renderPlasmidMap } from "../core/render-map.js";
 import type { Feature } from "../core/schema.js";
 import { readWorkspace } from "../core/workspace.js";
 import { upsertFeature } from "../core/writes.js";
@@ -96,6 +98,21 @@ async function handleRequest(
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/map") {
+    const moleculeId = url.searchParams.get("moleculeId") ?? defaultMoleculeId;
+    if (!moleculeId) {
+      sendJson(response, 400, { ok: false, error: { code: "INVALID_ARGUMENT", message: "moleculeId is required." } });
+      return;
+    }
+    const result = await renderPlasmidMap(workspacePath, moleculeId, {
+      width: 720,
+      height: 520,
+    });
+    const svg = await fs.readFile(result.outputPath, "utf8");
+    sendJson(response, 200, { ok: true, workspacePath, ...result, svg });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/features") {
     const body = await readJsonBody(request);
     const expectedRevision = typeof body.expectedRevision === "number" ? body.expectedRevision : Number.NaN;
@@ -141,11 +158,13 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     label { font-size: 12px; color: #bbcbc7; }
     select, input { width: 100%; border: 1px solid #cbd4d1; border-radius: 5px; padding: 7px 8px; background: #fff; color: #18201f; }
     .side input, .side select { border-color: #36534d; background: #0d1917; color: #f7fbf9; }
-    .main { padding: 18px; display: grid; grid-template-rows: auto minmax(160px, 1fr) auto; gap: 14px; }
+    .main { padding: 18px; display: grid; grid-template-rows: auto minmax(160px, auto) auto auto; gap: 14px; }
     .toolbar { display: grid; grid-template-columns: 1fr repeat(3, minmax(90px, 120px)) auto; gap: 8px; align-items: end; }
     .panel { background: #fff; border: 1px solid #d8dfdd; border-radius: 7px; overflow: hidden; }
     .panel h2 { margin: 0; padding: 10px 12px; font-size: 13px; background: #e9efec; border-bottom: 1px solid #d8dfdd; }
     .sequence { margin: 0; padding: 12px; min-height: 140px; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+    .map { min-height: 260px; display: grid; place-items: center; padding: 10px; }
+    .map svg { max-width: 100%; height: auto; }
     .tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { padding: 7px 8px; border-bottom: 1px solid #edf1ef; text-align: left; vertical-align: top; }
@@ -186,6 +205,10 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       <section class="panel">
         <h2>Sequence</h2>
         <pre class="sequence" id="sequence"></pre>
+      </section>
+      <section class="panel">
+        <h2>Plasmid Map</h2>
+        <div class="map" id="map"></div>
       </section>
       <section class="tracks">
         <div class="panel">
@@ -267,6 +290,17 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       const payload = await json("/api/context?moleculeId=" + encodeURIComponent(state.moleculeId) + "&start=" + start + "&end=" + end + "&includeSequence=true");
       $("sequence").textContent = payload.sequence || "";
       $("status").textContent = "ready";
+      await loadMap();
+    }
+
+    async function loadMap() {
+      if (!state.moleculeId) return;
+      try {
+        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId));
+        $("map").innerHTML = payload.svg || "";
+      } catch (error) {
+        $("map").textContent = error.message;
+      }
     }
 
     async function saveFeature() {

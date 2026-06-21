@@ -6,6 +6,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { MoleculeError } from "../core/errors.js";
+import { runMoleculeMcpServer } from "../mcp/index.js";
 import { runReplayDemo } from "../replay/index.js";
 import {
   runToolHandler,
@@ -17,6 +18,7 @@ import {
   type FindOrfsInput,
   type OpenSequenceInput,
   type OpenSequenceEditorInput,
+  type RenderPlasmidMapInput,
   type ReverseComplementInput,
   type SequenceContextInput,
   type SimulatePcrInput,
@@ -59,11 +61,19 @@ const commandToTool: Record<string, ToolName> = {
   "simulate-digest": "simulate_digest",
   "simulate-pcr": "simulate_pcr",
   "export-genbank": "export_genbank",
+  "render-plasmid-map": "render_plasmid_map",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
   const parsed = parseArgs(argv);
   const command = parsed.command;
+  if (command === "mcp-server") {
+    await runMoleculeMcpServer();
+    return {
+      exitCode: 0,
+      stdout: "",
+    };
+  }
   if (command === "replay-demo") {
     try {
       const result = await runReplayDemo(await replayDemoInput(parsed));
@@ -84,7 +94,7 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<Cl
   const result = tool === undefined
     ? toolFailureFromError("cli", new MoleculeError("INVALID_ARGUMENT", "Unknown or missing command.", {
         command,
-        commands: [...Object.keys(commandToTool), "replay-demo"],
+        commands: [...Object.keys(commandToTool), "mcp-server", "replay-demo"],
       }))
     : await runToolHandler(tool, await inputForTool(tool, parsed) as never);
 
@@ -160,6 +170,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "find_restriction_sites" || tool === "simulate_digest") return enzymeInput(parsed);
   if (tool === "simulate_pcr") return simulatePcrInput(parsed);
   if (tool === "export_genbank") return exportGenBankInput(parsed);
+  if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -291,6 +302,18 @@ function exportGenBankInput(parsed: ParsedArgs): ExportGenBankInput {
     ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
     ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
     outputPath: stringFlag(parsed, "output") ?? stringFlag(parsed, "output-path") ?? "",
+  };
+}
+
+function renderPlasmidMapInput(parsed: ParsedArgs): RenderPlasmidMapInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
+    ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),
+    ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
   };
 }
 

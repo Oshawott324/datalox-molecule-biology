@@ -3,7 +3,7 @@ import { readMoleculeSequence } from "./context.js";
 import type { CoordinateSegment } from "./schema.js";
 import { reverseComplement } from "./sequence.js";
 
-export const RESTRICTION_ENZYME_TABLE_VERSION = "datalox_rebase_minimal_v1";
+export const RESTRICTION_ENZYME_TABLE_VERSION = "datalox_rebase_common_v2";
 
 export type RestrictionEnzyme = {
   name: string;
@@ -30,9 +30,26 @@ export type FindRestrictionSitesOptions = {
 };
 
 export const RESTRICTION_ENZYMES: Record<string, RestrictionEnzyme> = {
+  ApaI: { name: "ApaI", recognitionSequence: "GGGCCC", cutOffset: 5 },
   EcoRI: { name: "EcoRI", recognitionSequence: "GAATTC", cutOffset: 1 },
   BamHI: { name: "BamHI", recognitionSequence: "GGATCC", cutOffset: 1 },
+  BglII: { name: "BglII", recognitionSequence: "AGATCT", cutOffset: 1 },
+  ClaI: { name: "ClaI", recognitionSequence: "ATCGAT", cutOffset: 2 },
   HindIII: { name: "HindIII", recognitionSequence: "AAGCTT", cutOffset: 1 },
+  KpnI: { name: "KpnI", recognitionSequence: "GGTACC", cutOffset: 5 },
+  NcoI: { name: "NcoI", recognitionSequence: "CCATGG", cutOffset: 1 },
+  NdeI: { name: "NdeI", recognitionSequence: "CATATG", cutOffset: 2 },
+  NheI: { name: "NheI", recognitionSequence: "GCTAGC", cutOffset: 1 },
+  NotI: { name: "NotI", recognitionSequence: "GCGGCCGC", cutOffset: 2 },
+  PstI: { name: "PstI", recognitionSequence: "CTGCAG", cutOffset: 5 },
+  SacI: { name: "SacI", recognitionSequence: "GAGCTC", cutOffset: 5 },
+  SalI: { name: "SalI", recognitionSequence: "GTCGAC", cutOffset: 1 },
+  SmaI: { name: "SmaI", recognitionSequence: "CCCGGG", cutOffset: 3 },
+  SpeI: { name: "SpeI", recognitionSequence: "ACTAGT", cutOffset: 1 },
+  SphI: { name: "SphI", recognitionSequence: "GCATGC", cutOffset: 5 },
+  XbaI: { name: "XbaI", recognitionSequence: "TCTAGA", cutOffset: 1 },
+  XhoI: { name: "XhoI", recognitionSequence: "CTCGAG", cutOffset: 1 },
+  XmaI: { name: "XmaI", recognitionSequence: "CCCGGG", cutOffset: 1 },
 };
 
 export async function findRestrictionSites(

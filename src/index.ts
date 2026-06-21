@@ -55,6 +55,8 @@ export {
   translateDnaSequence,
   translateRegion,
 } from "./core/deterministic.js";
+export { renderPlasmidMap } from "./core/render-map.js";
+export type { RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
 export type {
   DigestFragment,
   ExportGenBankResult,
@@ -77,6 +79,7 @@ export {
   handleExportGenBank,
   handleFindOrfs,
   handleFindRestrictionSites,
+  handleRenderPlasmidMap,
   handleGetSequenceContext,
   handleListMolecules,
   handleOpenSequence,
@@ -113,6 +116,7 @@ export type {
   ReverseComplementInput,
   SequenceContextInput,
   SimulatePcrInput,
+  RenderPlasmidMapInput,
   TranslateRegionInput,
   ToolDescriptor,
   ToolErrorEnvelope,
@@ -135,6 +139,13 @@ export {
   stableJsonStringify,
   verifyReplayBundle,
 } from "./replay/index.js";
+export {
+  callMoleculeMcpTool,
+  createMoleculeMcpServer,
+  listMoleculeMcpTools,
+  runMoleculeMcpServer,
+  toolEnvelopeToMcpResult,
+} from "./mcp/index.js";
 export type {
   JsonPrimitive,
   JsonValue,

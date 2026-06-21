@@ -226,4 +226,19 @@ export const moleculeToolDescriptors = [
       properties: { ...moleculeProperties, outputPath: { type: "string" } },
     },
   },
+  {
+    name: "render_plasmid_map",
+    description: "Render a deterministic circular plasmid SVG map artifact.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId"],
+      additionalProperties: false,
+      properties: {
+        ...moleculeProperties,
+        outputPath: { type: "string" },
+        width: { type: "integer", minimum: 1 },
+        height: { type: "integer", minimum: 1 },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

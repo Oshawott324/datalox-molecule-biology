@@ -9,6 +9,8 @@ source of truth. Do not infer sequence facts from screenshots or prose.
 ## Core Rules
 
 - Always start with `open_sequence`, `open_workspace`, or `validate_workspace`.
+- In MCP hosts, discover tools with `tools/list`; do not rely on memorized
+  tool names when the server can report its current contract.
 - Treat `molecule.workspace.json` as canonical state, but never patch it
   directly.
 - Use `get_sequence_context` before making claims about a molecule sequence,
@@ -22,6 +24,58 @@ source of truth. Do not infer sequence facts from screenshots or prose.
 - Prefer writing short deterministic scripts when a task needs analysis that is
   not already exposed as a tool.
 - Report changed object IDs, final revision, and validation status.
+
+## MCP Server
+
+Launch the stdio MCP server when an agent host needs live molecule biology
+tools:
+
+```bash
+molecule-biology mcp-server
+```
+
+For local development before packaging, build first and launch the compiled CLI:
+
+```bash
+npm run build
+node dist/src/cli/main.js mcp-server
+```
+
+The MCP server is a thin adapter over the same descriptors and handlers used by
+the CLI. Use `tools/list` to discover available tools, then call tools through
+the MCP host. Tool results return the same structured envelope used elsewhere:
+`ok`, `agentContract`, `data`, `workspacePath`, `revision`, `nextAction`, or a
+structured `error`.
+
+Smoke-test the stdio server with code when host behavior matters:
+
+```ts
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["dist/src/cli/main.js", "mcp-server"]
+});
+const client = new Client({ name: "molecule-smoke", version: "0.1.0" });
+await client.connect(transport);
+
+const tools = await client.listTools();
+if (!tools.tools.some((tool) => tool.name === "open_sequence")) {
+  throw new Error("open_sequence not exposed by MCP server");
+}
+
+const result = await client.callTool({
+  name: "reverse_complement",
+  arguments: { sequence: "ACGT" }
+});
+if (result.isError) throw new Error(JSON.stringify(result.structuredContent));
+
+await client.close();
+```
+
+Do not wrap MCP failures with local fallback behavior. Return or inspect the
+structured tool error so the agent can choose the next action.
 
 ## First Loop
 

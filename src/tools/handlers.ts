@@ -13,6 +13,7 @@ import {
 import { MoleculeError } from "../core/errors.js";
 import { importSequenceFile, type ImportFormat } from "../core/import.js";
 import { reverseComplement } from "../core/sequence.js";
+import { renderPlasmidMap } from "../core/render-map.js";
 import type { Feature, Primer, Strand } from "../core/schema.js";
 import { readWorkspace, validateWorkspace } from "../core/workspace.js";
 import { deleteFeature, deletePrimer, upsertFeature, upsertPrimer } from "../core/writes.js";
@@ -40,7 +41,8 @@ export type ToolName =
   | "find_restriction_sites"
   | "simulate_digest"
   | "simulate_pcr"
-  | "export_genbank";
+  | "export_genbank"
+  | "render_plasmid_map";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -128,6 +130,12 @@ export type ExportGenBankInput = MoleculeToolInput & {
   outputPath: string;
 };
 
+export type RenderPlasmidMapInput = MoleculeToolInput & {
+  outputPath?: string;
+  width?: number;
+  height?: number;
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -148,6 +156,7 @@ export type ToolInputByName = {
   simulate_digest: EnzymeInput;
   simulate_pcr: SimulatePcrInput;
   export_genbank: ExportGenBankInput;
+  render_plasmid_map: RenderPlasmidMapInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -172,6 +181,7 @@ export const toolHandlers = {
   simulate_digest: handleSimulateDigest,
   simulate_pcr: handleSimulatePcr,
   export_genbank: handleExportGenBank,
+  render_plasmid_map: handleRenderPlasmidMap,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -473,6 +483,36 @@ export async function handleExportGenBank(input: ExportGenBankInput): Promise<To
     assertNonEmptyString(input.outputPath, "outputPath");
     const result = await exportGenBank(workspacePath, moleculeId, input.outputPath);
     return toolSuccess(tool, { workspacePath, ...result }, { workspacePath });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleRenderPlasmidMap(input: RenderPlasmidMapInput): Promise<ToolResultEnvelope> {
+  const tool = "render_plasmid_map";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    const result = await renderPlasmidMap(workspacePath, moleculeId, {
+      ...(input.outputPath ? { outputPath: input.outputPath } : {}),
+      ...(input.width !== undefined ? { width: assertPositiveInteger(input.width, "width") } : {}),
+      ...(input.height !== undefined ? { height: assertPositiveInteger(input.height, "height") } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      artifacts: [
+        {
+          kind: "plasmid_map",
+          path: result.outputPath,
+          mimeType: result.mimeType,
+          description: "Deterministic circular plasmid SVG map.",
+        },
+      ],
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: { workspacePath },
+      },
+    });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }
