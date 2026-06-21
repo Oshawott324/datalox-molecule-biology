@@ -59,6 +59,11 @@ describe("plasmid map rendering", () => {
     expect(svg).toContain("pMB1 ori");
     expect(svg).toContain("bla");
     expect(svg).not.toContain(">source<");
+
+    const arcs = featureArcPaths(svg);
+    expect(arcs).toHaveLength(6);
+    expect(arcs.every((arc) => arc.start.x !== arc.end.x || arc.start.y !== arc.end.y)).toBe(true);
+    expect(new Set(arcs.map((arc) => `${arc.start.x},${arc.start.y}`)).size).toBeGreaterThan(1);
   });
 
   it("returns artifact metadata from the tool handler", async () => {
@@ -87,3 +92,11 @@ describe("plasmid map rendering", () => {
     await expect(fs.stat(result.artifacts?.[0]?.path ?? "")).resolves.toBeTruthy();
   });
 });
+
+function featureArcPaths(svg: string): Array<{ start: { x: string; y: string }; end: { x: string; y: string } }> {
+  const pattern = /<path d="M ([^ ]+) ([^ ]+) A [^ ]+ [^ ]+ 0 [01] 1 ([^ ]+) ([^"]+)"/g;
+  return [...svg.matchAll(pattern)].map((match) => ({
+    start: { x: match[1], y: match[2] },
+    end: { x: match[3], y: match[4] },
+  }));
+}

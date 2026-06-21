@@ -127,8 +127,8 @@ function renderSvg(input: {
     const anchor = anchorSegment(feature);
     const midpoint = segmentMidpoint(anchor, input.length);
     const labelRadius = labelBaseRadius + (featureIndex % 4) * 18;
-    const point = polar(centerX, centerY, labelRadius, midpoint);
-    const tickStart = polar(centerX, centerY, featureRadius + 8, midpoint);
+    const point = polar(centerX, centerY, labelRadius, input.length, midpoint);
+    const tickStart = polar(centerX, centerY, featureRadius + 8, input.length, midpoint);
     const textAnchor = point.x < centerX - 8 ? "end" : point.x > centerX + 8 ? "start" : "middle";
     labels.push(`<line x1="${format(tickStart.x)}" y1="${format(tickStart.y)}" x2="${format(point.x)}" y2="${format(point.y)}" stroke="#8b9692" stroke-width="1"/>`);
     labels.push(`<text x="${format(point.x)}" y="${format(point.y)}" text-anchor="${textAnchor}" dominant-baseline="middle">${escapeXml(feature.name)}</text>`);
@@ -175,14 +175,14 @@ function arcPath(centerX: number, centerY: number, radius: number, length: numbe
   const startPosition = segment.start;
   const endPosition = segment.start <= segment.end ? segment.end + 1 : segment.end + length + 1;
   const span = endPosition - startPosition;
-  const start = polar(centerX, centerY, radius, startPosition);
-  const end = polar(centerX, centerY, radius, ((endPosition - 1) % length) + 1);
+  const start = polar(centerX, centerY, radius, length, startPosition);
+  const end = polar(centerX, centerY, radius, length, ((endPosition - 1) % length) + 1);
   const largeArc = span > length / 2 ? 1 : 0;
   return `M ${format(start.x)} ${format(start.y)} A ${format(radius)} ${format(radius)} 0 ${largeArc} 1 ${format(end.x)} ${format(end.y)}`;
 }
 
-function polar(centerX: number, centerY: number, radius: number, position: number): { x: number; y: number } {
-  const radians = (-90 + (position - 1) * 360) * Math.PI / 180;
+function polar(centerX: number, centerY: number, radius: number, length: number, position: number): { x: number; y: number } {
+  const radians = (-90 + ((position - 1) * 360 / length)) * Math.PI / 180;
   return {
     x: centerX + radius * Math.cos(radians),
     y: centerY + radius * Math.sin(radians),
