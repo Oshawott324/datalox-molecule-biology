@@ -2,12 +2,23 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { readMoleculeSequence } from "./context.js";
+import { MoleculeError } from "./errors.js";
+import { workspaceRootFromPath } from "./paths.js";
 import { readWorkspace } from "./workspace.js";
 import type { CoordinateSegment, Feature } from "./schema.js";
+
+/**
+ * Opt-out for the workspace containment guard below. When set to "1", export
+ * may write outside the workspace (e.g. to a user's Desktop). This mirrors the
+ * MOLECULE_MCP_UNSAFE_PUBLIC_BIND escape hatch on the editor: safe by default,
+ * explicit override for the rare legitimate case.
+ */
+const UNSAFE_EXPORT_OUTSIDE_WORKSPACE = "MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE";
 
 export type ExportGenBankResult = {
   moleculeId: string;
   outputPath: string;
+  relativePath: string;
   featureCount: number;
   sequenceLength: number;
 };
@@ -27,11 +38,22 @@ export async function exportGenBank(workspacePath: string, moleculeId: string, o
     date: formatGenBankDate(workspace.createdAt),
   });
   const resolvedOutputPath = path.resolve(outputPath);
+  const workspaceRoot = workspaceRootFromPath(workspacePath);
+  const relativePath = path.relative(workspaceRoot, resolvedOutputPath);
+  const escapesWorkspace = relativePath.startsWith("..") || path.isAbsolute(relativePath);
+  if (escapesWorkspace && process.env[UNSAFE_EXPORT_OUTSIDE_WORKSPACE] !== "1") {
+    throw new MoleculeError(
+      "INVALID_ARGUMENT",
+      `export_genbank outputPath must stay inside the workspace. Set ${UNSAFE_EXPORT_OUTSIDE_WORKSPACE}=1 to export elsewhere.`,
+      { outputPath, workspaceRoot },
+    );
+  }
   await fs.mkdir(path.dirname(resolvedOutputPath), { recursive: true });
   await fs.writeFile(resolvedOutputPath, content, "utf8");
   return {
     moleculeId,
     outputPath: resolvedOutputPath,
+    relativePath,
     featureCount: features.length,
     sequenceLength: sequence.length,
   };

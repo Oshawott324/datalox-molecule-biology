@@ -23,10 +23,14 @@ export type SequenceEditorServer = {
   close: () => Promise<void>;
 };
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+const MAX_BODY_BYTES = 1_000_000;
+
 export async function startSequenceEditorServer(options: SequenceEditorServerOptions): Promise<SequenceEditorServer> {
   const workspacePath = path.resolve(options.workspacePath);
   await readWorkspace(workspacePath, { checkSequenceDigests: true });
   const host = options.host ?? "127.0.0.1";
+  assertBindHost(host);
   const port = options.port ?? 0;
 
   const server = createServer((request, response) => {
@@ -349,8 +353,14 @@ function numberParam(url: URL, name: string): number | undefined {
 
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
+  let total = 0;
   for await (const chunk of request) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    const buffer = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    total += buffer.length;
+    if (total > MAX_BODY_BYTES) {
+      throw new MoleculeError("INVALID_ARGUMENT", "Request body exceeds the 1MB editor limit.", { limitBytes: MAX_BODY_BYTES });
+    }
+    chunks.push(buffer);
   }
   if (chunks.length === 0) return {};
   const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
@@ -358,6 +368,16 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
     throw new MoleculeError("INVALID_ARGUMENT", "JSON body must be an object.");
   }
   return parsed as Record<string, unknown>;
+}
+
+function assertBindHost(host: string): void {
+  if (LOOPBACK_HOSTS.has(host)) return;
+  if (process.env.MOLECULE_MCP_UNSAFE_PUBLIC_BIND === "1") return;
+  throw new MoleculeError(
+    "INVALID_ARGUMENT",
+    "Sequence editor must bind to a loopback host (127.0.0.1, localhost, ::1). Set MOLECULE_MCP_UNSAFE_PUBLIC_BIND=1 to override.",
+    { host },
+  );
 }
 
 function sendHtml(response: ServerResponse, html: string): void {

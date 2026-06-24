@@ -6,7 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { callMoleculeMcpTool, createMoleculeMcpServer } from "../src/index.js";
+import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors } from "../src/index.js";
 
 async function tempDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -119,6 +119,74 @@ describe("MCP server", () => {
         },
       },
     });
+  });
+
+  it("rejects schema-invalid arguments at the MCP boundary before dispatch", async () => {
+    const missingRequired = envelope(await callMoleculeMcpTool("reverse_complement", {}));
+    expect(missingRequired).toMatchObject({
+      ok: false,
+      error: { code: "SCHEMA_VALIDATION_ERROR" },
+    });
+    expect((missingRequired.error as { details?: { violations?: unknown[] } }).details?.violations)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ path: "arguments.sequence" })]));
+
+    const wrongType = envelope(await callMoleculeMcpTool("reverse_complement", { sequence: 42 }));
+    expect(wrongType).toMatchObject({ ok: false, error: { code: "SCHEMA_VALIDATION_ERROR" } });
+
+    const unknownProperty = envelope(await callMoleculeMcpTool("reverse_complement", { sequence: "ACGT", oops: true }));
+    expect(unknownProperty).toMatchObject({ ok: false, error: { code: "SCHEMA_VALIDATION_ERROR" } });
+
+    const badEnum = envelope(await callMoleculeMcpTool("open_sequence", {
+      inputPath: "x.fa",
+      workspaceDir: "ws",
+      format: "rubbish",
+    }));
+    expect(badEnum).toMatchObject({ ok: false, error: { code: "SCHEMA_VALIDATION_ERROR" } });
+  });
+
+  it("separates schema-invalid from domain-invalid requests", async () => {
+    // Schema-valid but the file does not exist -> domain layer, not the schema gate.
+    const result = envelope(await callMoleculeMcpTool("open_sequence", {
+      inputPath: path.join(os.tmpdir(), "definitely-missing-mol-input.fa"),
+      workspaceDir: await tempDir("mol-domain-"),
+      format: "fasta",
+    }));
+    expect(result.ok).toBe(false);
+    expect((result.error as { code?: string }).code).not.toBe("SCHEMA_VALIDATION_ERROR");
+  });
+
+  it("advertises only JSON Schema keywords the boundary validator enforces", () => {
+    // Locked contract: validate-args.ts implements exactly this subset. A descriptor
+    // that introduces another keyword (pattern, maxLength, anyOf, ...) would be
+    // advertised but silently unenforced, so this fails loudly until the validator
+    // catches up. Keep this set in sync with validate-args.ts.
+    const supported = new Set(["type", "properties", "required", "additionalProperties", "enum", "minimum", "items", "description"]);
+    const offenders: string[] = [];
+    const walk = (schema: Record<string, unknown>, where: string): void => {
+      for (const key of Object.keys(schema)) {
+        if (!supported.has(key)) offenders.push(`${where}.${key}`);
+      }
+      const properties = schema.properties as Record<string, Record<string, unknown>> | undefined;
+      for (const [name, child] of Object.entries(properties ?? {})) walk(child, `${where}.${name}`);
+      const items = schema.items as Record<string, unknown> | undefined;
+      if (items) walk(items, `${where}[]`);
+    };
+    for (const descriptor of moleculeToolDescriptors) {
+      walk(descriptor.inputSchema as unknown as Record<string, unknown>, descriptor.name);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("enforces every advertised required field at the schema gate, not the handler", async () => {
+    // For each tool that advertises required fields, empty arguments must be rejected
+    // by the schema gate (SCHEMA_VALIDATION_ERROR) before any handler runs. This locks
+    // the protocol/schema/domain separation: `required` is the schema layer's job.
+    for (const descriptor of moleculeToolDescriptors) {
+      if ((descriptor.inputSchema.required ?? []).length === 0) continue;
+      const result = envelope(await callMoleculeMcpTool(descriptor.name, {}));
+      expect(result.ok).toBe(false);
+      expect((result.error as { code?: string }).code).toBe("SCHEMA_VALIDATION_ERROR");
+    }
   });
 
   async function connectedClient(): Promise<{ client: Client }> {

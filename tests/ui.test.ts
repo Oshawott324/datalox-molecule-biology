@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { importSequenceFile, startSequenceEditorServer } from "../src/index.js";
+import { closeManagedSequenceEditors, importSequenceFile, openSequenceEditor, startSequenceEditorServer } from "../src/index.js";
 
 const fixturesRoot = path.resolve("fixtures");
 
@@ -107,5 +107,38 @@ describe("compact sequence editor server", () => {
     } finally {
       await server.close();
     }
+  });
+
+  it("reuses one managed editor per workspace instead of leaking servers", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const imported = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_single",
+    });
+
+    try {
+      const first = await openSequenceEditor({ workspacePath: imported.workspacePath, moleculeId: "mol_single" });
+      const second = await openSequenceEditor({ workspacePath: imported.workspacePath, moleculeId: "mol_single" });
+      expect(first.reused).toBe(false);
+      expect(second.reused).toBe(true);
+      expect(second.url).toBe(first.url);
+    } finally {
+      await closeManagedSequenceEditors();
+    }
+  });
+
+  it("refuses to bind the editor to a non-loopback host by default", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const imported = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_single",
+    });
+
+    await expect(startSequenceEditorServer({ workspacePath: imported.workspacePath, host: "0.0.0.0" }))
+      .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
   });
 });

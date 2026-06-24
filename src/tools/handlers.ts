@@ -482,7 +482,17 @@ export async function handleExportGenBank(input: ExportGenBankInput): Promise<To
     const moleculeId = moleculeIdFromInput(input);
     assertNonEmptyString(input.outputPath, "outputPath");
     const result = await exportGenBank(workspacePath, moleculeId, input.outputPath);
-    return toolSuccess(tool, { workspacePath, ...result }, { workspacePath });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      artifacts: [
+        {
+          kind: "genbank",
+          path: result.outputPath,
+          mimeType: "chemical/x-genbank",
+          description: "GenBank flat file export of the molecule and its workspace features.",
+        },
+      ],
+    });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }

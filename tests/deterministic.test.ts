@@ -259,4 +259,39 @@ ORIGIN
       ]),
     );
   });
+
+  it("confines export_genbank to the workspace and blocks path escapes by default", async () => {
+    const source = await importFasta("ACGTACGTACGT", "pConfine");
+
+    // Absolute path inside the workspace is allowed (matches render_plasmid_map).
+    const insidePath = path.join(source.workspaceDir, "reports/exports/inside.gb");
+    const inside = await exportGenBank(source.workspacePath, source.moleculeId, insidePath);
+    expect(inside.relativePath).toBe(path.join("reports", "exports", "inside.gb"));
+    await expect(fs.readFile(insidePath, "utf8")).resolves.toContain("LOCUS");
+
+    // Relative traversal escaping the workspace root is rejected.
+    await expect(exportGenBank(source.workspacePath, source.moleculeId, "../escape.gb"))
+      .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+
+    // Absolute path outside the workspace is rejected.
+    const outsideDir = await tempDir("mol-export-outside-");
+    await expect(exportGenBank(source.workspacePath, source.moleculeId, path.join(outsideDir, "escape.gb")))
+      .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+    await expect(fs.readFile(path.join(outsideDir, "escape.gb"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("allows export outside the workspace only with the explicit opt-out flag", async () => {
+    const source = await importFasta("ACGTACGTACGT", "pOptOut");
+    const outsideDir = await tempDir("mol-export-optout-");
+    const outsidePath = path.join(outsideDir, "exported.gb");
+
+    process.env.MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE = "1";
+    try {
+      const result = await exportGenBank(source.workspacePath, source.moleculeId, outsidePath);
+      expect(result.outputPath).toBe(path.resolve(outsidePath));
+      await expect(fs.readFile(outsidePath, "utf8")).resolves.toContain("LOCUS");
+    } finally {
+      delete process.env.MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE;
+    }
+  });
 });

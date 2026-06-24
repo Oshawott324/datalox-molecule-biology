@@ -10,9 +10,11 @@ import {
 
 import { moleculeToolDescriptors } from "../tools/descriptors.js";
 import { runToolHandler, toolFailure, type ToolName, type ToolResultEnvelope } from "../tools/index.js";
+import { validateAgainstSchema } from "./validate-args.js";
 
 const packageName = "@datalox/molecule-biology";
 const toolNames = new Set<string>(moleculeToolDescriptors.map((tool) => tool.name));
+const toolSchemas = new Map(moleculeToolDescriptors.map((tool) => [tool.name, tool.inputSchema]));
 
 export function createMoleculeMcpServer(): Server {
   const server = new Server(
@@ -60,6 +62,16 @@ export async function callMoleculeMcpTool(name: string, args: unknown): Promise<
     return toolEnvelopeToMcpResult(toolFailure(name, "INVALID_ARGUMENT", "Tool arguments must be a JSON object.", {
       received: Array.isArray(args) ? "array" : typeof args,
     }));
+  }
+
+  const violations = validateAgainstSchema(args, toolSchemas.get(name));
+  if (violations.length > 0) {
+    return toolEnvelopeToMcpResult(toolFailure(
+      name,
+      "SCHEMA_VALIDATION_ERROR",
+      "Tool arguments do not match the advertised input schema.",
+      { violations },
+    ));
   }
 
   const envelope = await runToolHandler(name, args as never);
