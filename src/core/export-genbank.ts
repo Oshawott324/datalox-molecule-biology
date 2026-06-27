@@ -37,8 +37,10 @@ export async function exportGenBank(workspacePath: string, moleculeId: string, o
     features,
     date: formatGenBankDate(workspace.createdAt),
   });
-  const resolvedOutputPath = path.resolve(outputPath);
   const workspaceRoot = workspaceRootFromPath(workspacePath);
+  const resolvedOutputPath = path.isAbsolute(outputPath)
+    ? outputPath
+    : path.join(workspaceRoot, outputPath);
   const relativePath = path.relative(workspaceRoot, resolvedOutputPath);
   const escapesWorkspace = relativePath.startsWith("..") || path.isAbsolute(relativePath);
   if (escapesWorkspace && process.env[UNSAFE_EXPORT_OUTSIDE_WORKSPACE] !== "1") {

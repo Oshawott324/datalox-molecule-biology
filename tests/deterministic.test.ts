@@ -269,6 +269,12 @@ ORIGIN
     expect(inside.relativePath).toBe(path.join("reports", "exports", "inside.gb"));
     await expect(fs.readFile(insidePath, "utf8")).resolves.toContain("LOCUS");
 
+    // Workspace-relative paths are resolved from the workspace root, not the process cwd.
+    const relativeInside = await exportGenBank(source.workspacePath, source.moleculeId, "reports/exports/relative.gb");
+    expect(relativeInside.outputPath).toBe(path.join(source.workspaceDir, "reports", "exports", "relative.gb"));
+    expect(relativeInside.relativePath).toBe(path.join("reports", "exports", "relative.gb"));
+    await expect(fs.readFile(relativeInside.outputPath, "utf8")).resolves.toContain("LOCUS");
+
     // Relative traversal escaping the workspace root is rejected.
     await expect(exportGenBank(source.workspacePath, source.moleculeId, "../escape.gb"))
       .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
