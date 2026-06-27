@@ -38,6 +38,22 @@ type RenderableFeature = Feature & {
 const DEFAULT_WIDTH = 720;
 const DEFAULT_HEIGHT = 560;
 
+export const FEATURE_COLORS: Record<string, string> = {
+  CDS: "#E9A227",
+  gene: "#E9A227",
+  promoter: "#4CAF50",
+  terminator: "#E53935",
+  rep_origin: "#78909C",
+  primer_bind: "#AB47BC",
+  RBS: "#29B6F6",
+  regulatory: "#26A69A",
+  misc_feature: "#90A4AE",
+};
+
+export function featureColor(type: string): string {
+  return FEATURE_COLORS[type] ?? "#546E7A";
+}
+
 export async function renderPlasmidMap(
   workspacePath: string,
   moleculeId: string,
@@ -114,12 +130,11 @@ function renderSvg(input: {
   const radius = Math.min(input.width, input.height) * 0.31;
   const featureRadius = radius + 10;
   const labelBaseRadius = radius + 58;
-  const palette = ["#1f7a8c", "#bf6f38", "#4f7d33", "#7a4e9f", "#b23a48", "#3f5f9f", "#7c6f2f", "#2f7668"];
   const paths: string[] = [];
   const labels: string[] = [];
 
   input.features.forEach((feature, featureIndex) => {
-    const color = palette[featureIndex % palette.length];
+    const color = featureColor(feature.type);
     feature.segments.forEach((segment) => {
       paths.push(`<path d="${arcPath(centerX, centerY, featureRadius, input.length, segment)}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"><title>${escapeXml(feature.name)}</title></path>`);
     });

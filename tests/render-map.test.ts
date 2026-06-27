@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  featureColor,
   handleRenderPlasmidMap,
   importSequenceFile,
   renderPlasmidMap,
@@ -59,6 +60,9 @@ describe("plasmid map rendering", () => {
     expect(svg).toContain("pMB1 ori");
     expect(svg).toContain("bla");
     expect(svg).not.toContain(">source<");
+    expect(svg).toContain('stroke="#90A4AE"');
+    expect(svg).toContain('stroke="#78909C"');
+    expect(svg).toContain('stroke="#E9A227"');
 
     const arcs = featureArcPaths(svg);
     expect(arcs).toHaveLength(6);
@@ -90,6 +94,16 @@ describe("plasmid map rendering", () => {
     });
     if (!result.ok) throw new Error("expected render_plasmid_map success");
     await expect(fs.stat(result.artifacts?.[0]?.path ?? "")).resolves.toBeTruthy();
+  });
+
+  it("uses stable biological feature colors", () => {
+    expect(featureColor("CDS")).toBe("#E9A227");
+    expect(featureColor("gene")).toBe("#E9A227");
+    expect(featureColor("promoter")).toBe("#4CAF50");
+    expect(featureColor("terminator")).toBe("#E53935");
+    expect(featureColor("rep_origin")).toBe("#78909C");
+    expect(featureColor("primer_bind")).toBe("#AB47BC");
+    expect(featureColor("unknown_feature")).toBe("#546E7A");
   });
 });
 

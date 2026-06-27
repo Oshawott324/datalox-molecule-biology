@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { getSequenceContext, listMoleculeSummaries } from "../core/context.js";
 import { MoleculeError } from "../core/errors.js";
-import { renderPlasmidMap } from "../core/render-map.js";
+import { FEATURE_COLORS, renderPlasmidMap } from "../core/render-map.js";
 import type { Feature } from "../core/schema.js";
 import { readWorkspace } from "../core/workspace.js";
 import { upsertFeature } from "../core/writes.js";
@@ -135,6 +135,7 @@ async function handleRequest(
 
 function renderEditorHtml(defaultMoleculeId?: string): string {
   const initialMolecule = JSON.stringify(defaultMoleculeId ?? "");
+  const featureColors = JSON.stringify(FEATURE_COLORS);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -173,6 +174,7 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { padding: 7px 8px; border-bottom: 1px solid #edf1ef; text-align: left; vertical-align: top; }
     th { color: #53615d; font-weight: 700; background: #fbfcfc; }
+    .feature-chip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
     .form { display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 8px; padding: 12px; align-items: end; }
     .primary { border: 0; border-radius: 5px; background: #1f6f5b; color: #fff; padding: 8px 10px; min-height: 34px; cursor: pointer; }
     .primary:disabled { background: #91aaa2; cursor: default; }
@@ -237,6 +239,7 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
   </div>
   <script>
     const initialMoleculeId = ${initialMolecule};
+    const featureColors = ${featureColors};
     const state = { revision: -1, moleculeId: initialMoleculeId, molecules: [] };
     const $ = (id) => document.getElementById(id);
 
@@ -251,12 +254,22 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       return (segments || []).map((s) => s.start + ".." + s.end + " " + s.strand).join(", ");
     }
 
+    function featureColor(type) {
+      return featureColors[type] || "#546E7A";
+    }
+
     function rows(target, items, mapper) {
       target.replaceChildren(...items.map((item) => {
         const tr = document.createElement("tr");
-        mapper(item).forEach((text) => {
+        mapper(item).forEach((text, index) => {
           const td = document.createElement("td");
-          td.textContent = text;
+          if (index === 1 && item.type) {
+            const chip = document.createElement("span");
+            chip.className = "feature-chip";
+            chip.style.background = featureColor(item.type);
+            td.appendChild(chip);
+          }
+          td.appendChild(document.createTextNode(text));
           tr.appendChild(td);
         });
         return tr;
