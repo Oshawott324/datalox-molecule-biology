@@ -69,20 +69,27 @@ exposes tools including:
 ```text
 open_sequence
 open_workspace
+open_sequence_editor
 read_workspace
 validate_workspace
 list_molecules
 get_sequence_context
 upsert_feature
+delete_feature
 upsert_primer
+delete_primer
+reverse_complement
+translate_region
+find_orfs
 find_restriction_sites
 simulate_digest
 simulate_pcr
-translate_region
-reverse_complement
 export_genbank
 render_plasmid_map
 ```
+
+To connect this server to Claude Desktop, Cursor, or the MCP Inspector, see
+[docs/mcp-host-setup.md](docs/mcp-host-setup.md).
 
 Tool results use a structured envelope with `ok`, `agentContract`, `data`,
 `workspacePath`, `revision`, `nextAction`, and when files are produced,
