@@ -6,6 +6,7 @@ import {
   exportGenBank,
   findOrfs,
   findRestrictionSites,
+  renderDigestGel,
   simulateDigest,
   simulatePcr,
   translateRegion,
@@ -42,7 +43,8 @@ export type ToolName =
   | "simulate_digest"
   | "simulate_pcr"
   | "export_genbank"
-  | "render_plasmid_map";
+  | "render_plasmid_map"
+  | "render_digest_gel";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -136,6 +138,21 @@ export type RenderPlasmidMapInput = MoleculeToolInput & {
   height?: number;
 };
 
+export type RenderDigestGelInput = WorkspaceInput & {
+  gelId: string;
+  lanes: Array<{
+    label: string;
+    fragments: Array<{
+      size: number;
+      label?: string;
+    }>;
+  }>;
+  customLadder?: number[];
+  outputPath?: string;
+  width?: number;
+  height?: number;
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -157,6 +174,7 @@ export type ToolInputByName = {
   simulate_pcr: SimulatePcrInput;
   export_genbank: ExportGenBankInput;
   render_plasmid_map: RenderPlasmidMapInput;
+  render_digest_gel: RenderDigestGelInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -182,6 +200,7 @@ export const toolHandlers = {
   simulate_pcr: handleSimulatePcr,
   export_genbank: handleExportGenBank,
   render_plasmid_map: handleRenderPlasmidMap,
+  render_digest_gel: handleRenderDigestGel,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -516,6 +535,37 @@ export async function handleRenderPlasmidMap(input: RenderPlasmidMapInput): Prom
           path: result.outputPath,
           mimeType: result.mimeType,
           description: "Deterministic circular plasmid SVG map.",
+        },
+      ],
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: { workspacePath },
+      },
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleRenderDigestGel(input: RenderDigestGelInput): Promise<ToolResultEnvelope> {
+  const tool = "render_digest_gel";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    assertNonEmptyString(input.gelId, "gelId");
+    const result = await renderDigestGel(workspacePath, input.gelId, input.lanes, {
+      ...(input.outputPath ? { outputPath: input.outputPath } : {}),
+      ...(input.width !== undefined ? { width: assertPositiveInteger(input.width, "width") } : {}),
+      ...(input.height !== undefined ? { height: assertPositiveInteger(input.height, "height") } : {}),
+      ...(input.customLadder ? { customLadder: input.customLadder } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      artifacts: [
+        {
+          kind: "gel",
+          path: result.outputPath,
+          mimeType: result.mimeType,
+          description: "Deterministic SVG gel rendering of linear digest or PCR fragments.",
         },
       ],
       nextAction: {

@@ -10,3 +10,5 @@ export { simulatePcr } from "./pcr.js";
 export type { PcrProduct, SimulatePcrResult } from "./pcr.js";
 export { exportGenBank } from "./export-genbank.js";
 export type { ExportGenBankResult } from "./export-genbank.js";
+export { renderDigestGel } from "./render-gel.js";
+export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";

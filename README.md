@@ -86,6 +86,7 @@ simulate_digest
 simulate_pcr
 export_genbank
 render_plasmid_map
+render_digest_gel
 ```
 
 To connect this server to Claude Desktop, Cursor, or the MCP Inspector, see
@@ -114,6 +115,12 @@ Render a deterministic plasmid map:
 
 ```bash
 node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json --molecule mol_puc19
+```
+
+Render a deterministic digest gel from fragment sizes:
+
+```bash
+node dist/src/cli/main.js render-digest-gel ./run-puc19/molecule.workspace.json --gel-id puc19_digest --lanes lanes.json --custom-ladder 250,500,1000,2000,3000,5000,10000
 ```
 
 Open the compact local editor:
@@ -161,6 +168,7 @@ Implemented:
 - exact-match PCR simulation
 - GenBank export
 - deterministic circular plasmid SVG rendering
+- deterministic digest/PCR fragment gel SVG rendering
 - stdio MCP server
 - CLI parity for the main tool loop
 - compact local sequence/plasmid editor

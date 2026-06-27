@@ -19,6 +19,7 @@ import {
   type OpenSequenceInput,
   type OpenSequenceEditorInput,
   type RenderPlasmidMapInput,
+  type RenderDigestGelInput,
   type ReverseComplementInput,
   type SequenceContextInput,
   type SimulatePcrInput,
@@ -62,6 +63,7 @@ const commandToTool: Record<string, ToolName> = {
   "simulate-pcr": "simulate_pcr",
   "export-genbank": "export_genbank",
   "render-plasmid-map": "render_plasmid_map",
+  "render-digest-gel": "render_digest_gel",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
@@ -171,6 +173,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "simulate_pcr") return simulatePcrInput(parsed);
   if (tool === "export_genbank") return exportGenBankInput(parsed);
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
+  if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -310,6 +313,19 @@ function renderPlasmidMapInput(parsed: ParsedArgs): RenderPlasmidMapInput {
     ...workspaceInput(parsed),
     ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
     ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
+    ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),
+    ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
+  };
+}
+
+async function renderDigestGelInput(parsed: ParsedArgs): Promise<RenderDigestGelInput> {
+  return {
+    ...workspaceInput(parsed),
+    gelId: stringFlag(parsed, "gel-id") ?? stringFlag(parsed, "gelId") ?? "",
+    lanes: await jsonFileFlag(parsed, "lanes") as RenderDigestGelInput["lanes"],
+    ...(stringFlag(parsed, "custom-ladder") ? { customLadder: commaListFlag(parsed, "custom-ladder").map((entry) => Number(entry)) } : {}),
     ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
     ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
     ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),

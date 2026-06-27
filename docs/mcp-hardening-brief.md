@@ -2,7 +2,7 @@
 
 This project is an agent-native molecular biology MCP server, not a SnapGene or Scispot clone. The core product thesis is that agents need reliable domain environments with deterministic tools, revision-safe writes, visual artifacts, and replayable tool I/O.
 
-Current state: MVP phases 1-6 are complete and pushed to `main` at <https://github.com/Oshawott324/datalox-molecule-biology>. The repo has a real stdio MCP server with 19 tools, an authentic source-verified pUC19 fixture, a REBASE-derived common enzyme table, a deterministic circular plasmid SVG renderer, and Datalox replay-bundle capture.
+Current state: MVP phases 1-6 are complete and pushed to `main` at <https://github.com/Oshawott324/datalox-molecule-biology>. The repo has a real stdio MCP server, an authentic source-verified pUC19 fixture, a REBASE-derived common enzyme table, deterministic SVG artifact renderers, and Datalox replay-bundle capture.
 
 Must-stay-green commands:
 
@@ -34,7 +34,7 @@ Goal: harden the MCP layer for real agent-host use while preserving the current 
 Review points:
 
 - Confirm `src/mcp/server.ts` stays a thin adapter: `tools/list` comes from `moleculeToolDescriptors`, and `tools/call` forwards generically to `runToolHandler`.
-- Verify envelope consistency across all 19 tools: `ok`, `agentContract`, `data`, `workspacePath`, `revision`, `nextAction`, `artifacts`, and `error`.
+- Verify envelope consistency across all MCP tools: `ok`, `agentContract`, `data`, `workspacePath`, `revision`, `nextAction`, `artifacts`, and `error`.
 - Compare the FlowCyto MCP and Protein MCP architecture patterns if local copies are available. Extract architecture conventions only; do not copy domain code.
 - Decide whether this server should declare MCP resources or prompts. The current server intentionally declares tools only.
 - Confirm schema-invalid requests are rejected by the MCP protocol layer, while domain-invalid requests return structured `ok:false` envelopes.

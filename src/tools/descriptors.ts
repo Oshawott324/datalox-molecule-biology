@@ -241,4 +241,45 @@ export const moleculeToolDescriptors = [
       },
     },
   },
+  {
+    name: "render_digest_gel",
+    description: "Render a deterministic SVG gel artifact from digest or PCR fragment sizes.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "gelId", "lanes"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        gelId: { type: "string" },
+        lanes: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["label", "fragments"],
+            additionalProperties: false,
+            properties: {
+              label: { type: "string" },
+              fragments: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["size"],
+                  additionalProperties: false,
+                  properties: {
+                    size: { type: "integer", minimum: 1 },
+                    label: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        customLadder: { type: "array", items: { type: "integer", minimum: 1 } },
+        outputPath: { type: "string" },
+        width: { type: "integer", minimum: 1 },
+        height: { type: "integer", minimum: 1 },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

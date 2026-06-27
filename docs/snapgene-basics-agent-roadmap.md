@@ -145,6 +145,8 @@ Acceptance:
 
 ### P1: `render_digest_gel`
 
+Status: **complete**.
+
 Add deterministic gel SVG rendering.
 
 Core:

@@ -16,7 +16,7 @@ source of truth. Do not infer sequence facts from screenshots or prose.
 - Use `get_sequence_context` before making claims about a molecule sequence,
   feature, primer, or region.
 - Use deterministic tools for ORFs, restriction enzymes, digests, PCR,
-  translation, reverse complement, and GenBank export.
+  translation, reverse complement, GenBank export, and gel rendering.
 - Every write must include the current `expectedRevision`.
 - On `STALE_REVISION`, call `read_workspace` or `open_workspace`, inspect the
   new revision, then retry intentionally.
@@ -219,6 +219,7 @@ Use these tools instead of reasoning from memory:
 - `simulate_digest`
 - `simulate_pcr`
 - `export_genbank`
+- `render_digest_gel`
 
 Examples:
 
@@ -255,6 +256,28 @@ Examples:
     "end": 450,
     "strand": "+",
     "geneticCode": "standard"
+  }
+}
+```
+
+Render digest or PCR fragment sizes as a deterministic gel artifact after the
+agent has computed fragments with `simulate_digest` or `simulate_pcr`:
+
+```json
+{
+  "tool": "render_digest_gel",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "gelId": "diagnostic_digest",
+    "lanes": [
+      {
+        "label": "EcoRI + HindIII",
+        "fragments": [
+          { "size": 235 },
+          { "size": 2451 }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -312,5 +335,5 @@ Before answering the user:
 5. State any unsupported biological operation clearly.
 
 Do not claim support for SBOL, AB1, Sanger alignment, Gibson assembly, Golden
-Gate assembly, or Primer3 design unless those tools have been implemented and
-validated in this repo.
+Gate assembly, accurate supercoiled gel migration, or Primer3 design unless
+those tools have been implemented and validated in this repo.

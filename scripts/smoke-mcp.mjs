@@ -27,6 +27,7 @@ try {
   assertTool(tools, "get_sequence_context");
   assertTool(tools, "reverse_complement");
   assertTool(tools, "render_plasmid_map");
+  assertTool(tools, "render_digest_gel");
 
   const reverse = envelope(await client.callTool({
     name: "reverse_complement",

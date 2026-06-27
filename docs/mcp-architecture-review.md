@@ -63,9 +63,9 @@ Confirmed against the brief's review points:
   and calls the same `runToolHandler`. The MCP server adds no behavior the CLI
   lacks except transport. ✅
 
-### Tool surface: 19 advertised, `doctor` is CLI-only
+### Tool surface: 20 advertised, `doctor` is CLI-only
 
-`moleculeToolDescriptors` advertises 19 tools. `toolHandlers` defines 20
+`moleculeToolDescriptors` advertises 20 tools. `toolHandlers` defines 21
 (it adds `doctor`). Because `isToolName` is built from the descriptor set,
 `doctor` is *not reachable* over MCP** — a `tools/call` for `doctor` returns the
 structured unknown-tool failure. `doctor` is reachable only via the CLI
