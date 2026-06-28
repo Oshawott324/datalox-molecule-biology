@@ -7,7 +7,7 @@ FEATURES             Location/Qualifiers
                      /organism="Cloning vector pUC19c"
                      /mol_type="genomic DNA"
                      /note="Sequence from NCBI L09137.2"
-     misc_feature    complement(join(238..395,455..682))
+     gene            complement(join(238..395,455..682))
                      /gene="lacZalpha"
                      /note="lacZ alpha peptide region from pUC19c comment block"
      misc_feature    396..452

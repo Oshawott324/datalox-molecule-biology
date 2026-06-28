@@ -193,7 +193,7 @@ describe("sequence import", () => {
     expect(workspace.features).toEqual(expect.arrayContaining([
       expect.objectContaining({
         name: "lacZalpha",
-        type: "misc_feature",
+        type: "gene",
         segments: [
           { start: 238, end: 395, strand: "-" },
           { start: 455, end: 682, strand: "-" },

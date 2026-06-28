@@ -176,10 +176,10 @@ Input:
   "lanes": [
     {
       "label": "EcoRI + HindIII",
-      "fragments": [{ "size": 235 }, { "size": 2451 }]
+      "fragments": [{ "size": 51 }, { "size": 2635 }]
     }
   ],
-  "customLadder": [250, 500, 1000, 2000, 3000, 5000, 10000]
+  "customLadder": [50, 100, 250, 500, 1000, 2000, 3000, 5000]
 }
 ```
 
@@ -291,9 +291,10 @@ The agent/script should:
    *(This step is agent reasoning over the simulated fragment sizes, not a
    deterministic tool call. The agent evaluates which enzyme produces maximally
    different band patterns across the three conditions and justifies the choice
-   in the replay. Example: "Evaluated: EcoRI, HindIII, BamHI+HindIII. Selected:
-   EcoRI+HindIII — unique band sizes across all three conditions (correct:
-   235+2451, reverse: 1200+1486, empty: 2686).")*
+   in the replay. Do not assume EcoRI+HindIII is a good diagnostic pair for the
+   demo; on pUC19 alone it produces a 51 bp fragment that is not photogenic on a
+   standard gel. The selected pair should give clearly separated, distinguishable
+   bands across all three construct states.)*
 5. Render gel lanes for each scenario.
 6. Render plasmid map with feature/cut-site overlays.
 7. Validate the workspace.
@@ -306,7 +307,7 @@ Example summary:
 Replay verified
 Source: pUC19 + diagnostic insert model
 9 tool calls | 3 molecule states analyzed
-Enzyme selected: EcoRI + HindIII (3 candidates evaluated)
+Enzyme selected: <enzyme or enzyme pair> (3 candidates evaluated)
 4 deterministic digests | 1 gel artifact | 1 plasmid map
 1 revision-safe write
 Final workspace revision: 3

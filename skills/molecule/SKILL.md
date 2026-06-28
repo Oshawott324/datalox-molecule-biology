@@ -260,8 +260,10 @@ Examples:
 }
 ```
 
-Render digest or PCR fragment sizes as a deterministic gel artifact after the
-agent has computed fragments with `simulate_digest` or `simulate_pcr`:
+Always compute fragment sizes from `simulate_digest` or `simulate_pcr` first,
+then pass the results to `render_digest_gel`. Do not invent or guess fragment
+sizes. Example for pUC19 EcoRI + HindIII (51 + 2635 bp, verified by the pinned
+digest test):
 
 ```json
 {
@@ -273,14 +275,19 @@ agent has computed fragments with `simulate_digest` or `simulate_pcr`:
       {
         "label": "EcoRI + HindIII",
         "fragments": [
-          { "size": 235 },
-          { "size": 2451 }
+          { "size": 51 },
+          { "size": 2635 }
         ]
       }
-    ]
+    ],
+    "customLadder": [50, 100, 250, 500, 1000, 2000, 3000, 5000]
   }
 }
 ```
+
+Use `customLadder` when expected fragments fall below the default ladder
+minimum (250 bp). The default ladder is 250–10000 bp; a 51 bp fragment
+requires a ladder starting at 50 bp or lower to be visible on the gel.
 
 ## Visual Context
 
