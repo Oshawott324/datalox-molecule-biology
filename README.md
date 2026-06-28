@@ -120,8 +120,13 @@ node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json
 Render a deterministic digest gel from fragment sizes:
 
 ```bash
-node dist/src/cli/main.js render-digest-gel ./run-puc19/molecule.workspace.json --gel-id puc19_digest --lanes lanes.json --custom-ladder 250,500,1000,2000,3000,5000,10000
+node dist/src/cli/main.js simulate-digest ./run-puc19/molecule.workspace.json --molecule mol_puc19 --enzymes EcoRI,HindIII
+node dist/src/cli/main.js render-digest-gel ./run-puc19/molecule.workspace.json --gel-id puc19_digest --lanes lanes.json --custom-ladder 50,100,250,500,1000,2000,3000,5000
 ```
+
+Generate `lanes.json` from the `simulate-digest` fragment sizes rather than
+inventing band sizes. Gel migration is calibrated to the ladder range; fragments
+outside that range are marked in the SVG and result metadata.
 
 Open the compact local editor:
 

@@ -23,6 +23,8 @@ export type GelBand = {
   y: number;
   label?: string;
   isLadder: boolean;
+  outOfLadderRange: boolean;
+  rangeWarning?: string;
 };
 
 export type RenderDigestGelOptions = {
@@ -46,6 +48,7 @@ export type RenderDigestGelResult = {
     migrationScale: "log10_fragment_size";
     supportedFragments: "linear_digest_or_pcr_products";
     ladderLane: "leftmost_default_or_custom_ladder";
+    calibrationRange: "ladder_min_to_ladder_max";
   };
 };
 
@@ -107,6 +110,7 @@ export async function renderDigestGel(
       migrationScale: "log10_fragment_size",
       supportedFragments: "linear_digest_or_pcr_products",
       ladderLane: "leftmost_default_or_custom_ladder",
+      calibrationRange: "ladder_min_to_ladder_max",
     },
   };
 }
@@ -118,15 +122,26 @@ function computeBands(lanes: GelLane[], ladder: number[], width: number, height:
   const laneSpacing = laneLabels.length === 1 ? 0 : (right - left) / (laneLabels.length - 1);
   const top = 82;
   const bottom = height - 58;
-  const allSizes = [...ladder, ...lanes.flatMap((lane) => lane.fragments.map((fragment) => fragment.size))];
-  const minSize = Math.min(...allSizes);
-  const maxSize = Math.max(...allSizes);
+  const minSize = Math.min(...ladder);
+  const maxSize = Math.max(...ladder);
   const bands: GelBand[] = [];
   const renderBands: RenderBand[] = [];
 
-  const addBand = (band: Omit<GelBand, "y">): void => {
-    const y = gelY(band.size, minSize, maxSize, top, bottom);
-    const next = { ...band, y };
+  const addBand = (band: Omit<GelBand, "y" | "outOfLadderRange" | "rangeWarning">): void => {
+    const belowRange = band.size < minSize;
+    const aboveRange = band.size > maxSize;
+    const rangeWarning = belowRange
+      ? `below ladder range (${minSize}-${maxSize} bp)`
+      : aboveRange
+        ? `above ladder range (${minSize}-${maxSize} bp)`
+        : undefined;
+    const y = gelY(clamp(band.size, minSize, maxSize), minSize, maxSize, top, bottom);
+    const next = {
+      ...band,
+      y,
+      outOfLadderRange: rangeWarning !== undefined,
+      ...(rangeWarning ? { rangeWarning } : {}),
+    };
     bands.push(next);
     renderBands.push({ ...next, x: left + band.laneIndex * laneSpacing });
   };
@@ -178,11 +193,18 @@ function renderSvg(input: {
   });
   const bandElements = input.bands.map((band) => {
     const bandWidth = band.isLadder ? 24 : 34;
-    const stroke = band.isLadder ? "#465A64" : "#151B1A";
+    const stroke = band.outOfLadderRange ? "#B23A48" : band.isLadder ? "#465A64" : "#151B1A";
     const opacity = band.isLadder ? "0.78" : "0.88";
-    const title = `${band.laneLabel}: ${band.size} bp`;
-    return `<line x1="${format(band.x - bandWidth / 2)}" y1="${format(band.y)}" x2="${format(band.x + bandWidth / 2)}" y2="${format(band.y)}" stroke="${stroke}" stroke-width="5" stroke-linecap="round" opacity="${opacity}"><title>${escapeXml(title)}</title></line>`;
+    const dash = band.outOfLadderRange ? ' stroke-dasharray="5 3"' : "";
+    const title = `${band.laneLabel}: ${band.size} bp${band.rangeWarning ? `, ${band.rangeWarning}` : ""}`;
+    return `<line x1="${format(band.x - bandWidth / 2)}" y1="${format(band.y)}" x2="${format(band.x + bandWidth / 2)}" y2="${format(band.y)}" stroke="${stroke}" stroke-width="5" stroke-linecap="round" opacity="${opacity}"${dash}><title>${escapeXml(title)}</title></line>`;
   });
+  const ladderLabels = input.bands
+    .filter((band) => band.isLadder)
+    .map((band) => `<text class="ladder-label" x="${format(band.x - 24)}" y="${format(band.y + 4)}" text-anchor="end">${escapeXml(formatSizeLabel(band.size))}</text>`);
+  const warningLabels = input.bands
+    .filter((band) => !band.isLadder && band.rangeWarning !== undefined)
+    .map((band) => `<text class="warning-label" x="${format(band.x + 23)}" y="${format(band.y - 7)}">${escapeXml(`${band.size} bp ${band.rangeWarning}`)}</text>`);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}" role="img" aria-label="${escapeXml(input.gelId)} digest gel">
@@ -191,6 +213,8 @@ function renderSvg(input: {
     .title { font-size: 15px; font-weight: 700; }
     .meta { font-size: 12px; fill: #5d6a66; }
     .lane-label { font-size: 11px; fill: #3a4643; }
+    .ladder-label { font-size: 10px; fill: #465A64; }
+    .warning-label { font-size: 10px; fill: #B23A48; }
   </style>
   <rect width="100%" height="100%" fill="#ffffff"/>
   <text class="title" x="22" y="27">${escapeXml(input.gelId)}</text>
@@ -198,6 +222,8 @@ function renderSvg(input: {
   <rect x="48" y="56" width="${format(input.width - 76)}" height="${format(input.height - 96)}" rx="8" fill="#EEF4F2" stroke="#CDD8D5"/>
   ${laneElements.join("\n  ")}
   ${bandElements.join("\n  ")}
+  ${ladderLabels.join("\n  ")}
+  ${warningLabels.join("\n  ")}
 </svg>
 `;
 }
@@ -207,6 +233,14 @@ function gelY(size: number, minSize: number, maxSize: number, top: number, botto
   const logMax = Math.log10(maxSize);
   if (logMax === logMin) return (top + bottom) / 2;
   return top + ((logMax - Math.log10(size)) / (logMax - logMin)) * (bottom - top);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatSizeLabel(size: number): string {
+  return size >= 1000 && size % 1000 === 0 ? `${size / 1000} kb` : `${size} bp`;
 }
 
 function normalizeLanes(lanes: GelLane[]): GelLane[] {

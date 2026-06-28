@@ -287,7 +287,10 @@ digest test):
 
 Use `customLadder` when expected fragments fall below the default ladder
 minimum (250 bp). The default ladder is 250–10000 bp; a 51 bp fragment
-requires a ladder starting at 50 bp or lower to be visible on the gel.
+requires a ladder starting at 50 bp or lower to be calibrated normally.
+`render_digest_gel` uses the ladder as the calibrated range, adds ladder size
+labels to the SVG, and marks fragments outside the ladder range with
+`outOfLadderRange` / `rangeWarning` metadata.
 
 ## Visual Context
 

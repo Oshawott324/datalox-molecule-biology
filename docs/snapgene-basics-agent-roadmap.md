@@ -193,13 +193,15 @@ Output:
 
 - SVG at `reports/gels/<gelId>.gel.svg`
 - `artifacts[{ kind: "gel", mimeType: "image/svg+xml", path }]`
-- structured `bands[]` metadata with lane, fragment size, and y-position
+- structured `bands[]` metadata with lane, fragment size, y-position, and
+  out-of-ladder-range warnings
 
 Migration model:
 
 ```text
 linear digest/PCR fragments only
 y-position scales with log10(fragment_size)
+calibration range comes from the ladder min/max
 ```
 
 Do not claim accurate supercoiled plasmid migration in this first version.
@@ -208,6 +210,9 @@ Acceptance:
 
 - Same input produces byte-identical SVG.
 - Band positions are log-scaled and pinned by tests.
+- Ladder size labels are rendered in the SVG.
+- Fragments outside the ladder range are marked in SVG and metadata instead of
+  silently treated as normally calibrated bands.
 - pUC19 digest fragments render in expected lane order.
 - Output is confined to the workspace artifact directory.
 
