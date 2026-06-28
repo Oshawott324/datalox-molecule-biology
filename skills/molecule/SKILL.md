@@ -292,6 +292,43 @@ requires a ladder starting at 50 bp or lower to be calibrated normally.
 labels to the SVG, and marks fragments outside the ladder range with
 `outOfLadderRange` / `rangeWarning` metadata.
 
+For plasmid maps with restriction ticks, call `find_restriction_sites` first and
+pass the returned cut positions into `render_plasmid_map`. The renderer draws
+caller-supplied annotations; it does not secretly compute enzyme sites.
+
+```json
+{
+  "tool": "find_restriction_sites",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_puc19",
+    "enzymes": ["EcoRI", "HindIII"]
+  }
+}
+```
+
+Then map each returned site to `{ "enzyme": site.enzyme, "position":
+site.cutPosition }`:
+
+```json
+{
+  "tool": "render_plasmid_map",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_puc19",
+    "cutSites": [
+      { "enzyme": "EcoRI", "position": 396 },
+      { "enzyme": "HindIII", "position": 447 }
+    ],
+    "showPrimers": true
+  }
+}
+```
+
+`showPrimers: true` renders only primers that already have canonical
+`binding.segments` in workspace state. If primer binding is needed, call
+`upsert_primer` with `bindToMolecule: true` before rendering the map.
+
 ## Visual Context
 
 Use `open_sequence_editor` only as a viewer/editor over workspace state.

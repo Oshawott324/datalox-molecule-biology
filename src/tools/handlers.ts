@@ -14,7 +14,7 @@ import {
 import { MoleculeError } from "../core/errors.js";
 import { importSequenceFile, type ImportFormat } from "../core/import.js";
 import { reverseComplement } from "../core/sequence.js";
-import { renderPlasmidMap } from "../core/render-map.js";
+import { renderPlasmidMap, type PlasmidMapCutSite } from "../core/render-map.js";
 import type { Feature, Primer, Strand } from "../core/schema.js";
 import { readWorkspace, validateWorkspace } from "../core/workspace.js";
 import { deleteFeature, deletePrimer, upsertFeature, upsertPrimer } from "../core/writes.js";
@@ -136,6 +136,8 @@ export type RenderPlasmidMapInput = MoleculeToolInput & {
   outputPath?: string;
   width?: number;
   height?: number;
+  cutSites?: PlasmidMapCutSite[];
+  showPrimers?: boolean;
 };
 
 export type RenderDigestGelInput = WorkspaceInput & {
@@ -526,6 +528,8 @@ export async function handleRenderPlasmidMap(input: RenderPlasmidMapInput): Prom
       ...(input.outputPath ? { outputPath: input.outputPath } : {}),
       ...(input.width !== undefined ? { width: assertPositiveInteger(input.width, "width") } : {}),
       ...(input.height !== undefined ? { height: assertPositiveInteger(input.height, "height") } : {}),
+      ...(input.cutSites ? { cutSites: assertCutSites(input.cutSites) } : {}),
+      ...(input.showPrimers !== undefined ? { showPrimers: input.showPrimers } : {}),
     });
     return toolSuccess(tool, { workspacePath, ...result }, {
       workspacePath,
@@ -652,6 +656,23 @@ function assertStringArray(value: unknown, name: string): string[] {
     throw new MoleculeError("INVALID_ARGUMENT", `${name} must be a non-empty string array.`, { [name]: value });
   }
   return value;
+}
+
+function assertCutSites(value: unknown): PlasmidMapCutSite[] {
+  if (!Array.isArray(value)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "cutSites must be an array.", { cutSites: value });
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      throw new MoleculeError("INVALID_ARGUMENT", "cutSites entries must be objects.", { index, entry });
+    }
+    const candidate = entry as Record<string, unknown>;
+    assertNonEmptyString(candidate.enzyme, `cutSites[${index}].enzyme`);
+    return {
+      enzyme: candidate.enzyme,
+      position: assertPositiveInteger(candidate.position, `cutSites[${index}].position`),
+    };
+  });
 }
 
 function assertImportFormat(format: string): asserts format is ImportFormat {

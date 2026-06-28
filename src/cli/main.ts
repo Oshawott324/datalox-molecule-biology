@@ -136,7 +136,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
-    if (rawName === "include-sequence" || rawName === "no-check-sequence-digests" || rawName === "bind-to-molecule") {
+    if (rawName === "include-sequence" || rawName === "no-check-sequence-digests" || rawName === "bind-to-molecule" || rawName === "show-primers") {
       flags[rawName] = true;
       continue;
     }
@@ -317,7 +317,7 @@ function exportGenBankInput(parsed: ParsedArgs): ExportGenBankInput {
   };
 }
 
-function renderPlasmidMapInput(parsed: ParsedArgs): RenderPlasmidMapInput {
+async function renderPlasmidMapInput(parsed: ParsedArgs): Promise<RenderPlasmidMapInput> {
   return {
     ...workspaceInput(parsed),
     ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
@@ -326,6 +326,8 @@ function renderPlasmidMapInput(parsed: ParsedArgs): RenderPlasmidMapInput {
     ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
     ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),
     ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
+    ...(stringFlag(parsed, "cut-sites") ? { cutSites: await jsonFileFlag(parsed, "cut-sites") as RenderPlasmidMapInput["cutSites"] } : {}),
+    ...(parsed.flags["show-primers"] === true ? { showPrimers: true } : {}),
   };
 }
 

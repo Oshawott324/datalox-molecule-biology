@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { getSequenceContext, listMoleculeSummaries } from "../core/context.js";
+import { findRestrictionSites } from "../core/enzymes.js";
 import { MoleculeError } from "../core/errors.js";
 import { FEATURE_COLORS, renderPlasmidMap } from "../core/render-map.js";
 import type { Feature } from "../core/schema.js";
@@ -108,9 +109,13 @@ async function handleRequest(
       sendJson(response, 400, { ok: false, error: { code: "INVALID_ARGUMENT", message: "moleculeId is required." } });
       return;
     }
+    const enzymes = commaParam(url, "enzymes");
+    const sites = enzymes.length > 0 ? await findRestrictionSites(workspacePath, moleculeId, enzymes) : [];
     const result = await renderPlasmidMap(workspacePath, moleculeId, {
       width: 720,
       height: 520,
+      showPrimers: url.searchParams.get("showPrimers") === "true",
+      cutSites: sites.map((site) => ({ enzyme: site.enzyme, position: site.cutPosition })),
     });
     const svg = await fs.readFile(result.outputPath, "utf8");
     sendJson(response, 200, { ok: true, workspacePath, ...result, svg });
@@ -313,7 +318,7 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     async function loadMap() {
       if (!state.moleculeId) return;
       try {
-        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId));
+        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId) + "&showPrimers=true");
         $("map").innerHTML = payload.svg || "";
       } catch (error) {
         $("map").textContent = error.message;
@@ -362,6 +367,10 @@ function numberParam(url: URL, name: string): number | undefined {
     throw new MoleculeError("INVALID_ARGUMENT", `${name} must be an integer.`, { [name]: value });
   }
   return parsed;
+}
+
+function commaParam(url: URL, name: string): string[] {
+  return (url.searchParams.get(name) ?? "").split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {

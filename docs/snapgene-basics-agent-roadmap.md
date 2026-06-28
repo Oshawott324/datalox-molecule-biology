@@ -218,7 +218,9 @@ Acceptance:
 
 ### P2: Plasmid Map Overlay: Features, Primers, Cut Sites
 
-Extend `render_plasmid_map` to support three visual layers:
+Status: **complete**.
+
+`render_plasmid_map` supports three visual layers:
 
 1. Feature arcs
 2. Primer binding arrows
@@ -243,7 +245,7 @@ Layer rules:
 - Backbone circle remains the base layer.
 - Feature arcs use P3 feature colors.
 - Primer arrows read binding segments from workspace when `showPrimers: true`.
-- Primer arrow color should encode strand:
+- Primer arrow color encodes strand:
   - forward: blue
   - reverse: red
 - Cut sites render as ticks on the backbone with enzyme labels outside.

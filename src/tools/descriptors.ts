@@ -238,6 +238,19 @@ export const moleculeToolDescriptors = [
         outputPath: { type: "string" },
         width: { type: "integer", minimum: 1 },
         height: { type: "integer", minimum: 1 },
+        showPrimers: { type: "boolean" },
+        cutSites: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["enzyme", "position"],
+            additionalProperties: false,
+            properties: {
+              enzyme: { type: "string" },
+              position: { type: "integer", minimum: 1 },
+            },
+          },
+        },
       },
     },
   },

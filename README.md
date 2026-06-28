@@ -117,6 +117,18 @@ Render a deterministic plasmid map:
 node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json --molecule mol_puc19
 ```
 
+Render a plasmid map with agent-computed restriction cut-site ticks and bound
+primer arrows:
+
+```bash
+node dist/src/cli/main.js find-restriction-sites ./run-puc19/molecule.workspace.json --molecule mol_puc19 --enzymes EcoRI,HindIII
+node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json --molecule mol_puc19 --cut-sites cut-sites.json --show-primers
+```
+
+Generate `cut-sites.json` from `find_restriction_sites` output by mapping each
+site to `{ "enzyme": site.enzyme, "position": site.cutPosition }`. Do not
+invent cut positions or make the renderer compute enzyme sites implicitly.
+
 Render a deterministic digest gel from fragment sizes:
 
 ```bash

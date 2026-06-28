@@ -57,7 +57,7 @@ export {
   translateRegion,
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
-export type { RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
+export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
 export type {
   DigestFragment,
   ExportGenBankResult,

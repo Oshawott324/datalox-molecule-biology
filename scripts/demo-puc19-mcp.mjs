@@ -44,9 +44,14 @@ try {
     moleculeId,
     enzymes: ["EcoRI", "BamHI", "HindIII", "PstI", "XbaI", "SmaI"],
   });
+  const cutSites = Array.isArray(sites.data?.sites)
+    ? sites.data.sites.map((site) => ({ enzyme: site.enzyme, position: site.cutPosition }))
+    : [];
   const map = await recordMcpTool("render_plasmid_map", {
     workspacePath,
     moleculeId,
+    cutSites,
+    showPrimers: true,
   });
   await recordMcpTool("validate_workspace", {
     workspacePath,
@@ -59,7 +64,8 @@ try {
     workspaceDir,
     workspacePath,
     moleculeId,
-    siteCount: Array.isArray(sites.data?.sites) ? sites.data.sites.length : undefined,
+    siteCount: cutSites.length,
+    renderedCutSiteCount: Array.isArray(map.data?.renderedCutSites) ? map.data.renderedCutSites.length : undefined,
     mapArtifact: map.artifacts?.[0],
     bundlePath: bundle.bundlePath,
     recordCount: verification.recordCount,
