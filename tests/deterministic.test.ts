@@ -300,4 +300,30 @@ ORIGIN
       delete process.env.MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE;
     }
   });
+
+  it("pins datalox_insert_v1 fixture: 700 bp, XhoI-only among all 20 panel enzymes", async () => {
+    const workspaceDir = await tempDir("mol-insert-");
+    const result = await importSequenceFile({
+      inputPath: path.resolve("fixtures/fasta/datalox_insert_v1.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_insert",
+    });
+    const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
+
+    expect(workspace.molecules[0]).toMatchObject({
+      id: "mol_insert",
+      length: 700,
+      sequenceDigest: "sha256:c954387359735d60c46d3a98c55ec42c2427dd2245be6882f4629e5c357c85e0",
+    });
+
+    const ALL_PANEL = [
+      "ApaI", "BglII", "ClaI", "EcoRI", "BamHI", "HindIII", "KpnI", "NcoI", "NdeI", "NheI",
+      "NotI", "PstI", "SacI", "SalI", "SmaI", "SpeI", "SphI", "XbaI", "XhoI", "XmaI",
+    ];
+    const sites = await findRestrictionSites(result.workspacePath, "mol_insert", ALL_PANEL);
+
+    expect(sites).toHaveLength(1);
+    expect(sites[0]).toMatchObject({ enzyme: "XhoI", cutPosition: 250 });
+  });
 });

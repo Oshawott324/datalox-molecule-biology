@@ -270,6 +270,11 @@ Acceptance:
 
 ### D1: Diagnostic Digest MCP Demo
 
+Pre-condition: insert sequence designed and verified per
+`docs/diagnostic-digest-demo.md`. That document defines the exact insert,
+cloning coordinates, expected fragment sizes, and acceptance rule before any
+demo code is written.
+
 Add a demo script:
 
 ```text
