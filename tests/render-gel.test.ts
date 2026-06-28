@@ -149,6 +149,30 @@ describe("digest gel rendering", () => {
     });
   });
 
+  it("accepts UTF-8 BOM JSON lane files through the CLI", async () => {
+    const { workspacePath, workspaceDir } = await createWorkspace();
+    const lanesPath = path.join(workspaceDir, "lanes-bom.json");
+    await fs.writeFile(lanesPath, `\uFEFF${JSON.stringify([
+      { label: "BOM digest", fragments: [{ size: 250 }, { size: 1000 }] },
+    ])}`, "utf8");
+
+    const cli = await runCli([
+      "render-digest-gel",
+      workspacePath,
+      "--gel-id",
+      "cli_bom_gel",
+      "--lanes",
+      lanesPath,
+    ]);
+
+    expect(cli.exitCode).toBe(0);
+    expect(JSON.parse(cli.stdout)).toMatchObject({
+      ok: true,
+      tool: "render_digest_gel",
+      artifacts: [{ kind: "gel" }],
+    });
+  });
+
   it("rejects output paths outside the workspace", async () => {
     const { workspacePath } = await createWorkspace();
     await expect(renderDigestGel(

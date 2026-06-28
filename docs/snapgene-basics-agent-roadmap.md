@@ -161,9 +161,6 @@ Tool:
 render_digest_gel
 ```
 
-This is expected to become the next MCP tool after the current 19-tool surface
-unless another planned tool lands first.
-
 CLI:
 
 ```text

@@ -26,6 +26,7 @@ import {
   type TranslateRegionInput,
   type ToolInputByName,
   type ToolName,
+  type ToolResultEnvelope,
   type UpsertFeatureInput,
   type UpsertPrimerInput,
   type WorkspaceInput,
@@ -98,7 +99,7 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<Cl
         command,
         commands: [...Object.keys(commandToTool), "mcp-server", "replay-demo"],
       }))
-    : await runToolHandler(tool, await inputForTool(tool, parsed) as never);
+    : await runCliTool(tool, parsed);
 
   return {
     exitCode: result.ok ? 0 : 1,
@@ -175,6 +176,14 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   return workspaceInput(parsed);
+}
+
+async function runCliTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolResultEnvelope> {
+  try {
+    return await runToolHandler(tool, await inputForTool(tool, parsed) as never);
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
 }
 
 function openSequenceInput(parsed: ParsedArgs): OpenSequenceInput {
@@ -351,7 +360,11 @@ function commaListFlag(parsed: ParsedArgs, name: string): string[] {
 async function jsonFileFlag(parsed: ParsedArgs, name: string): Promise<unknown> {
   const filePath = stringFlag(parsed, name);
   if (filePath === undefined) return undefined;
-  return JSON.parse(await fs.readFile(filePath, "utf8")) as unknown;
+  return JSON.parse(stripUtf8Bom(await fs.readFile(filePath, "utf8"))) as unknown;
+}
+
+function stripUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
