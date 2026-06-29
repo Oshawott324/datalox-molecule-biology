@@ -284,15 +284,17 @@ demo:diagnostic-digest:mcp
 Scenario:
 
 ```text
-We cloned an insert into pUC19 at EcoRI/BamHI.
+Model a synthetic insert in the EcoRI/BamHI-opened pUC19 backbone.
 Design a diagnostic digest to distinguish:
-1. correct insert orientation
-2. reverse insert orientation
+1. forward orientation-control construct
+2. reverse orientation-control construct
 3. empty vector
 ```
 
-The same insert should be modeled in two orientations, not described as two
-different inserts.
+The same payload should be modeled in two orientations, not described as two
+different inserts. The reverse construct is an in-silico orientation-control
+state for the demo; `docs/diagnostic-digest-demo.md` documents why this is not
+claimed as a likely standard EcoRI/BamHI ligation product.
 
 The agent/script should:
 
@@ -303,10 +305,9 @@ The agent/script should:
    *(This step is agent reasoning over the simulated fragment sizes, not a
    deterministic tool call. The agent evaluates which enzyme produces maximally
    different band patterns across the three conditions and justifies the choice
-   in the replay. Do not assume EcoRI+HindIII is a good diagnostic pair for the
-   demo; on pUC19 alone it produces a 51 bp fragment that is not photogenic on a
-   standard gel. The selected pair should give clearly separated, distinguishable
-   bands across all three construct states.)*
+   in the replay. The selected pair should give clearly separated,
+   distinguishable bands across all three construct states, and the script must
+   verify the exact fragment sizes pinned in `docs/diagnostic-digest-demo.md`.)*
 5. Render gel lanes for each scenario.
 6. Render plasmid map with feature/cut-site overlays.
 7. Validate the workspace.

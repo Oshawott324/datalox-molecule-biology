@@ -1,143 +1,163 @@
-# D1: Diagnostic Digest Demo — Design Document
+# D1: Diagnostic Digest Demo Design Document
 
-This document defines all biological and computational parameters for the D1
-demo before any code is written. The demo is falsifiable: the expected fragment
-sizes are derived from the insert sequence, and the demo script verifies them
-by running the deterministic tools.
+This document defines the biological and computational parameters for the D1
+demo. The demo is falsifiable: expected fragment sizes are derived from actual
+sequence construction, and the demo script must verify them by running the
+deterministic tools.
 
 ## Scenario
 
-We cloned a synthetic insert into pUC19 at EcoRI/BamHI. Design a diagnostic
-digest to distinguish three colony outcomes:
+We model a synthetic 700 bp payload inserted into the EcoRI/BamHI-opened pUC19
+backbone. The demo distinguishes three construct states:
 
 ```text
-1. Empty vector (no insert): pUC19 only, 2686 bp
-2. Correct orientation: pUC19 + insert in forward direction, 3365 bp
-3. Reverse orientation: pUC19 + insert in reverse direction, 3365 bp
+1. Empty vector: pUC19 only, 2686 bp
+2. Forward orientation control: pUC19 + insert in forward direction, 3365 bp
+3. Reverse orientation control: pUC19 + insert in reverse-complement direction, 3365 bp
 ```
 
-## Insert Design
+Important biological boundary: EcoRI/BamHI cloning is directional in normal
+wet-lab ligation because the sticky ends are incompatible. The reverse
+orientation is included here as an in-silico orientation-control state for the
+agent demo, not as a likely colony outcome from a standard EcoRI/BamHI
+directional clone.
 
-### Parameters
+## Insert Fixture
 
-| Property | Value |
-|---|---|
-| Name | `datalox_insert_v1` |
-| Length | 700 bp |
-| GC content | 48–52% |
-| Cloning sites | EcoRI left end / BamHI right end |
-| Internal diagnostic site | XhoI (CTCGAG), recognition at insert positions 250–255 |
-| XhoI cut position in insert | 250 (between insert bp 250 and 251) |
-
-XhoI (CTCGAG) is **confirmed absent from pUC19** by `findRestrictionSites` on
-the fixture. It is a palindromic 6-cutter present in both insert orientations.
-The cut at position 250 is deliberately asymmetric within the 700 bp insert:
-250 bp on the EcoRI side, 450 bp on the BamHI side.
-
-### Sequence requirements
-
-The insert sequence file lives at:
+The insert file is:
 
 ```text
 fixtures/fasta/datalox_insert_v1.fa
 ```
 
-Requirements:
+The FASTA sequence is the payload only. It does not include EcoRI or BamHI
+recognition sites.
 
-- Exactly 700 bp
-- Bases 250–255 (1-based, inclusive) = `CTCGAG`
-- No other occurrences of `CTCGAG` in the insert
-- No sites for any other panel enzyme:
-  ApaI, BglII, ClaI, EcoRI, BamHI, HindIII, KpnI, NcoI, NdeI, NheI, NotI,
-  PstI, SacI, SalI, SmaI, SpeI, SphI, XbaI, XmaI
-- GC content 48–52%
-- No homopolymer run > 6 bp
+Pinned properties:
 
-### Verification step (required before D1 code)
+| Property | Value |
+|---|---|
+| Name | `datalox_insert_v1` |
+| Length | 700 bp |
+| GC content | 50.143% |
+| Max homopolymer run | 1 |
+| Internal diagnostic site | XhoI (`CTCGAG`) |
+| XhoI recognition coordinates | insert positions 250..255 |
+| XhoI cut position | insert position 250 |
 
-Import the insert as a workspace molecule and run:
+The sequence is `ACACGTGT` repeated, with `CTCGAG` spliced at insert positions
+250..255. Verification against all 20 panel enzymes returns exactly one site:
+XhoI at cut position 250.
+
+Required verification before D1 code changes:
 
 ```ts
-findRestrictionSites(insertWorkspacePath, insertMoleculeId, [...all20enzymes])
+findRestrictionSites(insertWorkspacePath, insertMoleculeId, Object.keys(RESTRICTION_ENZYMES))
 ```
 
-Expected result: exactly one site, `XhoI` at insert position 250. Any other
-site requires a redesign of the flanking sequence.
+Expected result:
 
-## Three Molecule States
+```json
+[{ "enzyme": "XhoI", "start": 250, "end": 255, "cutPosition": 250 }]
+```
 
-### Construction
+Any other site requires redesigning the payload.
 
-The recombinant sequences are assembled from pUC19 and insert:
+## Construct States
+
+The recombinant sequences are assembled from pUC19 and the payload:
 
 ```text
-pUC19 cloning junction:
+pUC19 vector cuts:
   EcoRI cutPosition 396 (cut between 396 and 397)
   BamHI cutPosition 417 (cut between 417 and 418)
   Removed MCS fragment: pUC19[397..417] = 21 bp
 
-Empty vector:  pUC19 (2686 bp, from fixture)
-Correct:       pUC19[1..396] + INSERT[1..700]  + pUC19[418..2686] = 3365 bp
-Reverse:       pUC19[1..396] + revcomp(INSERT) + pUC19[418..2686] = 3365 bp
+Empty vector: pUC19 = 2686 bp
+Forward:      pUC19[1..396] + INSERT[1..700]          + pUC19[418..2686] = 3365 bp
+Reverse:      pUC19[1..396] + revcomp(INSERT[1..700]) + pUC19[418..2686] = 3365 bp
 ```
 
-EcoRI is regenerated at both cloning junctions. XhoI is present once in the
-insert in both orientations (it is palindromic).
+Because the payload FASTA is payload-only, the EcoRI and BamHI recognition sites
+are not assumed to be regenerated at the junctions. The demo must therefore not
+use EcoRI or BamHI as diagnostic enzymes in the recombinant constructs unless a
+future fixture explicitly models regenerated junction sites.
 
-### Molecule IDs
+The D1 script should write the recombinant constructs as circular GenBank
+records before importing them with `open_sequence`. FASTA import defaults to
+linear topology and would give the wrong digest model for plasmids.
+
+Molecule IDs:
 
 ```text
-mol_empty      pUC19 2686 bp
-mol_correct    pUC19 + insert (forward) 3365 bp
-mol_reverse    pUC19 + insert (reverse) 3365 bp
+mol_empty      pUC19, 2686 bp circular DNA
+mol_forward    pUC19 + payload, forward orientation, 3365 bp circular DNA
+mol_reverse    pUC19 + payload, reverse orientation, 3365 bp circular DNA
 ```
 
 ## Diagnostic Enzyme Pair
 
-### Choice: EcoRI + XhoI
+### Choice: HindIII + XhoI
 
-| Enzyme | pUC19 site | Recombinant sites |
-|---|---|---|
-| EcoRI | 396 | 396 (regenerated cloning junction) |
-| XhoI | none (verified) | 646 (correct) / 841 (reverse) |
+HindIII is retained in the pUC19 backbone outside the EcoRI/BamHI-excised
+fragment. XhoI is present once in the insert and absent from pUC19.
+
+| Enzyme | Empty pUC19 | Forward construct | Reverse construct |
+|---|---|---|---|
+| HindIII | 447 | 1126 | 1126 |
+| XhoI | absent | 646 | 842 |
+
+Coordinate derivation:
+
+```text
+pUC19 position 418 maps to recombinant position 1097
+HindIII pUC19 position 447 maps to 1126
+Forward XhoI maps to 396 + 250 = 646
+Reverse XhoI maps to 396 + 446 = 842
+```
+
+The reverse XhoI start is 842 because reverse-complementing a 700 bp insert
+moves the palindromic XhoI recognition sequence from original positions
+250..255 to reversed positions 446..451.
 
 ### Expected Fragment Sizes
 
-Computed from the parameters above. The demo script must verify these by
-running `simulateDigest` and asserting the results.
+The demo script must verify these by running `simulateDigest` on circular
+constructs.
 
-| Condition | EcoRI cut | XhoI cut | Fragment 1 | Fragment 2 |
-|---|---|---|---|---|
-| Empty vector | 396 | — | 2686 bp | — |
-| Correct orientation | 396 | 646 | 250 bp | 3115 bp |
-| Reverse orientation | 396 | 841 | 445 bp | 2920 bp |
+| Condition | HindIII cut | XhoI cut | Expected fragments |
+|---|---:|---:|---|
+| Empty vector | 447 | absent | `[2686]` |
+| Forward orientation | 1126 | 646 | `[480, 2885]` |
+| Reverse orientation | 1126 | 842 | `[284, 3081]` |
 
-XhoI cut positions in recombinant coordinates:
-- Correct: insert position 250 → recombinant position 397 + 250 − 1 = 646
-- Reverse: XhoI site is at position 445 of the reversed insert → recombinant
-  position 397 + 445 − 1 = 841
+Fragment-size checks should compare sorted fragment sizes because digest
+fragment order is a coordinate traversal detail.
 
 ### Acceptance Rule
 
-A diagnostic enzyme pair is accepted for the demo if and only if:
+A diagnostic enzyme pair is accepted for this demo if and only if:
 
-1. All fragments are ≥ 250 bp (within the default ladder range or covered by
-   a custom ladder starting at 100 bp)
-2. The small fragments across all three conditions differ by ≥ 150 bp from
-   each other, producing a visually unambiguous gel pattern
-3. The pattern for correct vs. reverse is distinguishable by the small-band
-   position alone (the large bands are secondary confirmation)
-4. No reliance on fragments ≤ 100 bp
+1. All diagnostic small bands are at least 250 bp.
+2. The forward and reverse small bands differ by at least 150 bp.
+3. The orientation pattern is distinguishable by the small-band position alone.
+4. The empty vector pattern is visibly distinct as a single full-length band.
+5. No conclusion relies on fragments at or below 100 bp.
 
-EcoRI + XhoI passes this rule:
-- Empty: 1 band at 2686 bp (no small band)
-- Correct small band: 250 bp
-- Reverse small band: 445 bp
-- Difference: 195 bp ✓, ratio 1.78× ✓
+HindIII + XhoI passes:
+
+```text
+Empty:   [2686]
+Forward: [480, 2885]
+Reverse: [284, 3081]
+
+Small-band difference: 196 bp
+Small-band ratio: 1.69x
+```
 
 ### Gel Rendering
 
-Use a custom ladder to keep the 250 bp band calibrated:
+Use the default ladder or this compact ladder:
 
 ```json
 "customLadder": [100, 250, 500, 1000, 2000, 3000, 5000]
@@ -147,84 +167,82 @@ Lane order:
 
 ```text
 Lane 1: Ladder
-Lane 2: Empty vector   (EcoRI + XhoI)
-Lane 3: Correct insert (EcoRI + XhoI)
-Lane 4: Reverse insert (EcoRI + XhoI)
+Lane 2: Empty vector        (HindIII + XhoI)
+Lane 3: Forward orientation (HindIII + XhoI)
+Lane 4: Reverse orientation (HindIII + XhoI)
 ```
 
 ## D1 Demo Script: `demo:diagnostic-digest:mcp`
 
-### Script location
+Script location:
 
 ```text
 scripts/demo-diagnostic-digest-mcp.mjs
 ```
 
-### Step sequence
+Step sequence:
 
-1. Import pUC19 fixture → `mol_empty`
-2. Get pUC19 sequence via `get_sequence_context`
-3. Load insert FASTA (700 bp) → build correct and reverse sequences
-4. Write sequences to temp files; import via `open_sequence` → `mol_correct`, `mol_reverse`
-5. For each molecule: `find_restriction_sites(["EcoRI","XhoI"])` → collect cut positions
-6. For each molecule: `simulate_digest(["EcoRI","XhoI"])` → collect fragment sizes
-7. Assert fragment sizes match the values in this document
-8. Build gel lanes from `simulateDigest` results; call `render_digest_gel`
-9. Build cut-site arrays from `findRestrictionSites` results; call `render_plasmid_map`
-   for each molecule with `cutSites` and `showPrimers: false`
-10. Call `validate_workspace` for each molecule
-11. Pack and verify replay bundle via CLI replay tools
-12. Print camera-readable summary
+1. Import pUC19 fixture as `mol_empty`.
+2. Read pUC19 sequence via `get_sequence_context`.
+3. Load `fixtures/fasta/datalox_insert_v1.fa`.
+4. Construct forward and reverse circular plasmid sequences exactly as specified
+   above.
+5. Write temporary circular GenBank records for `mol_forward` and `mol_reverse`.
+6. Import both recombinant GenBank records with `open_sequence`.
+7. For each molecule, call `find_restriction_sites(["HindIII", "XhoI"])`.
+8. For each molecule, call `simulate_digest(["HindIII", "XhoI"])`.
+9. Assert sorted fragment sizes match this document.
+10. Build gel lanes from `simulate_digest`; call `render_digest_gel`.
+11. Build cut-site arrays from `find_restriction_sites`; call
+    `render_plasmid_map` for each molecule with `cutSites` and
+    `showPrimers: false`.
+12. Call `validate_workspace`.
+13. Pack and verify a replay bundle.
+14. Print a camera-readable summary.
 
-### Camera-readable summary format
+## Camera-Readable Summary
 
 ```text
 Replay verified
-Scenario: pUC19 diagnostic digest (3 colony outcomes)
-Insert:   datalox_insert_v1, 700 bp, XhoI at 250 bp from EcoRI junction
-Enzyme pair: EcoRI + XhoI
+Scenario: pUC19 diagnostic digest orientation-control demo
+Insert:   datalox_insert_v1, 700 bp payload, XhoI at insert cut position 250
+Enzyme pair: HindIII + XhoI
 
-Molecule   Size    EcoRI+XhoI fragments
+Molecule   Size    HindIII+XhoI fragments
 empty      2686    [2686]
-correct    3365    [250, 3115]
-reverse    3365    [445, 2920]
+forward    3365    [480, 2885]
+reverse    3365    [284, 3081]
 
-Gel artifact:   reports/gels/diagnostic_digest.gel.svg
-4 tool calls per molecule × 3 molecules
+Gel artifact: reports/gels/diagnostic_digest.gel.svg
+Map artifacts: reports/maps/<molecule>.plasmid.svg
 Replay bundle verified
 Bundle: .datalox/replay-bundles/<id>
 ```
 
-### Falsifiability
+## Falsifiability
 
 If `simulateDigest` returns fragment sizes different from those in this
-document, the insert sequence or enzyme positions are wrong. The demo must
-fail loudly (throw, not continue) so the discrepancy is visible.
+document, the construct sequence, topology, or enzyme coordinates are wrong. The
+demo must fail loudly instead of continuing.
 
-## Candidate Enzyme Evaluation (for D1 step 4 replay justification)
+## Candidate Enzyme Evaluation
 
-The agent reasoning in D1 step 4 should document that alternative enzyme
-pairs were evaluated. Minimum candidates to record:
+The D1 replay should document that the selected pair was chosen from simulated
+candidates. Minimum candidates to evaluate:
 
-| Pair | Empty bands | Correct bands | Reverse bands | Verdict |
+| Pair | Empty bands | Forward bands | Reverse bands | Verdict |
 |---|---|---|---|---|
-| EcoRI + XhoI | 2686 | 250 + 3115 | 445 + 2920 | **Selected** |
-| EcoRI + SpeI | TBD (SpeI absent from pUC19) | TBD | TBD | Candidate |
-| EcoRI + NheI | TBD (NheI absent from pUC19) | TBD | TBD | Candidate |
+| HindIII + XhoI | `[2686]` | `[480, 2885]` | `[284, 3081]` | Selected |
+| XbaI + XhoI | tool-computed | tool-computed | tool-computed | Candidate |
+| PstI + XhoI | tool-computed | tool-computed | tool-computed | Candidate |
 
-EcoRI + XhoI is selected because:
-- Both enzymes verified as single-cutters in the relevant molecules
-- All fragments ≥ 250 bp
-- Small-band difference 195 bp, ratio 1.78×
-
-The D1 demo does NOT need to actually evaluate the alternates programmatically;
-it may document the reasoning inline. If the demo script evaluates all
-candidate pairs via `simulateDigest`, that is preferred.
+The selected pair should be justified by tool output, not by memory.
 
 ## What This Demo Does Not Do
 
-- Does not import a natural gene sequence as the insert
-- Does not model incomplete digestion or star activity
-- Does not model supercoiled vs. linear gel migration differences
-- Does not include primer design (P5 / W2 scope)
-- Does not call a real synthesis vendor
+- Does not claim reverse orientation is a normal EcoRI/BamHI cloning product.
+- Does not import a natural gene sequence as the insert.
+- Does not model incomplete digestion or star activity.
+- Does not model supercoiled vs. linear gel migration differences.
+- Does not include primer design.
+- Does not call a synthesis vendor.
