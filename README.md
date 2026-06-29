@@ -148,14 +148,15 @@ node dist/src/cli/main.js open-sequence-editor ./run-puc19/molecule.workspace.js
 
 ## Demo Script
 
-Use one clean demo:
+Use one clean MCP demo:
 
 ```text
-1. Run npm run demo:puc19:mcp.
+1. Run npm run demo:diagnostic-digest:mcp.
 2. Show that the MCP server handled open_sequence, get_sequence_context,
-   find_restriction_sites, render_plasmid_map, and validate_workspace.
-3. Open the returned SVG map artifact.
-4. Point out that the map artifact is returned through the tool envelope.
+   simulate_digest, find_restriction_sites, render_digest_gel,
+   render_plasmid_map, and validate_workspace.
+3. Open the returned gel SVG and one plasmid map SVG.
+4. Point out that visual artifacts are returned through tool envelopes.
 5. Show the replay bundle path and verified record count.
 ```
 

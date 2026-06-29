@@ -237,6 +237,14 @@ candidates. Minimum candidates to evaluate:
 | PstI + XhoI | tool-computed | tool-computed | tool-computed | Candidate |
 
 The selected pair should be justified by tool output, not by memory.
+The implemented selection rule is:
+
+```text
+1. Keep only pairs that pass the acceptance rule.
+2. Select the pair with the largest minimum orientation small band.
+3. Break ties by larger forward-vs-reverse small-band difference.
+4. Break remaining ties by lexical pair name for determinism.
+```
 
 ## What This Demo Does Not Do
 

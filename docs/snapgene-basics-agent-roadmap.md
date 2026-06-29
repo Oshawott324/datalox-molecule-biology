@@ -270,12 +270,12 @@ Acceptance:
 
 ### D1: Diagnostic Digest MCP Demo
 
+Status: **complete**.
+
 Pre-condition: insert sequence designed and verified per
 `docs/diagnostic-digest-demo.md`. That document defines the exact insert,
 cloning coordinates, expected fragment sizes, and acceptance rule before any
-demo code is written.
-
-Add a demo script:
+demo code is written. The demo script is:
 
 ```text
 demo:diagnostic-digest:mcp
@@ -314,16 +314,22 @@ The agent/script should:
 8. Pack and verify a replay bundle.
 9. Print a camera-readable replay summary.
 
-Example summary:
+Summary shape:
 
 ```text
 Replay verified
-Source: pUC19 + diagnostic insert model
-9 tool calls | 3 molecule states analyzed
-Enzyme selected: <enzyme or enzyme pair> (3 candidates evaluated)
-4 deterministic digests | 1 gel artifact | 1 plasmid map
-1 revision-safe write
-Final workspace revision: 3
+Scenario: pUC19 diagnostic digest orientation-control demo
+Insert:   datalox_insert_v1, 700 bp payload, XhoI at insert cut position 250
+Enzyme pair: HindIII + XhoI
+
+Molecule   Size    HindIII+XhoI fragments
+empty      2686    [2686]
+forward    3365    [480, 2885]
+reverse    3365    [284, 3081]
+
+Gel artifact: reports/gels/diagnostic_digest.gel.svg
+Map artifacts: reports/maps/<molecule>.diagnostic.svg
+Replay bundle verified
 Bundle: .datalox/replay-bundles/<id>
 ```
 
