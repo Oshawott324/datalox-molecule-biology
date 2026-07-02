@@ -118,7 +118,7 @@ export async function renderDigestGel(
 function computeBands(lanes: GelLane[], ladder: number[], width: number, height: number): { bands: GelBand[]; renderBands: RenderBand[] } {
   const laneLabels = ["Ladder", ...lanes.map((lane) => lane.label)];
   const left = 78;
-  const right = width - 38;
+  const right = width - 90;
   const laneSpacing = laneLabels.length === 1 ? 0 : (right - left) / (laneLabels.length - 1);
   const top = 82;
   const bottom = height - 58;
@@ -178,18 +178,11 @@ function renderSvg(input: {
 }): string {
   const laneLabels = ["Ladder", ...input.lanes.map((lane) => lane.label)];
   const left = 78;
-  const right = input.width - 38;
-  const top = 56;
-  const wellY = 74;
-  const bottom = input.height - 40;
+  const right = input.width - 90;
   const laneSpacing = laneLabels.length === 1 ? 0 : (right - left) / (laneLabels.length - 1);
   const laneElements = laneLabels.map((label, index) => {
     const x = left + index * laneSpacing;
-    return [
-      `<rect class="lane-track" x="${format(x - 14)}" y="${top}" width="28" height="${format(bottom - top)}" fill="#D9E1DF"/>`,
-      `<rect x="${format(x - 13)}" y="${wellY}" width="26" height="8" rx="3" fill="#B9C5C2"/>`,
-      `<text class="lane-label" x="${format(x)}" y="${input.height - 16}" text-anchor="middle">${escapeXml(label)}</text>`,
-    ].join("\n  ");
+    return `<text class="lane-label" x="${format(x)}" y="${input.height - 16}" text-anchor="middle">${escapeXml(label)}</text>`;
   });
   const bandElements = input.bands.map((band) => {
     const bandWidth = band.isLadder ? 24 : 34;

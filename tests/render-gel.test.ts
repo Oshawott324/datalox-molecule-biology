@@ -87,7 +87,7 @@ describe("digest gel rendering", () => {
     expect(svg).toContain("log10-scaled linear DNA fragment migration");
     expect(svg).toContain(">10 kb<");
     expect(svg).toContain(">100 bp<");
-    expect(svg).toContain('class="lane-track"');
+    expect(svg).not.toContain('class="lane-track"');
     expect(svg).not.toContain('stroke="#D9E1DF" stroke-width="28" stroke-linecap="round"');
 
     const digestBands = result.bands.filter((band) => band.laneLabel === "Digest");
