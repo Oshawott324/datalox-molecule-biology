@@ -186,7 +186,7 @@ function renderSvg(input: {
   const laneElements = laneLabels.map((label, index) => {
     const x = left + index * laneSpacing;
     return [
-      `<line x1="${format(x)}" y1="${top}" x2="${format(x)}" y2="${bottom}" stroke="#D9E1DF" stroke-width="28" stroke-linecap="round"/>`,
+      `<rect class="lane-track" x="${format(x - 14)}" y="${top}" width="28" height="${format(bottom - top)}" fill="#D9E1DF"/>`,
       `<rect x="${format(x - 13)}" y="${wellY}" width="26" height="8" rx="3" fill="#B9C5C2"/>`,
       `<text class="lane-label" x="${format(x)}" y="${input.height - 16}" text-anchor="middle">${escapeXml(label)}</text>`,
     ].join("\n  ");
