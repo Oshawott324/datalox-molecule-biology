@@ -1,219 +1,81 @@
 # Datalox Molecule Biology
 
-Agent-native molecular biology environment for deterministic sequence work.
+An agent-native molecular biology workspace exposed over the Model Context Protocol (MCP). It imports FASTA/GenBank into a canonical `molecule.workspace.json`, runs deterministic sequence tools (restriction, digest, PCR, ORFs, translation), performs revision-safe structured writes, renders SVG plasmid maps and digest gels, and captures replayable tool I/O. Biological facts come from parsers and deterministic tools and never prose or screenshots, so agent results are reproducible and auditable.
 
-This is not a SnapGene or Scispot clone. The boundary is:
+## MCP server
 
-```text
-FASTA / GenBank
-  -> molecule.workspace.json
-  -> deterministic biology tools
-  -> revision-safe structured writes
-  -> compact sequence/plasmid UI
-  -> replayable agent tool I/O
+Build, then register the stdio server with an MCP host (Claude Desktop, Cursor, MCP Inspector):
+
+```bash
+npm run build
 ```
 
-The human can review results, but the backend contracts are primarily for
-agents. Biological facts should come from parsers or deterministic tools, not
-screenshots or prose.
+```json
+{
+  "mcpServers": {
+    "molecule-biology": {
+      "command": "node",
+      "args": ["dist/src/cli/main.js", "mcp-server"]
+    }
+  }
+}
+```
 
-## Quickstart
+Installed as a package, the equivalent launch is `molecule-biology mcp-server`. Hosts discover tools via `tools/list`. Results use a structured envelope (`ok`, `agentContract`, `data`, `workspacePath`, `revision`, `nextAction`, and `artifacts` when files are produced). See [docs/mcp-host-setup.md](docs/mcp-host-setup.md) for host-specific setup.
+
+## Demos
+
+Both demos launch the built stdio server as a child process and exercise the real MCP boundary:
+
+```bash
+npm run demo:diagnostic-digest:mcp   # import -> context -> digest -> sites -> gel + map -> validate -> replay
+npm run demo:puc19:mcp               # import pUC19 -> context -> restriction sites -> plasmid map -> replay bundle
+```
+
+## Tools
+
+| Tool | Description |
+| --- | --- |
+| `open_sequence` | Import a FASTA or GenBank sequence file into a molecule workspace. |
+| `open_workspace` | Open and validate a molecule workspace. |
+| `open_sequence_editor` | Open a compact local sequence and plasmid workspace editor. |
+| `read_workspace` | Read and validate a molecule workspace. |
+| `validate_workspace` | Validate a molecule workspace and return structured validation issues. |
+| `list_molecules` | List molecules in a validated workspace. |
+| `get_sequence_context` | Read molecule context, features, primers, and optional sequence for a region. |
+| `upsert_feature` | Create or update a feature through a revision-safe workspace write. |
+| `delete_feature` | Delete a feature through a revision-safe workspace write. |
+| `upsert_primer` | Create or update a primer through a revision-safe workspace write. |
+| `delete_primer` | Delete a primer through a revision-safe workspace write. |
+| `reverse_complement` | Return the reverse complement of an explicit DNA/RNA sequence. |
+| `translate_region` | Translate a DNA region using the standard genetic code. |
+| `find_orfs` | Find deterministic ORFs in a DNA molecule. |
+| `find_restriction_sites` | Find restriction enzyme sites from the deterministic local enzyme table. |
+| `simulate_digest` | Simulate a deterministic restriction digest. |
+| `simulate_pcr` | Simulate deterministic exact-match PCR. |
+| `export_genbank` | Export a molecule and workspace features to GenBank. |
+| `render_plasmid_map` | Render a deterministic circular plasmid SVG map artifact. |
+| `render_digest_gel` | Render a deterministic SVG gel artifact from digest or PCR fragment sizes. |
+
+Every MCP tool has a matching `molecule-biology <command>` CLI subcommand for scripting and testing.
+
+## Development
+
+Requires Node >= 20.
 
 ```bash
 npm install
-npm run check
-npm run test
+npm run check     # tsc --noEmit type check
+npm test          # vitest deterministic + MCP boundary tests
+npm run build     # emit dist/
 ```
 
-Run the original small replay demo:
-
-```bash
-npm run replay:demo
-```
-
-Run the real-stdio MCP smoke test:
+Real-stdio smoke tests and the replay demo:
 
 ```bash
 npm run smoke:mcp
+npm run smoke:mcp:cwd
+npm run replay:demo
 ```
 
-Run the pUC19 MCP demo:
-
-```bash
-npm run demo:puc19:mcp
-```
-
-The pUC19 demo launches the built stdio MCP server as a child process, imports
-`fixtures/genbank/puc19.gb`, gets sequence context, finds restriction sites,
-renders a deterministic SVG plasmid map, validates the workspace, and packs a
-Datalox replay bundle.
-
-## MCP Server
-
-Build and launch:
-
-```bash
-npm run build
-node dist/src/cli/main.js mcp-server
-```
-
-For package consumers, the bin command is:
-
-```bash
-molecule-biology mcp-server
-```
-
-Agent hosts should discover tools through `tools/list`. The server currently
-exposes tools including:
-
-```text
-open_sequence
-open_workspace
-open_sequence_editor
-read_workspace
-validate_workspace
-list_molecules
-get_sequence_context
-upsert_feature
-delete_feature
-upsert_primer
-delete_primer
-reverse_complement
-translate_region
-find_orfs
-find_restriction_sites
-simulate_digest
-simulate_pcr
-export_genbank
-render_plasmid_map
-render_digest_gel
-```
-
-To connect this server to Claude Desktop, Cursor, or the MCP Inspector, see
-[docs/mcp-host-setup.md](docs/mcp-host-setup.md).
-
-Tool results use a structured envelope with `ok`, `agentContract`, `data`,
-`workspacePath`, `revision`, `nextAction`, and when files are produced,
-`artifacts`.
-
-## CLI Examples
-
-Import pUC19:
-
-```bash
-npm run build
-node dist/src/cli/main.js open-sequence fixtures/genbank/puc19.gb --workspace-dir ./run-puc19 --format genbank --molecule-id mol_puc19
-```
-
-Find common MCS restriction sites:
-
-```bash
-node dist/src/cli/main.js find-restriction-sites ./run-puc19/molecule.workspace.json --molecule mol_puc19 --enzymes EcoRI,BamHI,HindIII,PstI,XbaI,SmaI
-```
-
-Render a deterministic plasmid map:
-
-```bash
-node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json --molecule mol_puc19
-```
-
-Render a plasmid map with agent-computed restriction cut-site ticks and bound
-primer arrows:
-
-```bash
-node dist/src/cli/main.js find-restriction-sites ./run-puc19/molecule.workspace.json --molecule mol_puc19 --enzymes EcoRI,HindIII
-node dist/src/cli/main.js render-plasmid-map ./run-puc19/molecule.workspace.json --molecule mol_puc19 --cut-sites cut-sites.json --show-primers
-```
-
-Generate `cut-sites.json` from `find_restriction_sites` output by mapping each
-site to `{ "enzyme": site.enzyme, "position": site.cutPosition }`. Do not
-invent cut positions or make the renderer compute enzyme sites implicitly.
-
-Render a deterministic digest gel from fragment sizes:
-
-```bash
-node dist/src/cli/main.js simulate-digest ./run-puc19/molecule.workspace.json --molecule mol_puc19 --enzymes EcoRI,HindIII
-node dist/src/cli/main.js render-digest-gel ./run-puc19/molecule.workspace.json --gel-id puc19_digest --lanes lanes.json --custom-ladder 50,100,250,500,1000,2000,3000,5000
-```
-
-Generate `lanes.json` from the `simulate-digest` fragment sizes rather than
-inventing band sizes. Gel migration is calibrated to the ladder range; fragments
-outside that range are marked in the SVG and result metadata.
-
-Open the compact local editor:
-
-```bash
-node dist/src/cli/main.js open-sequence-editor ./run-puc19/molecule.workspace.json --molecule mol_puc19
-```
-
-## Demo Script
-
-Use one clean MCP demo:
-
-```text
-1. Run npm run demo:diagnostic-digest:mcp.
-2. Show that the MCP server handled open_sequence, get_sequence_context,
-   simulate_digest, find_restriction_sites, render_digest_gel,
-   render_plasmid_map, and validate_workspace.
-3. Open the returned gel SVG and one plasmid map SVG.
-4. Point out that visual artifacts are returned through tool envelopes.
-5. Show the replay bundle path and verified record count.
-```
-
-Narration:
-
-```text
-This is not a SnapGene clone. It is a molecular biology environment for an
-agent: structured files, deterministic tools, visual state, revision-safe
-writes, and replayable tool I/O.
-```
-
-## Current Scope
-
-Implemented:
-
-- FASTA import
-- GenBank import
-- canonical `molecule.workspace.json`
-- strict workspace validation
-- sequence context
-- revision-safe feature and primer writes
-- reverse complement
-- translation
-- ORF finding
-- restriction-site search
-- restriction digest simulation
-- exact-match PCR simulation
-- GenBank export
-- deterministic circular plasmid SVG rendering
-- deterministic digest/PCR fragment gel SVG rendering
-- stdio MCP server
-- CLI parity for the main tool loop
-- compact local sequence/plasmid editor
-- replay bundle capture and verification
-
-Not yet implemented:
-
-- SBOL import/export
-- AB1 parsing
-- Sanger trace rendering or alignment
-- Gibson assembly
-- Golden Gate assembly
-- Primer3-backed primer design
-- native SnapGene `.dna` parsing
-- GxP, clinical, or 21 CFR Part 11 compliance
-
-Do not claim unsupported operations are available until fixture-backed tools and
-tests exist.
-
-## Biology Data Notes
-
-`fixtures/genbank/puc19.gb` uses the authentic pUC19c `L09137.2` sequence from
-NCBI. The fixture is hand-authored only in formatting and qualifiers so it stays
-inside the current parser contract. It intentionally omits cached
-`/translation`; agents should call `translate_region` when protein sequence is
-needed.
-
-Restriction enzyme definitions are local and versioned. The common table in
-`src/core/enzymes.ts` was populated from REBASE caret-marked cut positions and
-is pinned by tests.
+Layout: `src/core` (deterministic biology), `src/tools` (handlers + JSON-Schema descriptors), `src/mcp` (stdio server), `src/cli` (command parity), `src/replay` (tool I/O capture). License: AGPL-3.0-or-later.
