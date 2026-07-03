@@ -15,6 +15,8 @@ export type MoleculeErrorCode =
   | "DETERMINISTIC_TOOL_UNAVAILABLE"
   | "UNSUPPORTED_ENZYME_PROFILE"
   | "AMBIGUOUS_FRAGMENT_SELECTION"
+  | "NO_CUT_SITE"
+  | "AMBIGUOUS_CUT_SITES"
   | "INTERNAL_ERROR";
 
 export type ValidationIssue = {

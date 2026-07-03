@@ -54,6 +54,7 @@ export {
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
   regeneratedRecognitionSequence,
+  resolveAssemblyFragmentsForMolecule,
   resolveEnzymes,
   resolveLigationProfile,
   selectAssemblyFragment,
@@ -109,6 +110,8 @@ export type {
   AssemblyFragment,
   AssemblyFragmentSelector,
   AssemblySourceSegment,
+  ResolvedAssemblyFragments,
+  ResolveAssemblyFragmentsInput,
 } from "./core/deterministic.js";
 export {
   handleDeleteFeature,

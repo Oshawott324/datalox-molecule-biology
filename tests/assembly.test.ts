@@ -1,15 +1,52 @@
 import { describe, expect, it } from "vitest";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import {
   assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
   regeneratedRecognitionSequence,
+  importSequenceFile,
+  resolveAssemblyFragmentsForMolecule,
   resolveLigationProfile,
   selectAssemblyFragment,
   restrictionEndFromProfile,
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
 } from "../src/index.js";
+
+async function tempDir(prefix: string): Promise<string> {
+  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+}
+
+async function importFasta(sequence: string, moleculeId: string): Promise<{ workspacePath: string; moleculeId: string }> {
+  const workspaceDir = await tempDir("mol-assembly-");
+  const inputPath = path.join(workspaceDir, `${moleculeId}.fa`);
+  await fs.writeFile(inputPath, `>${moleculeId}\n${sequence}\n`, "utf8");
+  const result = await importSequenceFile({ inputPath, workspaceDir, format: "fasta", moleculeId });
+  return { workspacePath: result.workspacePath, moleculeId: result.moleculeIds[0] };
+}
+
+async function importCircularGenBank(sequence: string, moleculeId: string): Promise<{ workspacePath: string; moleculeId: string }> {
+  const workspaceDir = await tempDir("mol-assembly-gb-");
+  const inputPath = path.join(workspaceDir, `${moleculeId}.gb`);
+  await fs.writeFile(inputPath, circularGenBank(sequence, moleculeId), "utf8");
+  const result = await importSequenceFile({ inputPath, workspaceDir, format: "genbank", moleculeId });
+  return { workspacePath: result.workspacePath, moleculeId: result.moleculeIds[0] };
+}
+
+function circularGenBank(sequence: string, name: string): string {
+  return [
+    `LOCUS       ${name.padEnd(12)} ${sequence.length} bp    DNA     circular SYN 03-JUL-2026`,
+    `DEFINITION  ${name}.`,
+    "FEATURES             Location/Qualifiers",
+    "ORIGIN",
+    `        1 ${sequence.toLowerCase()}`,
+    "//",
+    "",
+  ].join("\n");
+}
 
 describe("restriction ligation profiles", () => {
   it("pins NEB-verified ligation profiles used by W3 foundation tests", () => {
@@ -258,6 +295,56 @@ describe("restriction ligation profiles", () => {
     ]);
   });
 
+  it("enumerates two fragments from a single linear cut and selects the larger", () => {
+    const fragments = assemblyFragmentsFromCutIndexes(100, "linear", [30]);
+    expect(fragments).toEqual([
+      {
+        id: "fragment_1",
+        size: 30,
+        start: 1,
+        end: 30,
+        circular: false,
+        sourceSegments: [{ start: 1, end: 30, strand: "+" }],
+      },
+      {
+        id: "fragment_2",
+        size: 70,
+        start: 31,
+        end: 100,
+        circular: false,
+        sourceSegments: [{ start: 31, end: 100, strand: "+" }],
+      },
+    ]);
+    expect(selectAssemblyFragment(fragments)).toMatchObject({ id: "fragment_2", size: 70 });
+  });
+
+  it("selects the largest fragment from unequal circular cuts: larger non-wrapping fragment wins", () => {
+    // cut at 10 and 70: fragment_1 = 11..70 (60bp), fragment_2 = 71..10 wrapping (40bp)
+    const fragments = assemblyFragmentsFromCutIndexes(100, "circular", [10, 70]);
+    expect(fragments).toEqual([
+      {
+        id: "fragment_1",
+        size: 60,
+        start: 11,
+        end: 70,
+        circular: false,
+        sourceSegments: [{ start: 11, end: 70, strand: "+" }],
+      },
+      {
+        id: "fragment_2",
+        size: 40,
+        start: 71,
+        end: 10,
+        circular: true,
+        sourceSegments: [
+          { start: 71, end: 100, strand: "+" },
+          { start: 1, end: 10, strand: "+" },
+        ],
+      },
+    ]);
+    expect(selectAssemblyFragment(fragments)).toMatchObject({ id: "fragment_1", size: 60 });
+  });
+
   it("rejects invalid cut indexes before fragment selection", () => {
     expect(() => assemblyFragmentsFromCutIndexes(10, "linear", [0]))
       .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
@@ -267,5 +354,66 @@ describe("restriction ligation profiles", () => {
       .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
     expect(() => assemblyFragmentsFromCutIndexes(10, "circular", [-1]))
       .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
+  });
+
+  it("resolves workspace cut sites into fragments and selects the unique largest fragment", async () => {
+    const source = await importFasta("AAAAGAATTCGGGGGGGGGGGGGGGGGGGGGGATCCAAAA", "mol_linear");
+    const result = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    });
+
+    expect(result).toMatchObject({
+      moleculeId: "mol_linear",
+      topology: "linear",
+      enzymes: ["EcoRI", "BamHI"],
+      cutIndexes: [5, 31],
+      selectedFragment: {
+        id: "fragment_2",
+        size: 26,
+        start: 6,
+        end: 31,
+      },
+    });
+    expect(result.sites.map((site) => ({ enzyme: site.enzyme, cutPosition: site.cutPosition }))).toEqual([
+      { enzyme: "EcoRI", cutPosition: 5 },
+      { enzyme: "BamHI", cutPosition: 31 },
+    ]);
+  });
+
+  it("throws NO_CUT_SITE when a required enzyme is absent from the molecule", async () => {
+    const source = await importFasta("AAAAGAATTCAAAA", "mol_no_bam");
+    await expect(resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["BamHI"],
+    })).rejects.toMatchObject({
+      code: "NO_CUT_SITE",
+      details: { moleculeId: "mol_no_bam", enzyme: "BamHI" },
+    });
+  });
+
+  it("throws AMBIGUOUS_CUT_SITES when a required enzyme cuts more than once", async () => {
+    const source = await importCircularGenBank("GAATTCAAAAGAATTC", "mol_two_ecori");
+    await expect(resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["EcoRI"],
+    })).rejects.toMatchObject({
+      code: "AMBIGUOUS_CUT_SITES",
+      details: { moleculeId: "mol_two_ecori", enzyme: "EcoRI" },
+    });
+  });
+
+  it("requires verified ligation profiles before resolving assembly fragments", async () => {
+    const source = await importFasta("AAAAGAAGCTTAAAA", "mol_hindiii");
+    await expect(resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["HindIII"],
+    })).rejects.toMatchObject({
+      code: "UNSUPPORTED_ENZYME_PROFILE",
+    });
   });
 });

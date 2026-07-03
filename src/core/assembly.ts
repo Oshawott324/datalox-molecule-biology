@@ -1,5 +1,6 @@
 import { MoleculeError } from "./errors.js";
-import { RESTRICTION_ENZYMES } from "./enzymes.js";
+import { findRestrictionSites, RESTRICTION_ENZYMES, type RestrictionSite } from "./enzymes.js";
+import { readMoleculeSequence } from "./context.js";
 import { reverseComplement } from "./sequence.js";
 
 export const RESTRICTION_LIGATION_PROFILE_VERSION = "datalox_neb_ligation_profiles_v1";
@@ -46,6 +47,24 @@ export type AssemblyFragment = {
   end: number;
   circular: boolean;
   sourceSegments: AssemblySourceSegment[];
+};
+
+export type ResolveAssemblyFragmentsInput = {
+  workspacePath: string;
+  moleculeId: string;
+  enzymes: string[];
+  selector?: AssemblyFragmentSelector;
+};
+
+export type ResolvedAssemblyFragments = {
+  moleculeId: string;
+  topology: "linear" | "circular";
+  length: number;
+  enzymes: string[];
+  sites: RestrictionSite[];
+  cutIndexes: number[];
+  fragments: AssemblyFragment[];
+  selectedFragment: AssemblyFragment;
 };
 
 export const RESTRICTION_LIGATION_PROFILES: Record<string, RestrictionLigationProfile> = {
@@ -176,6 +195,66 @@ export function assemblyFragmentsFromCutIndexes(
   return topology === "circular"
     ? circularAssemblyFragments(length, normalized)
     : linearAssemblyFragments(length, normalized);
+}
+
+export async function resolveAssemblyFragmentsForMolecule(
+  input: ResolveAssemblyFragmentsInput,
+): Promise<ResolvedAssemblyFragments> {
+  if (!Array.isArray(input.enzymes) || input.enzymes.length === 0 || input.enzymes.length > 2) {
+    throw new MoleculeError("INVALID_ARGUMENT", "W3 assembly fragment resolution requires one or two enzymes.", {
+      enzymes: input.enzymes,
+    });
+  }
+  for (const enzyme of input.enzymes) {
+    resolveLigationProfile(enzyme);
+  }
+
+  const { molecule, sequence } = await readMoleculeSequence(input.workspacePath, input.moleculeId);
+  if (molecule.moleculeType !== "dna" || molecule.alphabet !== "iupac_dna") {
+    throw new MoleculeError("ALPHABET_MISMATCH", "Assembly fragment resolution requires a DNA molecule.", {
+      moleculeId: input.moleculeId,
+      moleculeType: molecule.moleculeType,
+      alphabet: molecule.alphabet,
+    });
+  }
+
+  const sites = await findRestrictionSites(input.workspacePath, input.moleculeId, input.enzymes);
+  const sitesByEnzyme = new Map<string, RestrictionSite[]>();
+  for (const enzyme of input.enzymes) sitesByEnzyme.set(enzyme, []);
+  for (const site of sites) {
+    sitesByEnzyme.get(site.enzyme)?.push(site);
+  }
+
+  for (const enzyme of input.enzymes) {
+    const enzymeSites = sitesByEnzyme.get(enzyme) ?? [];
+    if (enzymeSites.length === 0) {
+      throw new MoleculeError("NO_CUT_SITE", "Required restriction enzyme does not cut the molecule.", {
+        moleculeId: input.moleculeId,
+        enzyme,
+      });
+    }
+    if (enzymeSites.length > 1) {
+      throw new MoleculeError("AMBIGUOUS_CUT_SITES", "Required restriction enzyme cuts the molecule more than once in W3 fragment resolution.", {
+        moleculeId: input.moleculeId,
+        enzyme,
+        cutPositions: enzymeSites.map((site) => site.cutPosition),
+      });
+    }
+  }
+
+  const cutIndexes = sites.map((site) => site.cutIndex);
+  const fragments = assemblyFragmentsFromCutIndexes(sequence.length, molecule.topology, cutIndexes);
+  const selectedFragment = selectAssemblyFragment(fragments, input.selector ?? "largest_fragment");
+  return {
+    moleculeId: input.moleculeId,
+    topology: molecule.topology,
+    length: sequence.length,
+    enzymes: input.enzymes,
+    sites,
+    cutIndexes,
+    fragments,
+    selectedFragment,
+  };
 }
 
 export function selectAssemblyFragment(
