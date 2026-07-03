@@ -53,6 +53,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `find_restriction_sites` | Find restriction enzyme sites from the deterministic local enzyme table. |
 | `simulate_digest` | Simulate a deterministic restriction digest. |
 | `simulate_pcr` | Simulate deterministic exact-match PCR. |
+| `simulate_assembly` | Simulate read-only restriction-ligation candidates and GenBank artifacts. |
 | `export_genbank` | Export a molecule and workspace features to GenBank. |
 | `render_plasmid_map` | Render a deterministic circular plasmid SVG map artifact. |
 | `render_digest_gel` | Render a deterministic SVG gel artifact from digest or PCR fragment sizes. |

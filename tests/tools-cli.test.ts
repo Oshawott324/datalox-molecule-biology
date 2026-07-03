@@ -188,4 +188,83 @@ describe("tool handlers and CLI parity", () => {
       data: { aminoAcids: "KR" },
     });
   });
+
+  it("runs simulate-assembly through the CLI with a JSON input payload", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const vectorPath = path.join(workspaceDir, "vector.gb");
+    const insertPath = path.join(workspaceDir, "insert.fa");
+    await fs.writeFile(
+      vectorPath,
+      circularGenBank(
+        "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+        "cli_vector",
+      ),
+      "utf8",
+    );
+    await fs.writeFile(
+      insertPath,
+      ">cli_insert\n" + "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA\n",
+      "utf8",
+    );
+    const vectorOpen = await handleOpenSequence({
+      inputPath: vectorPath,
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_cli_vector",
+    });
+    expect(vectorOpen.ok).toBe(true);
+    const insertOpen = await handleOpenSequence({
+      inputPath: insertPath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_cli_insert",
+      expectedRevision: 0,
+    });
+    expect(insertOpen.ok).toBe(true);
+
+    const payloadPath = path.join(workspaceDir, "simulate-assembly.json");
+    await fs.writeFile(payloadPath, JSON.stringify({
+      workspacePath: path.join(workspaceDir, "molecule.workspace.json"),
+      method: "restriction_ligation",
+      vector: { moleculeId: "mol_cli_vector", leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+      insert: {
+        moleculeId: "mol_cli_insert",
+        leftEnzyme: "EcoRI",
+        rightEnzyme: "BamHI",
+        orientation: "forward",
+      },
+      product: { moleculeId: "mol_cli_product", name: "cli_product" },
+    }), "utf8");
+
+    const cli = await runCli(["simulate-assembly", "--input", payloadPath]);
+    const envelope = JSON.parse(cli.stdout) as ToolResultEnvelope;
+
+    expect(cli.exitCode).toBe(0);
+    expect(envelope).toMatchObject({
+      ok: true,
+      tool: "simulate_assembly",
+      data: {
+        candidates: [
+          {
+            candidateId: "candidate_forward",
+            length: 50,
+          },
+        ],
+      },
+      artifacts: [expect.objectContaining({ kind: "genbank" })],
+      nextAction: { tool: "open_sequence" },
+    });
+  });
 });
+
+function circularGenBank(sequence: string, name: string): string {
+  return [
+    `LOCUS       ${name.padEnd(12)} ${sequence.length} bp    DNA     circular SYN 03-JUL-2026`,
+    `DEFINITION  ${name}.`,
+    "FEATURES             Location/Qualifiers",
+    "ORIGIN",
+    `        1 ${sequence.toLowerCase()}`,
+    "//",
+    "",
+  ].join("\n");
+}

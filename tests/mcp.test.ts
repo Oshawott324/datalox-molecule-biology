@@ -107,6 +107,88 @@ describe("MCP server", () => {
     });
   });
 
+  it("simulates restriction assembly through MCP and returns candidate artifacts", async () => {
+    const workspaceDir = await tempDir("mol-mcp-assembly-");
+    const vectorPath = path.join(workspaceDir, "vector.gb");
+    const insertPath = path.join(workspaceDir, "insert.fa");
+    await fs.writeFile(
+      vectorPath,
+      circularGenBank(
+        "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+        "mcp_vector",
+      ),
+      "utf8",
+    );
+    await fs.writeFile(
+      insertPath,
+      ">mcp_insert\n" + "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA\n",
+      "utf8",
+    );
+    const { client } = await connectedClient();
+
+    const vectorOpen = envelope(await client.callTool({
+      name: "open_sequence",
+      arguments: {
+        inputPath: vectorPath,
+        workspaceDir,
+        format: "genbank",
+        moleculeId: "mol_mcp_vector",
+      },
+    }));
+    expect(vectorOpen.ok).toBe(true);
+    const insertOpen = envelope(await client.callTool({
+      name: "open_sequence",
+      arguments: {
+        inputPath: insertPath,
+        workspaceDir,
+        format: "fasta",
+        moleculeId: "mol_mcp_insert",
+        expectedRevision: vectorOpen.revision,
+      },
+    }));
+    expect(insertOpen.ok).toBe(true);
+
+    const assembly = envelope(await client.callTool({
+      name: "simulate_assembly",
+      arguments: {
+        workspacePath: vectorOpen.workspacePath,
+        method: "restriction_ligation",
+        vector: { moleculeId: "mol_mcp_vector", leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+        insert: {
+          moleculeId: "mol_mcp_insert",
+          leftEnzyme: "EcoRI",
+          rightEnzyme: "BamHI",
+          orientation: "forward",
+        },
+        product: { moleculeId: "mol_mcp_product", name: "mcp_product" },
+      },
+    }));
+
+    expect(assembly).toMatchObject({
+      ok: true,
+      tool: "simulate_assembly",
+      revision: 1,
+      data: {
+        candidates: [
+          {
+            candidateId: "candidate_forward",
+            length: 50,
+            artifacts: [expect.objectContaining({ kind: "genbank" })],
+          },
+        ],
+      },
+      artifacts: [expect.objectContaining({ kind: "genbank" })],
+      nextAction: {
+        tool: "open_sequence",
+        arguments: expect.objectContaining({
+          format: "genbank",
+          expectedRevision: 1,
+        }),
+      },
+    });
+    expect(await fileExists(((assembly.artifacts as Array<{ path: string }>)[0]).path)).toBe(true);
+  });
+
   it("rejects non-object tool arguments instead of coercing them", async () => {
     const result = await callMoleculeMcpTool("reverse_complement", "ACGT");
 
@@ -200,6 +282,26 @@ describe("MCP server", () => {
     return { client };
   }
 });
+
+function circularGenBank(sequence: string, name: string): string {
+  return [
+    `LOCUS       ${name.padEnd(12)} ${sequence.length} bp    DNA     circular SYN 03-JUL-2026`,
+    `DEFINITION  ${name}.`,
+    "FEATURES             Location/Qualifiers",
+    "ORIGIN",
+    `        1 ${sequence.toLowerCase()}`,
+    "//",
+    "",
+  ].join("\n");
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    return (await fs.stat(filePath)).isFile();
+  } catch {
+    return false;
+  }
+}
 
 function envelope(result: unknown): Record<string, unknown> {
   if (!isRecord(result)) throw new Error("MCP result was not an object");

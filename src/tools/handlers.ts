@@ -10,6 +10,7 @@ import {
   findOrfs,
   findRestrictionSites,
   renderDigestGel,
+  simulateAssembly,
   simulateDigest,
   simulatePcr,
   translateRegion,
@@ -45,6 +46,7 @@ export type ToolName =
   | "find_restriction_sites"
   | "simulate_digest"
   | "simulate_pcr"
+  | "simulate_assembly"
   | "export_genbank"
   | "render_plasmid_map"
   | "render_digest_gel"
@@ -132,6 +134,28 @@ export type EnzymeInput = MoleculeToolInput & {
 export type SimulatePcrInput = MoleculeToolInput & {
   forwardPrimer: string;
   reversePrimer: string;
+};
+
+export type SimulateAssemblyToolInput = WorkspaceInput & {
+  method: "restriction_ligation";
+  vector: {
+    moleculeId: string;
+    leftEnzyme: string;
+    rightEnzyme?: string;
+    fragment?: "largest_fragment";
+  };
+  insert: {
+    moleculeId: string;
+    leftEnzyme: string;
+    rightEnzyme?: string;
+    fragment?: "largest_fragment";
+    orientation?: "forward" | "reverse" | "both";
+  };
+  product?: {
+    moleculeId?: string;
+    name?: string;
+    topology?: "circular" | "linear";
+  };
 };
 
 export type ExportGenBankInput = MoleculeToolInput & {
@@ -222,6 +246,7 @@ export type ToolInputByName = {
   find_restriction_sites: EnzymeInput;
   simulate_digest: EnzymeInput;
   simulate_pcr: SimulatePcrInput;
+  simulate_assembly: SimulateAssemblyToolInput;
   export_genbank: ExportGenBankInput;
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
@@ -251,6 +276,7 @@ export const toolHandlers = {
   find_restriction_sites: handleFindRestrictionSites,
   simulate_digest: handleSimulateDigest,
   simulate_pcr: handleSimulatePcr,
+  simulate_assembly: handleSimulateAssembly,
   export_genbank: handleExportGenBank,
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
@@ -550,6 +576,54 @@ export async function handleSimulatePcr(input: SimulatePcrInput): Promise<ToolRe
   }
 }
 
+export async function handleSimulateAssembly(input: SimulateAssemblyToolInput): Promise<ToolResultEnvelope> {
+  const tool = "simulate_assembly";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    if (input.method !== "restriction_ligation") {
+      throw new MoleculeError("INVALID_ARGUMENT", "method must be 'restriction_ligation'.", { method: input.method });
+    }
+    const vector = assemblySideInput(input.vector, "vector");
+    const insert = {
+      ...assemblySideInput(input.insert, "insert"),
+      ...(input.insert.orientation !== undefined ? { orientation: assemblyOrientation(input.insert.orientation) } : {}),
+    };
+    const product = input.product === undefined ? undefined : assemblyProductInput(input.product);
+    const result = await simulateAssembly({
+      workspacePath,
+      method: input.method,
+      vector,
+      insert,
+      ...(product ? { product } : {}),
+    });
+    const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: false });
+    const nextAction = result.candidates.length === 1
+      ? {
+          tool: "open_sequence",
+          arguments: {
+            inputPath: result.candidates[0].artifacts[0].path,
+            workspaceDir: path.dirname(workspacePath),
+            format: "genbank",
+            expectedRevision: workspace.revision,
+          },
+        }
+      : undefined;
+    return toolSuccess(tool, result, {
+      workspacePath,
+      revision: workspace.revision,
+      artifacts: result.candidates.flatMap((candidate) => candidate.artifacts.map((artifact) => ({
+        kind: artifact.kind,
+        path: artifact.path,
+        mimeType: artifact.mimeType,
+        description: artifact.description,
+      }))),
+      ...(nextAction ? { nextAction } : {}),
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
 export async function handleExportGenBank(input: ExportGenBankInput): Promise<ToolResultEnvelope> {
   const tool = "export_genbank";
   try {
@@ -709,6 +783,48 @@ export async function handleDesignGrnas(input: DesignGrnasToolInput): Promise<To
   } catch (error) {
     return toolFailureFromError(tool, error);
   }
+}
+
+function assemblySideInput(value: unknown, name: "vector" | "insert"): {
+  moleculeId: string;
+  leftEnzyme: string;
+  rightEnzyme?: string;
+  fragment?: "largest_fragment";
+} {
+  assertRecord(value, name);
+  assertNonEmptyString(value.moleculeId, `${name}.moleculeId`);
+  assertNonEmptyString(value.leftEnzyme, `${name}.leftEnzyme`);
+  if (value.rightEnzyme !== undefined) assertNonEmptyString(value.rightEnzyme, `${name}.rightEnzyme`);
+  if (value.fragment !== undefined && value.fragment !== "largest_fragment") {
+    throw new MoleculeError("INVALID_ARGUMENT", `${name}.fragment must be 'largest_fragment'.`, { fragment: value.fragment });
+  }
+  return {
+    moleculeId: value.moleculeId,
+    leftEnzyme: value.leftEnzyme,
+    ...(value.rightEnzyme !== undefined ? { rightEnzyme: value.rightEnzyme } : {}),
+    ...(value.fragment !== undefined ? { fragment: value.fragment } : {}),
+  };
+}
+
+function assemblyOrientation(value: unknown): "forward" | "reverse" | "both" {
+  if (value !== "forward" && value !== "reverse" && value !== "both") {
+    throw new MoleculeError("INVALID_ARGUMENT", "insert.orientation must be 'forward', 'reverse', or 'both'.", { orientation: value });
+  }
+  return value;
+}
+
+function assemblyProductInput(value: unknown): { moleculeId?: string; name?: string; topology?: "circular" | "linear" } {
+  assertRecord(value, "product");
+  if (value.moleculeId !== undefined) assertNonEmptyString(value.moleculeId, "product.moleculeId");
+  if (value.name !== undefined) assertNonEmptyString(value.name, "product.name");
+  if (value.topology !== undefined && value.topology !== "circular" && value.topology !== "linear") {
+    throw new MoleculeError("INVALID_ARGUMENT", "product.topology must be 'circular' or 'linear'.", { topology: value.topology });
+  }
+  return {
+    ...(value.moleculeId !== undefined ? { moleculeId: value.moleculeId } : {}),
+    ...(value.name !== undefined ? { name: value.name } : {}),
+    ...(value.topology !== undefined ? { topology: value.topology } : {}),
+  };
 }
 
 async function resolveAlignmentSequence(

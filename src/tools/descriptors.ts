@@ -217,6 +217,52 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "simulate_assembly",
+    description: "Simulate read-only restriction-ligation assembly candidates and write GenBank candidate artifacts.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "method", "vector", "insert"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        method: { type: "string", enum: ["restriction_ligation"] },
+        vector: {
+          type: "object",
+          required: ["moleculeId", "leftEnzyme"],
+          additionalProperties: false,
+          properties: {
+            moleculeId: { type: "string" },
+            leftEnzyme: { type: "string" },
+            rightEnzyme: { type: "string" },
+            fragment: { type: "string", enum: ["largest_fragment"] },
+          },
+        },
+        insert: {
+          type: "object",
+          required: ["moleculeId", "leftEnzyme"],
+          additionalProperties: false,
+          properties: {
+            moleculeId: { type: "string" },
+            leftEnzyme: { type: "string" },
+            rightEnzyme: { type: "string" },
+            fragment: { type: "string", enum: ["largest_fragment"] },
+            orientation: { type: "string", enum: ["forward", "reverse", "both"] },
+          },
+        },
+        product: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            moleculeId: { type: "string" },
+            name: { type: "string" },
+            topology: { type: "string", enum: ["circular", "linear"] },
+          },
+        },
+      },
+    },
+  },
+  {
     name: "export_genbank",
     description: "Export a molecule and workspace features to GenBank.",
     inputSchema: {

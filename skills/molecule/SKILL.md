@@ -219,6 +219,7 @@ Use these tools instead of reasoning from memory:
 - `find_restriction_sites`
 - `simulate_digest`
 - `simulate_pcr`
+- `simulate_assembly`
 - `export_genbank`
 - `render_digest_gel`
 - `align_sequences`
@@ -295,6 +296,44 @@ requires a ladder starting at 50 bp or lower to be calibrated normally.
 `render_digest_gel` uses the ladder as the calibrated range, adds ladder size
 labels to the SVG, and marks fragments outside the ladder range with
 `outOfLadderRange` / `rangeWarning` metadata.
+
+Use `simulate_assembly` for W3 restriction-ligation candidate generation. This
+tool is read-only with respect to workspace molecules: it resolves cut sites,
+checks verified ligation-end compatibility, writes candidate GenBank artifacts,
+and returns a concrete `open_sequence` next action when exactly one candidate is
+produced. Persist a candidate only by calling `open_sequence` with the artifact
+path and current `expectedRevision`.
+
+```json
+{
+  "tool": "simulate_assembly",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "method": "restriction_ligation",
+    "vector": {
+      "moleculeId": "mol_vector",
+      "leftEnzyme": "EcoRI",
+      "rightEnzyme": "BamHI"
+    },
+    "insert": {
+      "moleculeId": "mol_insert",
+      "leftEnzyme": "EcoRI",
+      "rightEnzyme": "BamHI",
+      "orientation": "forward"
+    },
+    "product": {
+      "moleculeId": "mol_candidate_product",
+      "name": "candidate_product",
+      "topology": "circular"
+    }
+  }
+}
+```
+
+If `simulate_assembly` returns `NO_CUT_SITE`, `AMBIGUOUS_CUT_SITES`,
+`AMBIGUOUS_FRAGMENT_SELECTION`, `UNSUPPORTED_ENZYME_PROFILE`, or
+`INCOMPATIBLE_RESTRICTION_ENDS`, do not repair the result heuristically. Choose
+different explicit enzymes/fragments or ask for a clarified cloning design.
 
 Use `design_primers` when primer candidates are needed. This tool calls the
 external `primer3_core` binary; if it is not installed, return the structured
@@ -475,7 +514,6 @@ assembly, Golden Gate assembly, accurate supercoiled gel migration,
 genome-scale CRISPR off-target search, or CRISPR efficacy scoring unless those
 tools have been implemented and validated in this repo.
 
-`simulate_assembly` is specified but not implemented. When planning W3, follow
-`docs/simulate-assembly-spec.md`: restriction ligation only, verified ligation
-end profiles, read-only candidate generation, and explicit persistence through a
-later `open_sequence` call.
+`simulate_assembly` currently supports restriction ligation only. Do not claim
+support for Gibson, Golden Gate, Gateway, or In-Fusion assembly until those
+methods are implemented as explicit deterministic tools.

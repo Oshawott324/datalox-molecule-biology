@@ -25,6 +25,7 @@ import {
   type RenderDigestGelInput,
   type ReverseComplementInput,
   type SequenceContextInput,
+  type SimulateAssemblyToolInput,
   type SimulatePcrInput,
   type TranslateRegionInput,
   type ToolInputByName,
@@ -65,6 +66,7 @@ const commandToTool: Record<string, ToolName> = {
   "find-restriction-sites": "find_restriction_sites",
   "simulate-digest": "simulate_digest",
   "simulate-pcr": "simulate_pcr",
+  "simulate-assembly": "simulate_assembly",
   "export-genbank": "export_genbank",
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
@@ -178,6 +180,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "find_orfs") return findOrfsInput(parsed);
   if (tool === "find_restriction_sites" || tool === "simulate_digest") return enzymeInput(parsed);
   if (tool === "simulate_pcr") return simulatePcrInput(parsed);
+  if (tool === "simulate_assembly") return simulateAssemblyInput(parsed);
   if (tool === "export_genbank") return exportGenBankInput(parsed);
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
@@ -315,6 +318,14 @@ function simulatePcrInput(parsed: ParsedArgs): SimulatePcrInput {
     forwardPrimer: stringFlag(parsed, "forward") ?? stringFlag(parsed, "forward-primer") ?? "",
     reversePrimer: stringFlag(parsed, "reverse") ?? stringFlag(parsed, "reverse-primer") ?? "",
   };
+}
+
+async function simulateAssemblyInput(parsed: ParsedArgs): Promise<SimulateAssemblyToolInput> {
+  const input = await jsonFileFlag(parsed, "input");
+  if (input === undefined) {
+    throw new MoleculeError("INVALID_ARGUMENT", "simulate-assembly requires --input <json-file>.");
+  }
+  return input as SimulateAssemblyToolInput;
 }
 
 function exportGenBankInput(parsed: ParsedArgs): ExportGenBankInput {

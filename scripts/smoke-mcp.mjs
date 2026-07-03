@@ -28,6 +28,7 @@ try {
   assertTool(tools, "reverse_complement");
   assertTool(tools, "render_plasmid_map");
   assertTool(tools, "render_digest_gel");
+  assertTool(tools, "simulate_assembly");
   assertTool(tools, "design_primers");
   assertTool(tools, "design_grnas");
 
