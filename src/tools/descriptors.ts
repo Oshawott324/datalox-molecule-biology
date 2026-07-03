@@ -297,7 +297,7 @@ export const moleculeToolDescriptors = [
   },
   {
     name: "align_sequences",
-    description: "Align two sequences with deterministic Needleman-Wunsch global alignment (match/mismatch/linear-gap scoring).",
+    description: "Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -319,6 +319,11 @@ export const moleculeToolDescriptors = [
         targetMoleculeId: {
           type: "string",
           description: "Workspace molecule id for the target sequence."
+        },
+        mode: {
+          type: "string",
+          enum: ["global", "local"],
+          description: "Alignment mode. global = Needleman-Wunsch; local = Smith-Waterman. Default global."
         },
         match: {
           type: "integer",

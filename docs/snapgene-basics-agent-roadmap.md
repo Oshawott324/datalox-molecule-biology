@@ -384,6 +384,8 @@ Acceptance:
 
 ### P5: `align_sequences`
 
+Status: **complete**.
+
 Add deterministic pairwise alignment.
 
 Core:

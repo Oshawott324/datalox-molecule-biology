@@ -9,11 +9,11 @@ Status note, 2026-07-02:
 - W2 `design_primers` is complete.
 - CR1 `design_grnas` scaffold is complete.
 - CR2 validated CRISPR on-target scoring is not implemented.
-- P5 `align_sequences` global Needleman-Wunsch has landed. Local
-  Smith-Waterman mode remains pending and should be assigned back to Ziyu as an
-  additive extension to `src/core/align.ts`.
-- Do not use `align_sequences` for Sanger/read-to-plasmid verification until
-  local mode lands.
+- P5 `align_sequences` supports both global Needleman-Wunsch and local
+  Smith-Waterman modes. Use `mode: "local"` for short observed sequence strings
+  against larger molecules.
+- `align_sequences` does not parse AB1 chromatograms. Convert observed reads to
+  sequence strings before alignment.
 
 ## Jingting — D1 Demo Script
 
@@ -314,6 +314,9 @@ Bundle: ${bundle.bundlePath}
 ---
 
 ## Ziyu — P5 `align_sequences` + README
+
+Status: **complete**. `align_sequences` now exposes both `mode: "global"` and
+`mode: "local"` through core, MCP, and CLI.
 
 ### Goal A: `align_sequences` MCP tool
 

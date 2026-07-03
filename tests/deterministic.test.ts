@@ -332,6 +332,7 @@ ORIGIN
   it("aligns identical sequences at 100% identity with no gaps or mismatches", () => {
     const result = alignSequences("ACGT", "ACGT");
     expect(result).toEqual({
+      mode: "global",
       queryAligned: "ACGT",
       targetAligned: "ACGT",
       identityPercent: 100,
@@ -374,6 +375,7 @@ ORIGIN
   it("treats two empty sequences as a 100% identity, zero-length alignment", () => {
     const result = alignSequences("", "");
     expect(result).toEqual({
+      mode: "global",
       queryAligned: "",
       targetAligned: "",
       identityPercent: 100,
@@ -388,9 +390,47 @@ ORIGIN
 
   it("echoes overridden scoring parameters and stays deterministic", () => {
     const result = alignSequences("ACGTACGT", "ACGAACGT", { match: 2, mismatch: -3, gap: -5 });
+    expect(result.mode).toBe("global");
     expect(result.scoringParams).toEqual({ match: 2, mismatch: -3, gap: -5 });
     expect(result.mismatches).toBe(1);
     expect(result.score).toBe(2 * 7 + -3);
+  });
+
+  it("performs Smith-Waterman local alignment with explicit query and target coordinates", () => {
+    const result = alignSequences("ACGT", "TTTACGTTT", { mode: "local" });
+    expect(result).toMatchObject({
+      mode: "local",
+      queryAligned: "ACGT",
+      targetAligned: "ACGT",
+      identityPercent: 100,
+      identicalPositions: 4,
+      alignedLength: 4,
+      mismatches: 0,
+      gaps: 0,
+      score: 4,
+      queryAlignedStart: 1,
+      queryAlignedEnd: 4,
+      targetAlignedStart: 4,
+      targetAlignedEnd: 7,
+    });
+  });
+
+  it("returns an empty local alignment when there is no positive-scoring match", () => {
+    const result = alignSequences("AAAA", "TTTT", { mode: "local" });
+    expect(result).toEqual({
+      mode: "local",
+      queryAligned: "",
+      targetAligned: "",
+      identityPercent: 100,
+      identicalPositions: 0,
+      alignedLength: 0,
+      mismatches: 0,
+      gaps: 0,
+      score: 0,
+      scoringParams: { match: 1, mismatch: -1, gap: -2 },
+    });
+    expect(result.queryAlignedStart).toBeUndefined();
+    expect(result.targetAlignedStart).toBeUndefined();
   });
 
   const invariantPairs: Array<[string, string, string]> = [
@@ -445,6 +485,33 @@ ORIGIN
         identicalPositions: 7,
         mismatches: 1,
         gaps: 0,
+      },
+    });
+  });
+
+  it("aligns a short read to a larger workspace molecule through local mode", async () => {
+    const workspaceDir = await tempDir("mol-align-local-");
+    const targetPath = path.join(workspaceDir, "target.fa");
+    await fs.writeFile(targetPath, ">target\nTTTACGTTT\n", "utf8");
+    const imported = await importSequenceFile({ inputPath: targetPath, workspaceDir, format: "fasta", moleculeId: "mol_target" });
+
+    const envelope = await handleAlignSequences({
+      workspacePath: imported.workspacePath,
+      sequence: "ACGT",
+      targetMoleculeId: "mol_target",
+      mode: "local",
+    });
+    expect(envelope).toMatchObject({
+      ok: true,
+      tool: "align_sequences",
+      data: {
+        mode: "local",
+        queryAligned: "ACGT",
+        targetAligned: "ACGT",
+        queryAlignedStart: 1,
+        queryAlignedEnd: 4,
+        targetAlignedStart: 4,
+        targetAlignedEnd: 7,
       },
     });
   });

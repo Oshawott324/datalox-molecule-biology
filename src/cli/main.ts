@@ -360,6 +360,7 @@ function alignSequencesInput(parsed: ParsedArgs): AlignSequencesInput {
     ...(stringFlag(parsed, "target-sequence") !== undefined ? { targetSequence: stringFlag(parsed, "target-sequence") } : {}),
     ...(stringFlag(parsed, "molecule-id") !== undefined ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
     ...(stringFlag(parsed, "target-molecule-id") !== undefined ? { targetMoleculeId: stringFlag(parsed, "target-molecule-id") } : {}),
+    ...(stringFlag(parsed, "mode") !== undefined ? { mode: stringFlag(parsed, "mode") as AlignSequencesInput["mode"] } : {}),
     ...(stringFlag(parsed, "match") !== undefined ? { match: numberFlag(parsed, "match") } : {}),
     ...(stringFlag(parsed, "mismatch") !== undefined ? { mismatch: numberFlag(parsed, "mismatch") } : {}),
     ...(stringFlag(parsed, "gap") !== undefined ? { gap: numberFlag(parsed, "gap") } : {}),

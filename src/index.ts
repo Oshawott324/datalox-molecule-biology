@@ -91,6 +91,7 @@ export type {
   SimulatePcrResult,
   TranslateRegionOptions,
   TranslateRegionResult,
+  AlignMode,
   AlignmentResult,
   AlignSequencesOptions,
 } from "./core/deterministic.js";

@@ -221,6 +221,7 @@ Use these tools instead of reasoning from memory:
 - `simulate_pcr`
 - `export_genbank`
 - `render_digest_gel`
+- `align_sequences`
 - `design_primers`
 - `design_grnas`
 
@@ -322,6 +323,37 @@ choose a candidate before calling `upsert_primer` with `expectedRevision`.
 `target` means the interval that must be included inside the amplicon; Primer3
 will normally place primers outside that interval. Overhangs are reported as
 `sequenceWithOverhang` and are not part of Primer3's annealing-sequence scoring.
+
+Use `align_sequences` for deterministic pairwise alignment. Use
+`mode: "global"` for similarly sized constructs and `mode: "local"` when a
+short observed sequence should align inside a larger molecule. Local mode
+returns `queryAlignedStart`, `queryAlignedEnd`, `targetAlignedStart`, and
+`targetAlignedEnd`.
+
+```json
+{
+  "tool": "align_sequences",
+  "arguments": {
+    "sequence": "ACGT",
+    "targetSequence": "TTTACGTTT",
+    "mode": "local"
+  }
+}
+```
+
+For workspace molecules:
+
+```json
+{
+  "tool": "align_sequences",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_observed_read",
+    "targetMoleculeId": "mol_expected_construct",
+    "mode": "local"
+  }
+}
+```
 
 Use `design_grnas` for CR1 SpCas9 guide candidates. This tool is deterministic
 PAM scanning plus workspace-scale off-target reporting. It does not perform
@@ -438,7 +470,7 @@ Before answering the user:
 4. Mention deterministic tools used.
 5. State any unsupported biological operation clearly.
 
-Do not claim support for SBOL, AB1, Sanger alignment, Gibson assembly, Golden
-Gate assembly, accurate supercoiled gel migration, genome-scale CRISPR
-off-target search, or CRISPR efficacy scoring unless those tools have been
-implemented and validated in this repo.
+Do not claim support for SBOL, AB1 chromatogram parsing/viewing, Gibson
+assembly, Golden Gate assembly, accurate supercoiled gel migration,
+genome-scale CRISPR off-target search, or CRISPR efficacy scoring unless those
+tools have been implemented and validated in this repo.

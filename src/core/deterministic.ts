@@ -13,7 +13,7 @@ export type { ExportGenBankResult } from "./export-genbank.js";
 export { renderDigestGel } from "./render-gel.js";
 export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";
 export { alignSequences } from "./align.js";
-export type { AlignmentResult, AlignSequencesOptions } from "./align.js";
+export type { AlignMode, AlignmentResult, AlignSequencesOptions } from "./align.js";
 export { designPrimers } from "./primer-design.js";
 export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPrimersResult, PrimerPairCandidate } from "./primer-design.js";
 export { designGrnas } from "./crispr.js";

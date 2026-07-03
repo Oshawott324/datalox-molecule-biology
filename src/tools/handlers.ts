@@ -166,6 +166,7 @@ export type AlignSequencesInput = WorkspaceInput & {
   targetSequence?: string;
   moleculeId?: string;
   targetMoleculeId?: string;
+  mode?: "global" | "local";
   match?: number;
   mismatch?: number;
   gap?: number;
@@ -638,6 +639,9 @@ export async function handleRenderDigestGel(input: RenderDigestGelInput): Promis
 export async function handleAlignSequences(input: AlignSequencesInput): Promise<ToolResultEnvelope> {
   const tool = "align_sequences";
   try {
+    if (input.mode !== undefined && input.mode !== "global" && input.mode !== "local") {
+      throw new MoleculeError("INVALID_ARGUMENT", "mode must be 'global' or 'local'.", { mode: input.mode });
+    }
     if (input.match !== undefined) assertInteger(input.match, "match");
     if (input.mismatch !== undefined) assertInteger(input.mismatch, "mismatch");
     if (input.gap !== undefined) assertInteger(input.gap, "gap");
@@ -646,6 +650,7 @@ export async function handleAlignSequences(input: AlignSequencesInput): Promise<
     const target = await resolveAlignmentSequence(input, input.targetSequence, input.targetMoleculeId, "targetSequence", "targetMoleculeId");
 
     const result = alignSequences(query.sequence, target.sequence, {
+      ...(input.mode !== undefined ? { mode: input.mode } : {}),
       ...(input.match !== undefined ? { match: input.match } : {}),
       ...(input.mismatch !== undefined ? { mismatch: input.mismatch } : {}),
       ...(input.gap !== undefined ? { gap: input.gap } : {}),
