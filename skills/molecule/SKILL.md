@@ -474,3 +474,8 @@ Do not claim support for SBOL, AB1 chromatogram parsing/viewing, Gibson
 assembly, Golden Gate assembly, accurate supercoiled gel migration,
 genome-scale CRISPR off-target search, or CRISPR efficacy scoring unless those
 tools have been implemented and validated in this repo.
+
+`simulate_assembly` is specified but not implemented. When planning W3, follow
+`docs/simulate-assembly-spec.md`: restriction ligation only, verified ligation
+end profiles, read-only candidate generation, and explicit persistence through a
+later `open_sequence` call.

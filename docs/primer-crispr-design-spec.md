@@ -412,7 +412,7 @@ score labeled as Doench RS2.
 |---|---:|---:|---:|
 | Amplification primer pairs | yes | no | no |
 | Restriction adapter overhangs | yes | no | no |
-| Gibson/overlap primer design | no | no | `simulate_assembly` |
+| Gibson/overlap primer design | no | no | later assembly track |
 | Sequencing/mutagenesis primers | no | no | later |
 | SpCas9 NGG guide extraction | no | yes | no |
 | Cas12a / SaCas9 PAM types | no | no | later |

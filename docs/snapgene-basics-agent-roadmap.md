@@ -473,7 +473,7 @@ P5 before D1.
 |---|---|---|
 | W1 | `find_known_features` auto-annotation against curated library | Customer/demo requires instant annotation on import |
 | W2 | Primer3-backed `design_primers` | PCR or cloning design workflow needs primer design |
-| W3 | `simulate_assembly` for Gibson/restriction ligation | Construct design workflow moves beyond digest planning |
+| W3 | `simulate_assembly` for restriction ligation | Construct design workflow moves beyond digest planning; spec in `docs/simulate-assembly-spec.md` |
 | W4 | Sanger alignment with AB1/chromatogram | Sequencing-confirmation workflow |
 | W5 | IDT/Twist synthesis export | Design-to-order pipeline |
 | W6 | Full Gibson / Golden Gate / Gateway workflows | Specific customer demo or customer pull |
