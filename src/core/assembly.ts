@@ -1,7 +1,7 @@
 import { MoleculeError } from "./errors.js";
 import { findRestrictionSites, RESTRICTION_ENZYMES, type RestrictionSite } from "./enzymes.js";
 import { readMoleculeSequence } from "./context.js";
-import { reverseComplement } from "./sequence.js";
+import { reverseComplement, sequenceDigest } from "./sequence.js";
 
 export const RESTRICTION_LIGATION_PROFILE_VERSION = "datalox_neb_ligation_profiles_v1";
 
@@ -65,6 +65,44 @@ export type ResolvedAssemblyFragments = {
   cutIndexes: number[];
   fragments: AssemblyFragment[];
   selectedFragment: AssemblyFragment;
+};
+
+export type AssemblyOrientation = "forward" | "reverse" | "both";
+
+export type AssemblyInputFragment = {
+  resolved: ResolvedAssemblyFragments;
+  sequence: string;
+};
+
+export type AssemblyJunction = {
+  leftSource: { role: "vector" | "insert"; moleculeId: string; enzyme: string; side: "left" | "right" };
+  rightSource: { role: "vector" | "insert"; moleculeId: string; enzyme: string; side: "left" | "right" };
+  compatible: true;
+  endType: RestrictionEndType;
+  overhangSequence: string;
+  regeneratedRecognitionSequence?: string;
+};
+
+export type AssemblyCandidate = {
+  candidateId: string;
+  topology: "circular" | "linear";
+  length: number;
+  sequence: string;
+  sequenceDigest: string;
+  orientation: "forward" | "reverse";
+  sourceSegments: Array<{
+    role: "vector_backbone" | "insert";
+    moleculeId: string;
+    segments: AssemblySourceSegment[];
+  }>;
+  junctions: AssemblyJunction[];
+};
+
+export type ConstructRestrictionLigationCandidatesInput = {
+  vector: AssemblyInputFragment;
+  insert: AssemblyInputFragment;
+  orientation?: AssemblyOrientation;
+  topology?: "circular" | "linear";
 };
 
 export const RESTRICTION_LIGATION_PROFILES: Record<string, RestrictionLigationProfile> = {
@@ -257,6 +295,17 @@ export async function resolveAssemblyFragmentsForMolecule(
   };
 }
 
+export function constructRestrictionLigationCandidates(
+  input: ConstructRestrictionLigationCandidatesInput,
+): AssemblyCandidate[] {
+  const orientation = input.orientation ?? "forward";
+  if (orientation !== "forward" && orientation !== "reverse" && orientation !== "both") {
+    throw new MoleculeError("INVALID_ARGUMENT", "orientation must be 'forward', 'reverse', or 'both'.", { orientation });
+  }
+  const orientations: Array<"forward" | "reverse"> = orientation === "both" ? ["forward", "reverse"] : [orientation];
+  return orientations.map((candidateOrientation) => constructRestrictionLigationCandidate(input, candidateOrientation));
+}
+
 export function selectAssemblyFragment(
   fragments: AssemblyFragment[],
   selector: AssemblyFragmentSelector = "largest_fragment",
@@ -283,6 +332,136 @@ export function selectAssemblyFragment(
     });
   }
   return largest;
+}
+
+export function extractAssemblyFragmentSequence(sequence: string, fragment: AssemblyFragment): string {
+  return fragment.sourceSegments.map((segment) => sequence.slice(segment.start - 1, segment.end)).join("");
+}
+
+function constructRestrictionLigationCandidate(
+  input: ConstructRestrictionLigationCandidatesInput,
+  orientation: "forward" | "reverse",
+): AssemblyCandidate {
+  const vectorSequence = extractAssemblyFragmentSequence(input.vector.sequence, input.vector.resolved.selectedFragment);
+  const insertForwardSequence = extractAssemblyFragmentSequence(input.insert.sequence, input.insert.resolved.selectedFragment);
+  const insertSequence = orientation === "forward" ? insertForwardSequence : reverseComplement(insertForwardSequence);
+  const vectorEnds = orderedFragmentEnds(input.vector.resolved, "forward");
+  const insertEnds = orderedFragmentEnds(input.insert.resolved, orientation);
+
+  const directJunctionCompatibility = compatibleRestrictionEnds(vectorEnds.right.end, insertEnds.left.end);
+  const closingJunctionCompatibility = compatibleRestrictionEnds(insertEnds.right.end, vectorEnds.left.end);
+  if (!directJunctionCompatibility.compatible || !closingJunctionCompatibility.compatible) {
+    throw new MoleculeError("INCOMPATIBLE_RESTRICTION_ENDS", "Restriction fragment ends are not compatible for ligation.", {
+      orientation,
+      directJunction: directJunctionCompatibility,
+      closingJunction: closingJunctionCompatibility,
+    });
+  }
+
+  const productSequence = `${vectorSequence}${insertSequence}`;
+  const directJunction = assemblyJunction(
+    { role: "vector", moleculeId: input.vector.resolved.moleculeId, enzyme: vectorEnds.right.enzyme, side: "right" },
+    { role: "insert", moleculeId: input.insert.resolved.moleculeId, enzyme: insertEnds.left.enzyme, side: "left" },
+    directJunctionCompatibility.left,
+    vectorSequence,
+    insertSequence,
+  );
+  const closingJunction = assemblyJunction(
+    { role: "insert", moleculeId: input.insert.resolved.moleculeId, enzyme: insertEnds.right.enzyme, side: "right" },
+    { role: "vector", moleculeId: input.vector.resolved.moleculeId, enzyme: vectorEnds.left.enzyme, side: "left" },
+    closingJunctionCompatibility.left,
+    insertSequence,
+    vectorSequence,
+  );
+
+  return {
+    candidateId: `candidate_${orientation}`,
+    topology: input.topology ?? "circular",
+    length: productSequence.length,
+    sequence: productSequence,
+    sequenceDigest: sequenceDigest(productSequence),
+    orientation,
+    sourceSegments: [
+      {
+        role: "vector_backbone",
+        moleculeId: input.vector.resolved.moleculeId,
+        segments: input.vector.resolved.selectedFragment.sourceSegments,
+      },
+      {
+        role: "insert",
+        moleculeId: input.insert.resolved.moleculeId,
+        segments: orientedInsertSegments(input.insert.resolved.selectedFragment.sourceSegments, orientation),
+      },
+    ],
+    junctions: [directJunction, closingJunction],
+  };
+}
+
+function orderedFragmentEnds(
+  resolved: ResolvedAssemblyFragments,
+  orientation: "forward" | "reverse",
+): {
+  left: { enzyme: string; end: RestrictionFragmentEnd };
+  right: { enzyme: string; end: RestrictionFragmentEnd };
+} {
+  if (resolved.sites.length === 0 || resolved.sites.length > 2) {
+    throw new MoleculeError("INVALID_ARGUMENT", "Resolved assembly fragments must have one or two sites.", {
+      moleculeId: resolved.moleculeId,
+      siteCount: resolved.sites.length,
+    });
+  }
+  const fragment = resolved.selectedFragment;
+  const leftCutIndex = fragment.start === 1 ? 0 : fragment.start - 1;
+  const rightCutIndex = resolved.topology === "circular" && fragment.circular && fragment.end === resolved.length ? 0 : fragment.end;
+  const leftSite = siteAtCutIndex(resolved, leftCutIndex);
+  const rightSite = siteAtCutIndex(resolved, rightCutIndex);
+  const left = { enzyme: leftSite.enzyme, end: restrictionEndFromProfile(resolveLigationProfile(leftSite.enzyme)) };
+  const right = { enzyme: rightSite.enzyme, end: restrictionEndFromProfile(resolveLigationProfile(rightSite.enzyme)) };
+  return orientation === "forward" ? { left, right } : { left: right, right: left };
+}
+
+function siteAtCutIndex(resolved: ResolvedAssemblyFragments, cutIndex: number): RestrictionSite {
+  const site = resolved.sites.find((candidate) => candidate.cutIndex === cutIndex);
+  if (!site) {
+    throw new MoleculeError("INVALID_ARGUMENT", "Selected assembly fragment boundary does not match a resolved restriction site.", {
+      moleculeId: resolved.moleculeId,
+      cutIndex,
+      resolvedCutIndexes: resolved.sites.map((candidate) => candidate.cutIndex),
+    });
+  }
+  return site;
+}
+
+function assemblyJunction(
+  leftSource: AssemblyJunction["leftSource"],
+  rightSource: AssemblyJunction["rightSource"],
+  end: RestrictionFragmentEnd,
+  leftSequence: string,
+  rightSequence: string,
+): AssemblyJunction {
+  const profile = resolveLigationProfile(leftSource.enzyme);
+  const regenerated = regeneratedRecognitionSequence(leftSequence, rightSequence, profile)
+    ?? regeneratedRecognitionSequence(leftSequence, rightSequence, resolveLigationProfile(rightSource.enzyme));
+  return {
+    leftSource,
+    rightSource,
+    compatible: true,
+    endType: end.endType,
+    overhangSequence: end.overhangSequence,
+    ...(regenerated ? { regeneratedRecognitionSequence: regenerated } : {}),
+  };
+}
+
+function orientedInsertSegments(
+  segments: AssemblySourceSegment[],
+  orientation: "forward" | "reverse",
+): AssemblySourceSegment[] {
+  if (orientation === "forward") return segments;
+  return [...segments].reverse().map((segment) => ({
+    start: segment.start,
+    end: segment.end,
+    strand: segment.strand === "+" ? "-" : "+",
+  }));
 }
 
 function uniqueSortedCutIndexes(length: number, topology: "linear" | "circular", cutIndexes: number[]): number[] {

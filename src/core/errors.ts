@@ -17,6 +17,7 @@ export type MoleculeErrorCode =
   | "AMBIGUOUS_FRAGMENT_SELECTION"
   | "NO_CUT_SITE"
   | "AMBIGUOUS_CUT_SITES"
+  | "INCOMPATIBLE_RESTRICTION_ENDS"
   | "INTERNAL_ERROR";
 
 export type ValidationIssue = {

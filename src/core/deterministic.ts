@@ -9,6 +9,8 @@ export type { DigestFragment, SimulateDigestResult } from "./digest.js";
 export {
   assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
+  constructRestrictionLigationCandidates,
+  extractAssemblyFragmentSequence,
   regeneratedRecognitionSequence,
   resolveLigationProfile,
   resolveAssemblyFragmentsForMolecule,
@@ -18,9 +20,14 @@ export {
   RESTRICTION_LIGATION_PROFILE_VERSION,
 } from "./assembly.js";
 export type {
+  AssemblyCandidate,
   AssemblyFragment,
   AssemblyFragmentSelector,
+  AssemblyInputFragment,
+  AssemblyJunction,
+  AssemblyOrientation,
   AssemblySourceSegment,
+  ConstructRestrictionLigationCandidatesInput,
   ResolvedAssemblyFragments,
   ResolveAssemblyFragmentsInput,
   RestrictionEndCompatibility,

@@ -6,8 +6,10 @@ import path from "node:path";
 import {
   assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
+  constructRestrictionLigationCandidates,
   regeneratedRecognitionSequence,
   importSequenceFile,
+  readMoleculeSequence,
   resolveAssemblyFragmentsForMolecule,
   resolveLigationProfile,
   selectAssemblyFragment,
@@ -441,5 +443,141 @@ describe("restriction ligation profiles", () => {
       { start: 12, end: 30, strand: "+" },
       { start: 1, end: 11, strand: "+" },
     ]);
+  });
+
+  it("constructs a forward EcoRI/BamHI directional ligation candidate with junction metadata", async () => {
+    const vector = await importCircularGenBank(
+      "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+      "mol_vector",
+    );
+    const insert = await importFasta(
+      "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA",
+      "mol_insert",
+    );
+    const vectorResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: vector.workspacePath,
+      moleculeId: vector.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    });
+    const insertResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: insert.workspacePath,
+      moleculeId: insert.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    });
+    const vectorSequence = (await readMoleculeSequence(vector.workspacePath, vector.moleculeId)).sequence;
+    const insertSequence = (await readMoleculeSequence(insert.workspacePath, insert.moleculeId)).sequence;
+
+    const [candidate] = constructRestrictionLigationCandidates({
+      vector: { resolved: vectorResolved, sequence: vectorSequence },
+      insert: { resolved: insertResolved, sequence: insertSequence },
+      orientation: "forward",
+    });
+
+    expect(vectorResolved.selectedFragment).toMatchObject({ start: 26, end: 5, size: 30 });
+    expect(insertResolved.selectedFragment).toMatchObject({ start: 6, end: 25, size: 20 });
+    expect(candidate).toMatchObject({
+      candidateId: "candidate_forward",
+      topology: "circular",
+      length: 50,
+      orientation: "forward",
+      sourceSegments: [
+        {
+          role: "vector_backbone",
+          moleculeId: "mol_vector",
+          segments: [
+            { start: 26, end: 50, strand: "+" },
+            { start: 1, end: 5, strand: "+" },
+          ],
+        },
+        {
+          role: "insert",
+          moleculeId: "mol_insert",
+          segments: [{ start: 6, end: 25, strand: "+" }],
+        },
+      ],
+      junctions: [
+        {
+          leftSource: { role: "vector", moleculeId: "mol_vector", enzyme: "EcoRI", side: "right" },
+          rightSource: { role: "insert", moleculeId: "mol_insert", enzyme: "EcoRI", side: "left" },
+          compatible: true,
+          endType: "five_prime_overhang",
+          overhangSequence: "AATT",
+          regeneratedRecognitionSequence: "GAATTC",
+        },
+        {
+          leftSource: { role: "insert", moleculeId: "mol_insert", enzyme: "BamHI", side: "right" },
+          rightSource: { role: "vector", moleculeId: "mol_vector", enzyme: "BamHI", side: "left" },
+          compatible: true,
+          endType: "five_prime_overhang",
+          overhangSequence: "GATC",
+          regeneratedRecognitionSequence: "GGATCC",
+        },
+      ],
+    });
+    expect(candidate.sequence).toBe("GATCC" + "T".repeat(20) + "AAAAG" + "AATTC" + "G".repeat(14) + "G");
+    expect(candidate.sequenceDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it("rejects reverse orientation for directional EcoRI/BamHI ligation", async () => {
+    const vector = await importCircularGenBank(
+      "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+      "mol_vector_rev",
+    );
+    const insert = await importFasta(
+      "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA",
+      "mol_insert_rev",
+    );
+    const vectorResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: vector.workspacePath,
+      moleculeId: vector.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    });
+    const insertResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: insert.workspacePath,
+      moleculeId: insert.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    });
+
+    await expect(Promise.resolve().then(async () => constructRestrictionLigationCandidates({
+      vector: { resolved: vectorResolved, sequence: (await readMoleculeSequence(vector.workspacePath, vector.moleculeId)).sequence },
+      insert: { resolved: insertResolved, sequence: (await readMoleculeSequence(insert.workspacePath, insert.moleculeId)).sequence },
+      orientation: "reverse",
+    }))).rejects.toMatchObject({
+      code: "INCOMPATIBLE_RESTRICTION_ENDS",
+    });
+  });
+
+  it("constructs both orientations for EcoRI single-cut ligation", async () => {
+    const vector = await importCircularGenBank("AAAA" + "GAATTC" + "CCCCCCCCCC", "mol_vector_single");
+    const insert = await importCircularGenBank("TTTT" + "GAATTC" + "GGGGGG", "mol_insert_single");
+    const vectorResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: vector.workspacePath,
+      moleculeId: vector.moleculeId,
+      enzymes: ["EcoRI"],
+    });
+    const insertResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: insert.workspacePath,
+      moleculeId: insert.moleculeId,
+      enzymes: ["EcoRI"],
+    });
+    const candidates = constructRestrictionLigationCandidates({
+      vector: { resolved: vectorResolved, sequence: (await readMoleculeSequence(vector.workspacePath, vector.moleculeId)).sequence },
+      insert: { resolved: insertResolved, sequence: (await readMoleculeSequence(insert.workspacePath, insert.moleculeId)).sequence },
+      orientation: "both",
+    });
+
+    expect(candidates.map((candidate) => candidate.orientation)).toEqual(["forward", "reverse"]);
+    expect(candidates).toHaveLength(2);
+    expect(candidates[0].length).toBe(vectorResolved.length + insertResolved.length);
+    expect(candidates[1].length).toBe(vectorResolved.length + insertResolved.length);
+    expect(candidates[0].sequence).not.toBe(candidates[1].sequence);
+    expect(candidates[1].sourceSegments[1]).toMatchObject({
+      role: "insert",
+      moleculeId: "mol_insert_single",
+      segments: [
+        { start: 1, end: 5, strand: "-" },
+        { start: 6, end: 16, strand: "-" },
+      ],
+    });
   });
 });
