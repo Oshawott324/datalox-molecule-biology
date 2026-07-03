@@ -15,11 +15,13 @@ export {
   resolveLigationProfile,
   resolveAssemblyFragmentsForMolecule,
   selectAssemblyFragment,
+  simulateAssembly,
   restrictionEndFromProfile,
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
 } from "./assembly.js";
 export type {
+  AssemblyArtifact,
   AssemblyCandidate,
   AssemblyFragment,
   AssemblyFragmentSelector,
@@ -30,6 +32,9 @@ export type {
   ConstructRestrictionLigationCandidatesInput,
   ResolvedAssemblyFragments,
   ResolveAssemblyFragmentsInput,
+  SimulateAssemblyCandidate,
+  SimulateAssemblyInput,
+  SimulateAssemblyResult,
   RestrictionEndCompatibility,
   RestrictionEndType,
   RestrictionFragmentEnd,

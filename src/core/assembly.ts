@@ -1,6 +1,10 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
 import { MoleculeError } from "./errors.js";
 import { findRestrictionSites, RESTRICTION_ENZYMES, type RestrictionSite } from "./enzymes.js";
 import { readMoleculeSequence } from "./context.js";
+import { workspaceRootFromPath } from "./paths.js";
 import { reverseComplement, sequenceDigest } from "./sequence.js";
 
 export const RESTRICTION_LIGATION_PROFILE_VERSION = "datalox_neb_ligation_profiles_v1";
@@ -103,6 +107,53 @@ export type ConstructRestrictionLigationCandidatesInput = {
   insert: AssemblyInputFragment;
   orientation?: AssemblyOrientation;
   topology?: "circular" | "linear";
+};
+
+export type SimulateAssemblyInput = {
+  workspacePath: string;
+  method: "restriction_ligation";
+  vector: {
+    moleculeId: string;
+    leftEnzyme: string;
+    rightEnzyme?: string;
+    fragment?: AssemblyFragmentSelector;
+  };
+  insert: {
+    moleculeId: string;
+    leftEnzyme: string;
+    rightEnzyme?: string;
+    fragment?: AssemblyFragmentSelector;
+    orientation?: AssemblyOrientation;
+  };
+  product?: {
+    moleculeId?: string;
+    name?: string;
+    topology?: "circular" | "linear";
+  };
+};
+
+export type AssemblyArtifact = {
+  kind: "genbank";
+  path: string;
+  relativePath: string;
+  mimeType: "chemical/x-genbank";
+  description: string;
+};
+
+export type SimulateAssemblyCandidate = Omit<AssemblyCandidate, "sequence"> & {
+  artifacts: AssemblyArtifact[];
+};
+
+export type SimulateAssemblyResult = {
+  method: "restriction_ligation";
+  workspacePath: string;
+  vector: ResolvedAssemblyFragments;
+  insert: ResolvedAssemblyFragments;
+  candidates: SimulateAssemblyCandidate[];
+  nextAction: {
+    tool: "open_sequence";
+    instruction: string;
+  };
 };
 
 export const RESTRICTION_LIGATION_PROFILES: Record<string, RestrictionLigationProfile> = {
@@ -295,6 +346,69 @@ export async function resolveAssemblyFragmentsForMolecule(
   };
 }
 
+export async function simulateAssembly(input: SimulateAssemblyInput): Promise<SimulateAssemblyResult> {
+  if (input.method !== "restriction_ligation") {
+    throw new MoleculeError("INVALID_ARGUMENT", "W3 simulateAssembly only supports restriction_ligation.", { method: input.method });
+  }
+  const vectorEnzymes = enzymesFromSideInput(input.vector.leftEnzyme, input.vector.rightEnzyme);
+  const insertEnzymes = enzymesFromSideInput(input.insert.leftEnzyme, input.insert.rightEnzyme);
+  const [vectorResolved, insertResolved] = await Promise.all([
+    resolveAssemblyFragmentsForMolecule({
+      workspacePath: input.workspacePath,
+      moleculeId: input.vector.moleculeId,
+      enzymes: vectorEnzymes,
+      selector: input.vector.fragment ?? "largest_fragment",
+    }),
+    resolveAssemblyFragmentsForMolecule({
+      workspacePath: input.workspacePath,
+      moleculeId: input.insert.moleculeId,
+      enzymes: insertEnzymes,
+      selector: input.insert.fragment ?? "largest_fragment",
+    }),
+  ]);
+  const [vectorSequence, insertSequence] = await Promise.all([
+    readMoleculeSequence(input.workspacePath, input.vector.moleculeId),
+    readMoleculeSequence(input.workspacePath, input.insert.moleculeId),
+  ]);
+  const candidates = constructRestrictionLigationCandidates({
+    vector: { resolved: vectorResolved, sequence: vectorSequence.sequence },
+    insert: { resolved: insertResolved, sequence: insertSequence.sequence },
+    orientation: input.insert.orientation ?? "forward",
+    topology: input.product?.topology ?? "circular",
+  });
+  const withArtifacts: SimulateAssemblyCandidate[] = [];
+  for (const candidate of candidates) {
+    const artifactMoleculeId = input.product?.moleculeId === undefined
+      ? undefined
+      : candidates.length === 1
+        ? input.product.moleculeId
+        : `${input.product.moleculeId}_${candidate.orientation}`;
+    const artifactName = input.product?.name === undefined
+      ? undefined
+      : candidates.length === 1
+        ? input.product.name
+        : `${input.product.name} ${candidate.orientation}`;
+    const artifact = await writeAssemblyCandidateGenBank(input.workspacePath, candidate, {
+      moleculeId: artifactMoleculeId,
+      name: artifactName,
+    });
+    const { sequence: _sequence, ...publicCandidate } = candidate;
+    void _sequence;
+    withArtifacts.push({ ...publicCandidate, artifacts: [artifact] });
+  }
+  return {
+    method: "restriction_ligation",
+    workspacePath: path.resolve(input.workspacePath),
+    vector: vectorResolved,
+    insert: insertResolved,
+    candidates: withArtifacts,
+    nextAction: {
+      tool: "open_sequence",
+      instruction: "Choose one candidate GenBank artifact, then call open_sequence with expectedRevision to persist it.",
+    },
+  };
+}
+
 export function constructRestrictionLigationCandidates(
   input: ConstructRestrictionLigationCandidatesInput,
 ): AssemblyCandidate[] {
@@ -304,6 +418,33 @@ export function constructRestrictionLigationCandidates(
   }
   const orientations: Array<"forward" | "reverse"> = orientation === "both" ? ["forward", "reverse"] : [orientation];
   return orientations.map((candidateOrientation) => constructRestrictionLigationCandidate(input, candidateOrientation));
+}
+
+async function writeAssemblyCandidateGenBank(
+  workspacePath: string,
+  candidate: AssemblyCandidate,
+  product: { moleculeId?: string; name?: string } = {},
+): Promise<AssemblyArtifact> {
+  const workspaceRoot = workspaceRootFromPath(workspacePath);
+  const safeId = safeArtifactId(product.moleculeId ?? candidate.candidateId);
+  const relativePath = path.join("reports", "assembly", `${safeId}.gb`);
+  const outputPath = path.join(workspaceRoot, relativePath);
+  const escaped = path.relative(workspaceRoot, outputPath);
+  if (escaped.startsWith("..") || path.isAbsolute(escaped)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "Assembly artifact path must stay inside the workspace.", { relativePath });
+  }
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, formatAssemblyCandidateGenBank(candidate, {
+    locusName: product.moleculeId ?? candidate.candidateId,
+    displayName: product.name ?? candidate.candidateId,
+  }), "utf8");
+  return {
+    kind: "genbank",
+    path: outputPath,
+    relativePath,
+    mimeType: "chemical/x-genbank",
+    description: `Candidate restriction-ligation product ${candidate.candidateId}.`,
+  };
 }
 
 export function selectAssemblyFragment(
@@ -462,6 +603,73 @@ function orientedInsertSegments(
     end: segment.end,
     strand: segment.strand === "+" ? "-" : "+",
   }));
+}
+
+function enzymesFromSideInput(leftEnzyme: string, rightEnzyme?: string): string[] {
+  if (typeof leftEnzyme !== "string" || leftEnzyme.length === 0) {
+    throw new MoleculeError("INVALID_ARGUMENT", "leftEnzyme must be a non-empty string.", { leftEnzyme });
+  }
+  if (rightEnzyme !== undefined && (typeof rightEnzyme !== "string" || rightEnzyme.length === 0)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "rightEnzyme must be a non-empty string when provided.", { rightEnzyme });
+  }
+  return rightEnzyme === undefined || rightEnzyme === leftEnzyme ? [leftEnzyme] : [leftEnzyme, rightEnzyme];
+}
+
+function safeArtifactId(value: string): string {
+  if (!/^[A-Za-z0-9_.-]+$/.test(value)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "Assembly artifact id may contain only letters, numbers, underscore, dot, and dash.", {
+      value,
+    });
+  }
+  return value;
+}
+
+function formatAssemblyCandidateGenBank(
+  candidate: AssemblyCandidate,
+  names: { locusName: string; displayName: string },
+): string {
+  const locus = safeArtifactId(names.locusName).padEnd(14).slice(0, 14);
+  const lines = [
+    `LOCUS       ${locus} ${String(candidate.length).padStart(7)} bp    DNA    ${candidate.topology.padEnd(8)} 03-JUL-2026`,
+    `DEFINITION  ${names.displayName}; simulated restriction-ligation candidate ${candidate.candidateId}.`,
+    "FEATURES             Location/Qualifiers",
+    `     source          1..${candidate.length}`,
+    `                     /label="${escapeQualifier(names.displayName)}"`,
+    `                     /note="Simulated restriction-ligation candidate; not persisted to workspace."`,
+    ...candidate.junctions.flatMap((junction, index) => formatJunctionFeature(junction, index + 1, candidate.length)),
+    "ORIGIN",
+    ...formatOrigin(candidate.sequence),
+    "//",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function formatJunctionFeature(junction: AssemblyJunction, index: number, productLength: number): string[] {
+  const location = index === 1 ? String(productLength) : "1";
+  const regenerated = junction.regeneratedRecognitionSequence
+    ? [`                     /regenerated_site="${escapeQualifier(junction.regeneratedRecognitionSequence)}"`]
+    : [];
+  return [
+    `     misc_feature    ${location}`,
+    `                     /label="junction_${index}"`,
+    `                     /note="${escapeQualifier(`${junction.leftSource.enzyme} to ${junction.rightSource.enzyme}; ${junction.endType}; overhang ${junction.overhangSequence || "blunt"}`)}"`,
+    ...regenerated,
+  ];
+}
+
+function escapeQualifier(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function formatOrigin(sequence: string): string[] {
+  const lower = sequence.toLowerCase();
+  const lines: string[] = [];
+  for (let index = 0; index < lower.length; index += 60) {
+    const chunk = lower.slice(index, index + 60);
+    const grouped = chunk.match(/.{1,10}/g)?.join(" ") ?? "";
+    lines.push(`${String(index + 1).padStart(9)} ${grouped}`);
+  }
+  return lines;
 }
 
 function uniqueSortedCutIndexes(length: number, topology: "linear" | "circular", cutIndexes: number[]): number[] {

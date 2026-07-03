@@ -60,6 +60,7 @@ export {
   resolveEnzymes,
   resolveLigationProfile,
   selectAssemblyFragment,
+  simulateAssembly,
   restrictionEndFromProfile,
   renderDigestGel,
   simulateDigest,
@@ -109,6 +110,7 @@ export type {
   AlignMode,
   AlignmentResult,
   AlignSequencesOptions,
+  AssemblyArtifact,
   AssemblyCandidate,
   AssemblyFragment,
   AssemblyFragmentSelector,
@@ -119,6 +121,9 @@ export type {
   ConstructRestrictionLigationCandidatesInput,
   ResolvedAssemblyFragments,
   ResolveAssemblyFragmentsInput,
+  SimulateAssemblyCandidate,
+  SimulateAssemblyInput,
+  SimulateAssemblyResult,
 } from "./core/deterministic.js";
 export {
   handleDeleteFeature,

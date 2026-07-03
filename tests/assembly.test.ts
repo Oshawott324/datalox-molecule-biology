@@ -9,10 +9,12 @@ import {
   constructRestrictionLigationCandidates,
   regeneratedRecognitionSequence,
   importSequenceFile,
+  readWorkspace,
   readMoleculeSequence,
   resolveAssemblyFragmentsForMolecule,
   resolveLigationProfile,
   selectAssemblyFragment,
+  simulateAssembly,
   restrictionEndFromProfile,
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
@@ -36,6 +38,34 @@ async function importCircularGenBank(sequence: string, moleculeId: string): Prom
   await fs.writeFile(inputPath, circularGenBank(sequence, moleculeId), "utf8");
   const result = await importSequenceFile({ inputPath, workspaceDir, format: "genbank", moleculeId });
   return { workspacePath: result.workspacePath, moleculeId: result.moleculeIds[0] };
+}
+
+async function importVectorAndInsert(
+  vectorSequence: string,
+  insertSequence: string,
+  options: { vectorId?: string; insertId?: string; insertCircular?: boolean } = {},
+): Promise<{ workspaceDir: string; workspacePath: string; vectorId: string; insertId: string }> {
+  const workspaceDir = await tempDir("mol-assembly-pair-");
+  const vectorId = options.vectorId ?? "mol_vector_pair";
+  const insertId = options.insertId ?? "mol_insert_pair";
+  const vectorPath = path.join(workspaceDir, `${vectorId}.gb`);
+  await fs.writeFile(vectorPath, circularGenBank(vectorSequence, vectorId), "utf8");
+  const vectorImport = await importSequenceFile({ inputPath: vectorPath, workspaceDir, format: "genbank", moleculeId: vectorId });
+
+  const insertPath = path.join(workspaceDir, options.insertCircular ? `${insertId}.gb` : `${insertId}.fa`);
+  await fs.writeFile(
+    insertPath,
+    options.insertCircular ? circularGenBank(insertSequence, insertId) : `>${insertId}\n${insertSequence}\n`,
+    "utf8",
+  );
+  const insertImport = await importSequenceFile({
+    inputPath: insertPath,
+    workspaceDir,
+    format: options.insertCircular ? "genbank" : "fasta",
+    moleculeId: insertId,
+    expectedRevision: vectorImport.revision,
+  });
+  return { workspaceDir, workspacePath: insertImport.workspacePath, vectorId, insertId };
 }
 
 function circularGenBank(sequence: string, name: string): string {
@@ -547,6 +577,62 @@ describe("restriction ligation profiles", () => {
     });
   });
 
+  it("constructs a BamHI/BglII compatible scar with no regenerated recognition sequences at either junction", async () => {
+    // Vector: circular 30bp; BamHI at cutIndex=1, BglII at cutIndex=11.
+    // Backbone (largest, 20bp): wrapping from pos 12..30 + pos 1..1 (from BglII cut back to BamHI cut).
+    // orderedFragmentEnds: { left: BglII, right: BamHI }
+    const vector = await importCircularGenBank(
+      "GGATCC" + "AAAA" + "AGATCT" + "T".repeat(14),
+      "mol_bgl_bam_vector",
+    );
+    // Insert: linear 26bp; BglII at cutIndex=5, BamHI at cutIndex=17.
+    // Insert fragment (largest, 12bp): middle section pos 6..17.
+    // orderedFragmentEnds: { left: BglII, right: BamHI }
+    const insert = await importFasta(
+      "AAAA" + "AGATCT" + "GGGGGG" + "GGATCC" + "AAAA",
+      "mol_bgl_bam_insert",
+    );
+    const vectorResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: vector.workspacePath,
+      moleculeId: vector.moleculeId,
+      enzymes: ["BamHI", "BglII"],
+    });
+    const insertResolved = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: insert.workspacePath,
+      moleculeId: insert.moleculeId,
+      enzymes: ["BamHI", "BglII"],
+    });
+    const [candidate] = constructRestrictionLigationCandidates({
+      vector: { resolved: vectorResolved, sequence: (await readMoleculeSequence(vector.workspacePath, vector.moleculeId)).sequence },
+      insert: { resolved: insertResolved, sequence: (await readMoleculeSequence(insert.workspacePath, insert.moleculeId)).sequence },
+      orientation: "forward",
+    });
+    // Product = 20bp backbone + 12bp insert = 32bp
+    expect(candidate).toMatchObject({
+      topology: "circular",
+      length: 32,
+      junctions: [
+        {
+          leftSource: { enzyme: "BamHI" },
+          rightSource: { enzyme: "BglII" },
+          endType: "five_prime_overhang",
+          overhangSequence: "GATC",
+        },
+        {
+          leftSource: { enzyme: "BamHI" },
+          rightSource: { enzyme: "BglII" },
+          endType: "five_prime_overhang",
+          overhangSequence: "GATC",
+        },
+      ],
+    });
+    // Direct junction: vector slice(-5)="TTTTG" + insert slice(0,5)="GATCT" gives "TTTTGGATCT".
+    // Closing junction: insert slice(-5)="GGGGG" + vector slice(0,5)="GATCT" gives "GGGGGGATCT".
+    // Neither junction sequence contains GGATCC (BamHI) or AGATCT (BglII).
+    expect(candidate.junctions[0]).not.toHaveProperty("regeneratedRecognitionSequence");
+    expect(candidate.junctions[1]).not.toHaveProperty("regeneratedRecognitionSequence");
+  });
+
   it("constructs both orientations for EcoRI single-cut ligation", async () => {
     const vector = await importCircularGenBank("AAAA" + "GAATTC" + "CCCCCCCCCC", "mol_vector_single");
     const insert = await importCircularGenBank("TTTT" + "GAATTC" + "GGGGGG", "mol_insert_single");
@@ -579,5 +665,122 @@ describe("restriction ligation profiles", () => {
         { start: 6, end: 16, strand: "-" },
       ],
     });
+  });
+
+  it("simulates directional restriction ligation and writes a re-importable GenBank artifact without mutating the workspace", async () => {
+    const pair = await importVectorAndInsert(
+      "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+      "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA",
+      { vectorId: "mol_vector_sim", insertId: "mol_insert_sim" },
+    );
+    const before = await readWorkspace(pair.workspacePath);
+    const result = await simulateAssembly({
+      workspacePath: pair.workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: pair.vectorId, leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+      insert: {
+        moleculeId: pair.insertId,
+        leftEnzyme: "EcoRI",
+        rightEnzyme: "BamHI",
+        orientation: "forward",
+      },
+      product: { moleculeId: "mol_product_sim", name: "product_sim" },
+    });
+    const after = await readWorkspace(pair.workspacePath);
+
+    expect(after.revision).toBe(before.revision);
+    expect(after.molecules.map((molecule) => molecule.id).sort()).toEqual(["mol_insert_sim", "mol_vector_sim"]);
+    expect(result).toMatchObject({
+      method: "restriction_ligation",
+      vector: { moleculeId: "mol_vector_sim", selectedFragment: { size: 30 } },
+      insert: { moleculeId: "mol_insert_sim", selectedFragment: { size: 20 } },
+      nextAction: { tool: "open_sequence" },
+      candidates: [
+        {
+          candidateId: "candidate_forward",
+          topology: "circular",
+          length: 50,
+          orientation: "forward",
+          artifacts: [
+            {
+              kind: "genbank",
+              relativePath: path.join("reports", "assembly", "mol_product_sim.gb"),
+              mimeType: "chemical/x-genbank",
+            },
+          ],
+        },
+      ],
+    });
+    const [candidate] = result.candidates;
+    expect("sequence" in candidate).toBe(false);
+
+    const artifactPath = candidate.artifacts[0].path;
+    const artifact = await fs.readFile(artifactPath, "utf8");
+    expect(artifact).toContain("LOCUS");
+    expect(artifact).toContain("/label=\"junction_1\"");
+    expect(artifact).toContain("/label=\"junction_2\"");
+    expect(artifact).toContain("/regenerated_site=\"GAATTC\"");
+    expect(artifact).toContain("/regenerated_site=\"GGATCC\"");
+
+    const reimportDir = await tempDir("mol-assembly-reimport-");
+    const reimported = await importSequenceFile({
+      inputPath: artifactPath,
+      workspaceDir: reimportDir,
+      format: "genbank",
+      moleculeId: "mol_reimported_product",
+    });
+    const product = await readMoleculeSequence(reimported.workspacePath, "mol_reimported_product");
+    expect(product.molecule.topology).toBe("circular");
+    expect(product.sequence).toHaveLength(50);
+  });
+
+  it("uses deterministic candidate-specific artifact paths when simulating both single-cut orientations", async () => {
+    const pair = await importVectorAndInsert(
+      "AAAA" + "GAATTC" + "CCCCCCCCCC",
+      "TTTT" + "GAATTC" + "GGGGGG",
+      { vectorId: "mol_vector_both", insertId: "mol_insert_both", insertCircular: true },
+    );
+    const result = await simulateAssembly({
+      workspacePath: pair.workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: pair.vectorId, leftEnzyme: "EcoRI" },
+      insert: {
+        moleculeId: pair.insertId,
+        leftEnzyme: "EcoRI",
+        orientation: "both",
+      },
+      product: { moleculeId: "mol_product_both", name: "product_both" },
+    });
+
+    expect(result.candidates.map((candidate) => candidate.orientation)).toEqual(["forward", "reverse"]);
+    expect(result.candidates.map((candidate) => candidate.artifacts[0].relativePath)).toEqual([
+      path.join("reports", "assembly", "mol_product_both_forward.gb"),
+      path.join("reports", "assembly", "mol_product_both_reverse.gb"),
+    ]);
+    expect((await fs.stat(result.candidates[0].artifacts[0].path)).isFile()).toBe(true);
+    expect((await fs.stat(result.candidates[1].artifacts[0].path)).isFile()).toBe(true);
+  });
+
+  it("does not write artifacts when directional restriction ligation is incompatible", async () => {
+    const pair = await importVectorAndInsert(
+      "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+      "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA",
+      { vectorId: "mol_vector_bad", insertId: "mol_insert_bad" },
+    );
+
+    await expect(simulateAssembly({
+      workspacePath: pair.workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: pair.vectorId, leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+      insert: {
+        moleculeId: pair.insertId,
+        leftEnzyme: "EcoRI",
+        rightEnzyme: "BamHI",
+        orientation: "reverse",
+      },
+      product: { moleculeId: "mol_should_not_exist" },
+    })).rejects.toMatchObject({ code: "INCOMPATIBLE_RESTRICTION_ENDS" });
+    await expect(fs.stat(path.join(pair.workspaceDir, "reports", "assembly", "mol_should_not_exist.gb")))
+      .rejects.toMatchObject({ code: "ENOENT" });
   });
 });
