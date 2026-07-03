@@ -416,4 +416,30 @@ describe("restriction ligation profiles", () => {
       code: "UNSUPPORTED_ENZYME_PROFILE",
     });
   });
+
+  it("resolves a single EcoRI cut in a circular molecule and returns the full linearized fragment", async () => {
+    // 30bp circular: 10 A's then EcoRI then 14 A's
+    // EcoRI GAATTC starts at position 11 (1-based); G^AATTC cuts after 1 base → cutIndex = 11
+    // Single cut → full linearized fragment of size 30, wrapping from 12 back to 11
+    const seq = "AAAAAAAAAA" + "GAATTC" + "AAAAAAAAAAAAAA"; // 10 + 6 + 14 = 30 bp
+    const source = await importCircularGenBank(seq, "mol_circular_eco");
+    const result = await resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["EcoRI"],
+    });
+    expect(result).toMatchObject({
+      topology: "circular",
+      length: 30,
+      enzymes: ["EcoRI"],
+      cutIndexes: [11],
+      fragments: [{ size: 30, start: 12, end: 11, circular: true }],
+      selectedFragment: { size: 30, start: 12, end: 11, circular: true },
+    });
+    expect(result.fragments).toHaveLength(1);
+    expect(result.selectedFragment.sourceSegments).toEqual([
+      { start: 12, end: 30, strand: "+" },
+      { start: 1, end: 11, strand: "+" },
+    ]);
+  });
 });
