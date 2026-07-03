@@ -13,6 +13,7 @@ export type MoleculeErrorCode =
   | "ALPHABET_MISMATCH"
   | "DEPENDENCY_MISSING"
   | "DETERMINISTIC_TOOL_UNAVAILABLE"
+  | "UNSUPPORTED_ENZYME_PROFILE"
   | "INTERNAL_ERROR";
 
 export type ValidationIssue = {

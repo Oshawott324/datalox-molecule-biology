@@ -6,6 +6,20 @@ export { findRestrictionSites, resolveEnzymes, RESTRICTION_ENZYMES, RESTRICTION_
 export type { FindRestrictionSitesOptions, RestrictionEnzyme, RestrictionSite } from "./enzymes.js";
 export { simulateDigest } from "./digest.js";
 export type { DigestFragment, SimulateDigestResult } from "./digest.js";
+export {
+  compatibleRestrictionEnds,
+  regeneratedRecognitionSequence,
+  resolveLigationProfile,
+  restrictionEndFromProfile,
+  RESTRICTION_LIGATION_PROFILES,
+  RESTRICTION_LIGATION_PROFILE_VERSION,
+} from "./assembly.js";
+export type {
+  RestrictionEndCompatibility,
+  RestrictionEndType,
+  RestrictionFragmentEnd,
+  RestrictionLigationProfile,
+} from "./assembly.js";
 export { simulatePcr } from "./pcr.js";
 export type { PcrProduct, SimulatePcrResult } from "./pcr.js";
 export { exportGenBank } from "./export-genbank.js";
