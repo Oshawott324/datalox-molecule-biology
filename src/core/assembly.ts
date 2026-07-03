@@ -31,6 +31,23 @@ export type RestrictionEndCompatibility = {
   reason?: "END_TYPE_MISMATCH" | "OVERHANG_MISMATCH";
 };
 
+export type AssemblyFragmentSelector = "largest_fragment";
+
+export type AssemblySourceSegment = {
+  start: number;
+  end: number;
+  strand: "+" | "-";
+};
+
+export type AssemblyFragment = {
+  id: string;
+  size: number;
+  start: number;
+  end: number;
+  circular: boolean;
+  sourceSegments: AssemblySourceSegment[];
+};
+
 export const RESTRICTION_LIGATION_PROFILES: Record<string, RestrictionLigationProfile> = {
   EcoRI: {
     enzyme: "EcoRI",
@@ -145,4 +162,128 @@ export function regeneratedRecognitionSequence(
   const span = profile.recognitionSequence.length - 1;
   const junction = `${leftSequence.slice(-span)}${rightSequence.slice(0, span)}`;
   return junction.includes(profile.recognitionSequence) ? profile.recognitionSequence : undefined;
+}
+
+export function assemblyFragmentsFromCutIndexes(
+  length: number,
+  topology: "linear" | "circular",
+  cutIndexes: number[],
+): AssemblyFragment[] {
+  if (!Number.isInteger(length) || length < 1) {
+    throw new MoleculeError("INVALID_ARGUMENT", "length must be a positive integer.", { length });
+  }
+  const normalized = uniqueSortedCutIndexes(length, topology, cutIndexes);
+  return topology === "circular"
+    ? circularAssemblyFragments(length, normalized)
+    : linearAssemblyFragments(length, normalized);
+}
+
+export function selectAssemblyFragment(
+  fragments: AssemblyFragment[],
+  selector: AssemblyFragmentSelector = "largest_fragment",
+): AssemblyFragment {
+  if (selector !== "largest_fragment") {
+    throw new MoleculeError("INVALID_ARGUMENT", "W3 only supports largest_fragment selection.", { selector });
+  }
+  if (fragments.length === 0) {
+    throw new MoleculeError("INVALID_ARGUMENT", "At least one fragment is required for selection.");
+  }
+  const sorted = [...fragments].sort((left, right) => right.size - left.size || left.id.localeCompare(right.id));
+  const largest = sorted[0];
+  const tied = sorted.filter((fragment) => fragment.size === largest.size);
+  if (tied.length > 1) {
+    throw new MoleculeError("AMBIGUOUS_FRAGMENT_SELECTION", "Largest-fragment selection has a size tie.", {
+      selector,
+      tiedFragments: tied.map((fragment) => ({
+        id: fragment.id,
+        size: fragment.size,
+        start: fragment.start,
+        end: fragment.end,
+        circular: fragment.circular,
+      })),
+    });
+  }
+  return largest;
+}
+
+function uniqueSortedCutIndexes(length: number, topology: "linear" | "circular", cutIndexes: number[]): number[] {
+  if (!Array.isArray(cutIndexes)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "cutIndexes must be an array.", { cutIndexes });
+  }
+  const valid = cutIndexes.map((cutIndex) => {
+    if (!Number.isInteger(cutIndex)) {
+      throw new MoleculeError("INVALID_ARGUMENT", "cutIndexes entries must be integers.", { cutIndex });
+    }
+    if (topology === "circular") {
+      if (cutIndex < 0 || cutIndex >= length) {
+        throw new MoleculeError("COORDINATE_OUT_OF_RANGE", "Circular cut index must be within [0, length).", { cutIndex, length });
+      }
+      return cutIndex;
+    }
+    if (cutIndex <= 0 || cutIndex >= length) {
+      throw new MoleculeError("COORDINATE_OUT_OF_RANGE", "Linear cut index must be within (0, length).", { cutIndex, length });
+    }
+    return cutIndex;
+  });
+  return [...new Set(valid)].sort((left, right) => left - right);
+}
+
+function linearAssemblyFragments(length: number, cutIndexes: number[]): AssemblyFragment[] {
+  const boundaries = [0, ...cutIndexes, length];
+  const fragments: AssemblyFragment[] = [];
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const startIndex = boundaries[index];
+    const endIndex = boundaries[index + 1];
+    fragments.push({
+      id: `fragment_${index + 1}`,
+      size: endIndex - startIndex,
+      start: startIndex + 1,
+      end: endIndex,
+      circular: false,
+      sourceSegments: [{ start: startIndex + 1, end: endIndex, strand: "+" }],
+    });
+  }
+  return fragments;
+}
+
+function circularAssemblyFragments(length: number, cutIndexes: number[]): AssemblyFragment[] {
+  if (cutIndexes.length <= 1) {
+    const cutIndex = cutIndexes[0];
+    const start = cutIndex === undefined || cutIndex === 0 ? 1 : cutIndex + 1;
+    const end = cutIndex === undefined || cutIndex === 0 ? length : cutIndex;
+    return [{
+      id: "fragment_1",
+      size: length,
+      start,
+      end,
+      circular: true,
+      sourceSegments: circularSourceSegments(length, start, end),
+    }];
+  }
+
+  const fragments: AssemblyFragment[] = [];
+  for (let index = 0; index < cutIndexes.length; index += 1) {
+    const current = cutIndexes[index];
+    const next = cutIndexes[(index + 1) % cutIndexes.length];
+    const wraps = next <= current;
+    const start = current + 1;
+    const end = next === 0 ? length : next;
+    fragments.push({
+      id: `fragment_${index + 1}`,
+      size: wraps ? length - current + next : next - current,
+      start,
+      end,
+      circular: wraps,
+      sourceSegments: circularSourceSegments(length, start, end),
+    });
+  }
+  return fragments;
+}
+
+function circularSourceSegments(length: number, start: number, end: number): AssemblySourceSegment[] {
+  if (start <= end) return [{ start, end, strand: "+" }];
+  return [
+    { start, end: length, strand: "+" },
+    { start: 1, end, strand: "+" },
+  ];
 }

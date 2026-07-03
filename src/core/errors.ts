@@ -14,6 +14,7 @@ export type MoleculeErrorCode =
   | "DEPENDENCY_MISSING"
   | "DETERMINISTIC_TOOL_UNAVAILABLE"
   | "UNSUPPORTED_ENZYME_PROFILE"
+  | "AMBIGUOUS_FRAGMENT_SELECTION"
   | "INTERNAL_ERROR";
 
 export type ValidationIssue = {

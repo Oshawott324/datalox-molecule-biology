@@ -47,6 +47,7 @@ export {
   exportGenBank,
   findOrfs,
   findRestrictionSites,
+  assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
   RESTRICTION_ENZYMES,
   RESTRICTION_ENZYME_TABLE_VERSION,
@@ -55,6 +56,7 @@ export {
   regeneratedRecognitionSequence,
   resolveEnzymes,
   resolveLigationProfile,
+  selectAssemblyFragment,
   restrictionEndFromProfile,
   renderDigestGel,
   simulateDigest,
@@ -104,6 +106,9 @@ export type {
   AlignMode,
   AlignmentResult,
   AlignSequencesOptions,
+  AssemblyFragment,
+  AssemblyFragmentSelector,
+  AssemblySourceSegment,
 } from "./core/deterministic.js";
 export {
   handleDeleteFeature,

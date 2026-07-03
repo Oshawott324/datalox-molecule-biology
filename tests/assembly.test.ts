@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
   regeneratedRecognitionSequence,
   resolveLigationProfile,
+  selectAssemblyFragment,
   restrictionEndFromProfile,
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
@@ -169,5 +171,101 @@ describe("restriction ligation profiles", () => {
     // junction = "AACCC" + "GGGAA" = "AACCCGGGAA" ⊃ "CCCGGG"
     expect(regeneratedRecognitionSequence("AAACCC", "GGGAAA", sma)).toBe("CCCGGG");
     expect(regeneratedRecognitionSequence("AAACCC", "AAAAA", sma)).toBeUndefined();
+  });
+
+  it("enumerates linear assembly fragments from deterministic cut indexes", () => {
+    const fragments = assemblyFragmentsFromCutIndexes(100, "linear", [20, 70]);
+    expect(fragments).toEqual([
+      {
+        id: "fragment_1",
+        size: 20,
+        start: 1,
+        end: 20,
+        circular: false,
+        sourceSegments: [{ start: 1, end: 20, strand: "+" }],
+      },
+      {
+        id: "fragment_2",
+        size: 50,
+        start: 21,
+        end: 70,
+        circular: false,
+        sourceSegments: [{ start: 21, end: 70, strand: "+" }],
+      },
+      {
+        id: "fragment_3",
+        size: 30,
+        start: 71,
+        end: 100,
+        circular: false,
+        sourceSegments: [{ start: 71, end: 100, strand: "+" }],
+      },
+    ]);
+    expect(selectAssemblyFragment(fragments)).toMatchObject({ id: "fragment_2", size: 50 });
+  });
+
+  it("enumerates circular assembly fragments with explicit wraparound source segments", () => {
+    const fragments = assemblyFragmentsFromCutIndexes(100, "circular", [20, 70]);
+    expect(fragments).toEqual([
+      {
+        id: "fragment_1",
+        size: 50,
+        start: 21,
+        end: 70,
+        circular: false,
+        sourceSegments: [{ start: 21, end: 70, strand: "+" }],
+      },
+      {
+        id: "fragment_2",
+        size: 50,
+        start: 71,
+        end: 20,
+        circular: true,
+        sourceSegments: [
+          { start: 71, end: 100, strand: "+" },
+          { start: 1, end: 20, strand: "+" },
+        ],
+      },
+    ]);
+    expect(() => selectAssemblyFragment(fragments)).toThrow(expect.objectContaining({
+      code: "AMBIGUOUS_FRAGMENT_SELECTION",
+    }));
+  });
+
+  it("returns the full linearized circular molecule for zero or one circular cut", () => {
+    expect(assemblyFragmentsFromCutIndexes(12, "circular", [])).toEqual([
+      {
+        id: "fragment_1",
+        size: 12,
+        start: 1,
+        end: 12,
+        circular: true,
+        sourceSegments: [{ start: 1, end: 12, strand: "+" }],
+      },
+    ]);
+    expect(assemblyFragmentsFromCutIndexes(12, "circular", [5])).toEqual([
+      {
+        id: "fragment_1",
+        size: 12,
+        start: 6,
+        end: 5,
+        circular: true,
+        sourceSegments: [
+          { start: 6, end: 12, strand: "+" },
+          { start: 1, end: 5, strand: "+" },
+        ],
+      },
+    ]);
+  });
+
+  it("rejects invalid cut indexes before fragment selection", () => {
+    expect(() => assemblyFragmentsFromCutIndexes(10, "linear", [0]))
+      .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
+    expect(() => assemblyFragmentsFromCutIndexes(10, "linear", [10]))
+      .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
+    expect(() => assemblyFragmentsFromCutIndexes(10, "circular", [10]))
+      .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
+    expect(() => assemblyFragmentsFromCutIndexes(10, "circular", [-1]))
+      .toThrow(expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }));
   });
 });

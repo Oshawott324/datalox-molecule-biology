@@ -7,14 +7,19 @@ export type { FindRestrictionSitesOptions, RestrictionEnzyme, RestrictionSite } 
 export { simulateDigest } from "./digest.js";
 export type { DigestFragment, SimulateDigestResult } from "./digest.js";
 export {
+  assemblyFragmentsFromCutIndexes,
   compatibleRestrictionEnds,
   regeneratedRecognitionSequence,
   resolveLigationProfile,
+  selectAssemblyFragment,
   restrictionEndFromProfile,
   RESTRICTION_LIGATION_PROFILES,
   RESTRICTION_LIGATION_PROFILE_VERSION,
 } from "./assembly.js";
 export type {
+  AssemblyFragment,
+  AssemblyFragmentSelector,
+  AssemblySourceSegment,
   RestrictionEndCompatibility,
   RestrictionEndType,
   RestrictionFragmentEnd,
