@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from "../core/context.js";
@@ -227,6 +228,35 @@ export type DesignGrnasToolInput = MoleculeToolInput & {
   };
 };
 
+export type DoctorDependencyStatus = {
+  name: string;
+  command: string;
+  requiredFor: string[];
+  available: boolean;
+  version?: string;
+  exitCode?: number | null;
+  error?: string;
+  install: {
+    macos: string;
+    linux: string;
+    windows: string;
+  };
+};
+
+export type DoctorResult = {
+  package: string;
+  runtime: {
+    nodeVersion: string;
+    platform: NodeJS.Platform;
+    arch: string;
+    cwd: string;
+  };
+  tools: string[];
+  optionalDependencies: {
+    primer3_core: DoctorDependencyStatus;
+  };
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -293,10 +323,20 @@ export async function runToolHandler<TName extends ToolName>(
 }
 
 export async function handleDoctor(): Promise<ToolResultEnvelope> {
-  return toolSuccess("doctor", {
+  const result: DoctorResult = {
     package: packageName,
+    runtime: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cwd: process.cwd(),
+    },
     tools: Object.keys(toolHandlers).filter((name) => name !== "doctor"),
-  });
+    optionalDependencies: {
+      primer3_core: primer3CoreStatus(),
+    },
+  };
+  return toolSuccess("doctor", result);
 }
 
 export async function handleOpenSequence(input: OpenSequenceInput): Promise<ToolResultEnvelope> {
@@ -783,6 +823,39 @@ export async function handleDesignGrnas(input: DesignGrnasToolInput): Promise<To
   } catch (error) {
     return toolFailureFromError(tool, error);
   }
+}
+
+function primer3CoreStatus(): DoctorDependencyStatus {
+  const result = spawnSync("primer3_core", ["--version"], { encoding: "utf8" });
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  const version = output.split(/\r?\n/).map((line) => line.trim()).find((line) => line.length > 0);
+  if (result.error) {
+    return {
+      name: "primer3_core",
+      command: "primer3_core",
+      requiredFor: ["design_primers"],
+      available: false,
+      error: result.error.message,
+      install: primer3InstallInstructions(),
+    };
+  }
+  return {
+    name: "primer3_core",
+    command: "primer3_core",
+    requiredFor: ["design_primers"],
+    available: result.status === 0,
+    ...(version ? { version } : {}),
+    exitCode: result.status,
+    install: primer3InstallInstructions(),
+  };
+}
+
+function primer3InstallInstructions(): DoctorDependencyStatus["install"] {
+  return {
+    macos: "brew install primer3",
+    linux: "sudo apt-get install primer3",
+    windows: "No official native primer3_core.exe is published; run the MCP server inside WSL or Docker with primer3 installed there.",
+  };
 }
 
 function assemblySideInput(value: unknown, name: "vector" | "insert"): {

@@ -161,6 +161,92 @@ Verify the server end to end:
    envelope returns `workspacePath`, `moleculeIds`, and `revision` for the next
    call.
 
+## Optional dependencies
+
+Most tools are pure TypeScript and need only Node.js. One tool currently
+requires an external binary on the server's `PATH`:
+
+| Tool | Binary | Required for |
+|---|---|---|
+| `design_primers` | `primer3_core` | PCR primer design |
+
+If the binary is absent the tool returns `DEPENDENCY_MISSING` with the name of
+the missing binary, so agents can surface a clear error instead of a silent
+failure. No other tools are affected.
+
+### Installing primer3_core
+
+**macOS**
+
+```bash
+brew install primer3
+primer3_core --version   # verify
+```
+
+**Linux (Debian / Ubuntu)**
+
+```bash
+sudo apt-get install primer3
+primer3_core --version
+```
+
+**Linux via Conda (any distro)**
+
+```bash
+conda install -c bioconda primer3
+primer3_core --version
+```
+
+**Windows**
+
+Primer3 does not publish a pre-built Windows `.exe`. The binary is distributed
+as source for Unix systems only. For a step-by-step Windows walkthrough, see
+[windows-wsl-setup.md](windows-wsl-setup.md). On Windows you have two options:
+
+*Option A — WSL (recommended).* Install Ubuntu in WSL 2, then install primer3
+inside it:
+
+```bash
+# inside WSL Ubuntu shell
+sudo apt-get install primer3
+primer3_core --version
+```
+
+Then run the **entire MCP server stack inside WSL** as well, so that
+`spawn("primer3_core")` resolves against the WSL PATH:
+
+```bash
+# inside WSL Ubuntu shell — clone, build, and run from there
+cd /path/to/repo
+npm install && npm run build
+node dist/src/cli/main.js mcp-server
+```
+
+Point Claude Desktop or Cursor at the WSL launch command using the WSL path.
+Running primer3 inside WSL but the Node.js server on Windows will not work —
+both must live in the same process environment.
+
+*Option B — Docker.* Use a Dockerfile that installs Node.js and primer3 together
+in a Linux container. The MCP server runs inside the container and the host
+connects via stdio using Docker's `run -i` flag.
+
+### Verifying primer3_core is reachable
+
+```bash
+# macOS / Linux / WSL
+which primer3_core
+primer3_core --help | head -5
+```
+
+```powershell
+# Windows PowerShell (only if you placed a native binary on PATH)
+(Get-Command primer3_core).Source
+```
+
+If `which` / `Get-Command` returns a path the server can call it. If not, the
+binary is either not installed or not on the PATH that the MCP host uses when
+spawning the server process.
+
 ## Troubleshooting
 
 **"The server appears to hang" when I launch it directly.** This is normal. A
@@ -181,3 +267,9 @@ directory other than the repo root using absolute paths.
 
 **Node version errors.** The package requires Node >= 20. Check `node --version`
 and upgrade if needed.
+
+**`design_primers` returns `DEPENDENCY_MISSING`.** `primer3_core` is not on the
+PATH used by the MCP host process. See the [Optional dependencies](#optional-dependencies)
+section above for installation instructions. On Windows this almost always means
+primer3 is inside WSL but the server is running on Windows — both must run in the
+same environment.

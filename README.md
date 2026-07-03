@@ -23,6 +23,8 @@ npm run build
 
 Installed as a package, the equivalent launch is `molecule-biology mcp-server`. Hosts discover tools via `tools/list`. Results use a structured envelope (`ok`, `agentContract`, `data`, `workspacePath`, `revision`, `nextAction`, and `artifacts` when files are produced). See [docs/mcp-host-setup.md](docs/mcp-host-setup.md) for host-specific setup.
 
+Windows users: `design_primers` requires Primer3, which has no official native Windows binary. See [docs/windows-wsl-setup.md](docs/windows-wsl-setup.md) for the WSL setup walkthrough.
+
 ## Demos
 
 Both demos launch the built stdio server as a child process and exercise the real MCP boundary:

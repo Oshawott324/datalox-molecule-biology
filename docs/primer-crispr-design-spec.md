@@ -101,9 +101,9 @@ If `primer3_core` is not available on `PATH`, return a structured error:
     "details": {
       "dependency": "primer3_core",
       "install": [
-        "brew install primer3",
-        "apt install primer3",
-        "or install the binary from primer3.org"
+        "macOS: brew install primer3",
+        "Linux/WSL: sudo apt-get install primer3",
+        "Windows: no official native primer3_core.exe is published; run the MCP server inside WSL or Docker with primer3 installed there"
       ]
     }
   }

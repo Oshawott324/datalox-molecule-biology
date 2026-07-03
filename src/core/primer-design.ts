@@ -198,7 +198,11 @@ function runPrimer3Core(input: string): Promise<string> {
       if (error.code === "ENOENT") {
         reject(new MoleculeError("DEPENDENCY_MISSING", "primer3_core was not found on PATH.", {
           dependency: "primer3_core",
-          install: ["brew install primer3", "apt install primer3", "or install the binary from primer3.org"],
+          install: [
+            "macOS: brew install primer3",
+            "Linux/WSL: sudo apt-get install primer3",
+            "Windows: no official native primer3_core.exe is published; run the MCP server inside WSL or Docker with primer3 installed there",
+          ],
         }));
         return;
       }

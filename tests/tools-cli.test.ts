@@ -20,6 +20,39 @@ async function tempWorkspaceDir(): Promise<string> {
 }
 
 describe("tool handlers and CLI parity", () => {
+  it("reports optional dependency status through doctor", async () => {
+    const cli = await runCli(["doctor"]);
+    const envelope = JSON.parse(cli.stdout) as ToolResultEnvelope;
+
+    expect(cli.exitCode).toBe(0);
+    expect(envelope).toMatchObject({
+      ok: true,
+      tool: "doctor",
+      data: {
+        package: "@datalox/molecule-biology",
+        runtime: {
+          nodeVersion: expect.stringMatching(/^v\d+/),
+          platform: expect.any(String),
+          arch: expect.any(String),
+          cwd: expect.any(String),
+        },
+        optionalDependencies: {
+          primer3_core: {
+            name: "primer3_core",
+            command: "primer3_core",
+            requiredFor: ["design_primers"],
+            available: expect.any(Boolean),
+            install: {
+              macos: "brew install primer3",
+              linux: "sudo apt-get install primer3",
+              windows: expect.stringContaining("WSL or Docker"),
+            },
+          },
+        },
+      },
+    });
+  });
+
   it("matches direct handler output for a CLI command", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
