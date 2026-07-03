@@ -56,6 +56,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `export_genbank` | Export a molecule and workspace features to GenBank. |
 | `render_plasmid_map` | Render a deterministic circular plasmid SVG map artifact. |
 | `render_digest_gel` | Render a deterministic SVG gel artifact from digest or PCR fragment sizes. |
+| `align_sequences` | Align two sequences with deterministic Needleman-Wunsch global alignment (match/mismatch/linear-gap scoring). |
 
 Every MCP tool has a matching `molecule-biology <command>` CLI subcommand for scripting and testing.
 

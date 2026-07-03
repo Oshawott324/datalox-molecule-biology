@@ -1,8 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-import { getSequenceContext, listMoleculeSummaries } from "../core/context.js";
+import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from "../core/context.js";
 import {
+  alignSequences,
   exportGenBank,
   findOrfs,
   findRestrictionSites,
@@ -44,7 +45,8 @@ export type ToolName =
   | "simulate_pcr"
   | "export_genbank"
   | "render_plasmid_map"
-  | "render_digest_gel";
+  | "render_digest_gel"
+  | "align_sequences";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -155,6 +157,16 @@ export type RenderDigestGelInput = WorkspaceInput & {
   height?: number;
 };
 
+export type AlignSequencesInput = WorkspaceInput & {
+  sequence?: string;
+  targetSequence?: string;
+  moleculeId?: string;
+  targetMoleculeId?: string;
+  match?: number;
+  mismatch?: number;
+  gap?: number;
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -177,6 +189,7 @@ export type ToolInputByName = {
   export_genbank: ExportGenBankInput;
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
+  align_sequences: AlignSequencesInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -203,6 +216,7 @@ export const toolHandlers = {
   export_genbank: handleExportGenBank,
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
+  align_sequences: handleAlignSequences,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -582,8 +596,60 @@ export async function handleRenderDigestGel(input: RenderDigestGelInput): Promis
   }
 }
 
-async function readWorkspaceEnvelope(tool: "open_workspace" | "read_workspace", input: WorkspaceInput): Promise<ToolResultEnvelope> {
+export async function handleAlignSequences(input: AlignSequencesInput): Promise<ToolResultEnvelope> {
+  const tool = "align_sequences";
   try {
+    if (input.match !== undefined) assertInteger(input.match, "match");
+    if (input.mismatch !== undefined) assertInteger(input.mismatch, "mismatch");
+    if (input.gap !== undefined) assertInteger(input.gap, "gap");
+
+    const query = await resolveAlignmentSequence(input, input.sequence, input.moleculeId, "sequence", "moleculeId");
+    const target = await resolveAlignmentSequence(input, input.targetSequence, input.targetMoleculeId, "targetSequence", "targetMoleculeId");
+
+    const result = alignSequences(query.sequence, target.sequence, {
+      ...(input.match !== undefined ? { match: input.match } : {}),
+      ...(input.mismatch !== undefined ? { mismatch: input.mismatch } : {}),
+      ...(input.gap !== undefined ? { gap: input.gap } : {}),
+    });
+
+    const usesWorkspace = query.moleculeId !== undefined || target.moleculeId !== undefined;
+    return toolSuccess(
+      tool,
+      { ...(usesWorkspace ? { workspacePath: workspacePathFromInput(input) } : {}), ...result },
+      usesWorkspace ? { workspacePath: workspacePathFromInput(input) } : {},
+    );
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+async function resolveAlignmentSequence(
+  input: WorkspaceInput,
+  sequence: string | undefined,
+  moleculeId: string | undefined,
+  sequenceField: string,
+  moleculeField: string,
+): Promise<{ sequence: string; moleculeId?: string }> {
+  const hasSequence = sequence !== undefined;
+  const hasMolecule = moleculeId !== undefined;
+  if (hasSequence === hasMolecule) {
+    throw new MoleculeError(
+      "INVALID_ARGUMENT",
+      `Provide exactly one of ${sequenceField} or ${moleculeField}.`,
+      { [sequenceField]: sequence, [moleculeField]: moleculeId },
+    );
+  }
+  if (hasSequence) {
+    assertNonEmptyString(sequence, sequenceField);
+    return { sequence };
+  }
+  assertNonEmptyString(moleculeId, moleculeField);
+  const workspacePath = workspacePathFromInput(input);
+  const resolved = await readMoleculeSequence(workspacePath, moleculeId);
+  return { sequence: resolved.sequence, moleculeId };
+}
+
+async function readWorkspaceEnvelope(tool: "open_workspace" | "read_workspace", input: WorkspaceInput): Promise<ToolResultEnvelope> {  try {
     const workspacePath = workspacePathFromInput(input);
     const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: input.checkSequenceDigests ?? true });
     return toolSuccess(tool, { workspacePath, workspace }, {
@@ -641,6 +707,13 @@ function assertNonNegativeInteger(value: unknown, name: string): number {
 function assertPositiveInteger(value: unknown, name: string): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     throw new MoleculeError("INVALID_ARGUMENT", `${name} must be a positive integer.`, { [name]: value });
+  }
+  return value;
+}
+
+function assertInteger(value: unknown, name: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new MoleculeError("INVALID_ARGUMENT", `${name} must be an integer.`, { [name]: value });
   }
   return value;
 }

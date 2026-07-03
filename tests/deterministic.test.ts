@@ -5,9 +5,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  alignSequences,
   exportGenBank,
   findOrfs,
   findRestrictionSites,
+  handleAlignSequences,
   importSequenceFile,
   readMoleculeSequence,
   readWorkspace,
@@ -325,5 +327,133 @@ ORIGIN
 
     expect(sites).toHaveLength(1);
     expect(sites[0]).toMatchObject({ enzyme: "XhoI", cutPosition: 250 });
+  });
+
+  it("aligns identical sequences at 100% identity with no gaps or mismatches", () => {
+    const result = alignSequences("ACGT", "ACGT");
+    expect(result).toEqual({
+      queryAligned: "ACGT",
+      targetAligned: "ACGT",
+      identityPercent: 100,
+      identicalPositions: 4,
+      alignedLength: 4,
+      mismatches: 0,
+      gaps: 0,
+      score: 4,
+      scoringParams: { match: 1, mismatch: -1, gap: -2 },
+    });
+  });
+
+  it("reports a single substitution as one mismatch with no gaps", () => {
+    const result = alignSequences("ACGT", "ACTT");
+    expect(result).toMatchObject({
+      queryAligned: "ACGT",
+      targetAligned: "ACTT",
+      identityPercent: 75,
+      identicalPositions: 3,
+      alignedLength: 4,
+      mismatches: 1,
+      gaps: 0,
+    });
+  });
+
+  it("pins the gapped alignment for a single insertion in the target", () => {
+    const result = alignSequences("ACGT", "ACGAT");
+    expect(result).toMatchObject({
+      queryAligned: "ACG-T",
+      targetAligned: "ACGAT",
+      alignedLength: 5,
+      identicalPositions: 4,
+      mismatches: 0,
+      gaps: 1,
+      score: 2,
+    });
+    expect(result.identityPercent).toBe(80);
+  });
+
+  it("treats two empty sequences as a 100% identity, zero-length alignment", () => {
+    const result = alignSequences("", "");
+    expect(result).toEqual({
+      queryAligned: "",
+      targetAligned: "",
+      identityPercent: 100,
+      identicalPositions: 0,
+      alignedLength: 0,
+      mismatches: 0,
+      gaps: 0,
+      score: 0,
+      scoringParams: { match: 1, mismatch: -1, gap: -2 },
+    });
+  });
+
+  it("echoes overridden scoring parameters and stays deterministic", () => {
+    const result = alignSequences("ACGTACGT", "ACGAACGT", { match: 2, mismatch: -3, gap: -5 });
+    expect(result.scoringParams).toEqual({ match: 2, mismatch: -3, gap: -5 });
+    expect(result.mismatches).toBe(1);
+    expect(result.score).toBe(2 * 7 + -3);
+  });
+
+  const invariantPairs: Array<[string, string, string]> = [
+    ["identical", "ACGTACGTAC", "ACGTACGTAC"],
+    ["substitution", "GATTACAGATTACA", "GATTACCGATTACA"],
+    ["insertion", "ACGTACGT", "ACGTTACGT"],
+    ["deletion", "ACGTTACGT", "ACGTACGT"],
+    ["divergent", "ACGTACGTAC", "TTGGCCAATT"],
+  ];
+
+  for (const [name, query, target] of invariantPairs) {
+    it(`upholds structural alignment invariants (${name})`, () => {
+      const result = alignSequences(query, target);
+      // Removing gaps from each aligned row recovers the original input.
+      expect(result.queryAligned.replace(/-/g, "")).toBe(query);
+      expect(result.targetAligned.replace(/-/g, "")).toBe(target);
+      // Both aligned rows are the same width.
+      expect(result.targetAligned.length).toBe(result.queryAligned.length);
+      expect(result.alignedLength).toBe(result.queryAligned.length);
+      // Every column is exactly one of: identity, mismatch, or gap.
+      expect(result.identicalPositions + result.mismatches + result.gaps).toBe(result.alignedLength);
+      // Score decomposes from the (default, linear) scoring parameters.
+      expect(result.score).toBe(result.identicalPositions * 1 + result.mismatches * -1 + result.gaps * -2);
+      // Reported percentage matches the identity/length ratio at the pinned precision.
+      expect(result.identityPercent).toBe(Math.round((result.identicalPositions / result.alignedLength) * 10000) / 100);
+    });
+  }
+
+  it("keeps the alignment score symmetric under query/target swap", () => {
+    for (const [, query, target] of invariantPairs) {
+      expect(alignSequences(query, target).score).toBe(alignSequences(target, query).score);
+    }
+  });
+
+  it("aligns two workspace molecules by id through the align_sequences tool", async () => {
+    const workspaceDir = await tempDir("mol-align-ws-");
+    const queryPath = path.join(workspaceDir, "query.fa");
+    const targetPath = path.join(workspaceDir, "target.fa");
+    await fs.writeFile(queryPath, ">query\nACGTACGT\n", "utf8");
+    await fs.writeFile(targetPath, ">target\nACGAACGT\n", "utf8");
+    const imported = await importSequenceFile({ inputPath: queryPath, workspaceDir, format: "fasta", moleculeId: "mol_query" });
+    await importSequenceFile({ inputPath: targetPath, workspaceDir, format: "fasta", moleculeId: "mol_target", expectedRevision: imported.revision });
+
+    const envelope = await handleAlignSequences({ workspaceDir, moleculeId: "mol_query", targetMoleculeId: "mol_target" });
+    expect(envelope).toMatchObject({
+      ok: true,
+      tool: "align_sequences",
+      data: {
+        queryAligned: "ACGTACGT",
+        targetAligned: "ACGAACGT",
+        identityPercent: 87.5,
+        identicalPositions: 7,
+        mismatches: 1,
+        gaps: 0,
+      },
+    });
+  });
+
+  it("rejects ambiguous or missing sequence sources through the align_sequences tool", async () => {
+    const bothSources = await handleAlignSequences({ sequence: "ACGT", moleculeId: "mol_query", targetSequence: "ACGT" });
+    expect(bothSources).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
+
+    const missingTarget = await handleAlignSequences({ sequence: "ACGT" });
+    expect(missingTarget).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
   });
 });

@@ -295,4 +295,44 @@ export const moleculeToolDescriptors = [
       },
     },
   },
+  {
+    name: "align_sequences",
+    description: "Align two sequences with deterministic Needleman-Wunsch global alignment (match/mismatch/linear-gap scoring).",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        sequence: {
+          type: "string",
+          description: "Raw query sequence. Provide this or moleculeId."
+        },
+        targetSequence: {
+          type: "string",
+          description: "Raw target sequence. Provide this or targetMoleculeId."
+        },
+        moleculeId: {
+          type: "string",
+          description: "Workspace molecule id for the query sequence."
+        },
+        targetMoleculeId: {
+          type: "string",
+          description: "Workspace molecule id for the target sequence."
+        },
+        match: {
+          type: "integer",
+          description: "Match score (default 1)."
+        },
+        mismatch: {
+          type: "integer",
+          description: "Mismatch score (default -1)."
+        },
+        gap: {
+          type: "integer",
+          description: "Linear gap penalty (default -2)."
+        },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

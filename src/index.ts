@@ -55,6 +55,7 @@ export {
   STANDARD_GENETIC_CODE_VERSION,
   translateDnaSequence,
   translateRegion,
+  alignSequences,
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
@@ -77,6 +78,8 @@ export type {
   SimulatePcrResult,
   TranslateRegionOptions,
   TranslateRegionResult,
+  AlignmentResult,
+  AlignSequencesOptions,
 } from "./core/deterministic.js";
 export {
   handleDeleteFeature,
@@ -100,6 +103,7 @@ export {
   handleUpsertFeature,
   handleUpsertPrimer,
   handleValidateWorkspace,
+  handleAlignSequences,
   moleculeToolDescriptors,
   runToolHandler,
   toolFailure,
@@ -111,6 +115,7 @@ export {
 } from "./tools/index.js";
 export type {
   AgentContract,
+  AlignSequencesInput,
   DeleteFeatureInput,
   DeletePrimerInput,
   EnzymeInput,

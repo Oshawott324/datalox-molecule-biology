@@ -11,6 +11,7 @@ import { runReplayDemo } from "../replay/index.js";
 import {
   runToolHandler,
   toolFailureFromError,
+  type AlignSequencesInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
   type EnzymeInput,
@@ -65,6 +66,7 @@ const commandToTool: Record<string, ToolName> = {
   "export-genbank": "export_genbank",
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
+  "align-sequences": "align_sequences",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
@@ -175,6 +177,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "export_genbank") return exportGenBankInput(parsed);
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
+  if (tool === "align_sequences") return alignSequencesInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -341,6 +344,19 @@ async function renderDigestGelInput(parsed: ParsedArgs): Promise<RenderDigestGel
     ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
     ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),
     ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
+  };
+}
+
+function alignSequencesInput(parsed: ParsedArgs): AlignSequencesInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "sequence") !== undefined ? { sequence: stringFlag(parsed, "sequence") } : {}),
+    ...(stringFlag(parsed, "target-sequence") !== undefined ? { targetSequence: stringFlag(parsed, "target-sequence") } : {}),
+    ...(stringFlag(parsed, "molecule-id") !== undefined ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "target-molecule-id") !== undefined ? { targetMoleculeId: stringFlag(parsed, "target-molecule-id") } : {}),
+    ...(stringFlag(parsed, "match") !== undefined ? { match: numberFlag(parsed, "match") } : {}),
+    ...(stringFlag(parsed, "mismatch") !== undefined ? { mismatch: numberFlag(parsed, "mismatch") } : {}),
+    ...(stringFlag(parsed, "gap") !== undefined ? { gap: numberFlag(parsed, "gap") } : {}),
   };
 }
 

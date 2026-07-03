@@ -12,3 +12,5 @@ export { exportGenBank } from "./export-genbank.js";
 export type { ExportGenBankResult } from "./export-genbank.js";
 export { renderDigestGel } from "./render-gel.js";
 export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";
+export { alignSequences } from "./align.js";
+export type { AlignmentResult, AlignSequencesOptions } from "./align.js";
