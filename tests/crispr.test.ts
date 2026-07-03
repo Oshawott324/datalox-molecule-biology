@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { designGrnas, scanSpCas9Guides } from "../src/core/crispr.js";
+import { designGrnas, findWorkspaceOffTargets, scanSpCas9Guides } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
 import { handleDesignGrnas, importSequenceFile } from "../src/index.js";
 
@@ -182,5 +182,62 @@ describe("CR1 SpCas9 guide design", () => {
 
   it("rejects unsupported CR1 options and wraparound target regions", () => {
     expect(() => scanSpCas9Guides("ACGTACGTACGTACGTACGTAGG", { start: 20, end: 1 })).toThrow("targetRegion coordinates are invalid.");
+  });
+
+  it("fails only SEED_HOMOPOLYMER_TOO_LONG when GC is in range but seed has a long run", () => {
+    // Guide: GCGCGCGCAAAAAAAAAAAA — GC=40% (within default [20,80]); seed positions 8-19 = 12 A's (run > 4)
+    const guides = scanSpCas9Guides("GCGCGCGCAAAAAAAAAAAAAGG", { start: 1, end: 20 });
+    expect(guides).toHaveLength(1);
+    expect(guides[0]).toMatchObject({
+      gcPercent: 40,
+      seedRegionMaxHomopolymer: 12,
+      passingFilters: false,
+      filterFailures: ["SEED_HOMOPOLYMER_TOO_LONG"],
+    });
+  });
+
+  it("respects strand option: restricts results to plus or minus strand only", () => {
+    // ACGTACGTACGTACGTACGTAGG has one NGG PAM (plus-strand only) and no valid minus-strand CCN
+    const seq = "ACGTACGTACGTACGTACGTAGG";
+    expect(scanSpCas9Guides(seq, { start: 1, end: 23 }, { strand: "+" })).toHaveLength(1);
+    expect(scanSpCas9Guides(seq, { start: 1, end: 23 }, { strand: "-" })).toHaveLength(0);
+
+    // CCAACGTACGTACGTACGTACGT has one CCN PAM (minus-strand only) and no valid plus-strand NGG
+    const seqMinus = "CCAACGTACGTACGTACGTACGT";
+    expect(scanSpCas9Guides(seqMinus, { start: 1, end: 23 }, { strand: "-" })).toHaveLength(1);
+    expect(scanSpCas9Guides(seqMinus, { start: 1, end: 23 }, { strand: "+" })).toHaveLength(0);
+  });
+
+  it("excludes off-target hits exceeding maxOffTargetMismatches", () => {
+    // off-target sequence: ACGTACGTACGTACGTTCATAGGTTTT has a plus-strand guide at positions 1-20
+    // that differs from candidate at positions 16 (A→T) and 18 (G→A) = 2 mismatches
+    const candidate = {
+      sequence: "ACGTACGTACGTACGTACGT",
+      pam: "AGG",
+      strand: "+" as const,
+      start: 1,
+      end: 20,
+      pamStart: 21,
+      pamEnd: 23,
+      gcPercent: 50,
+      seedRegionMaxHomopolymer: 1,
+      offTargets: [],
+      passingFilters: true,
+      filterFailures: [] as string[],
+    };
+    const refs = [{ moleculeId: "mol_other", sequence: "ACGTACGTACGTACGTTCATAGGTTTT" }];
+
+    const hitsStrict = findWorkspaceOffTargets(candidate, refs, {
+      sourceMoleculeId: "mol_source",
+      maxMismatches: 1,
+    });
+    const hitsPermissive = findWorkspaceOffTargets(candidate, refs, {
+      sourceMoleculeId: "mol_source",
+      maxMismatches: 2,
+    });
+
+    expect(hitsStrict).toHaveLength(0);
+    expect(hitsPermissive).toHaveLength(1);
+    expect(hitsPermissive[0]).toMatchObject({ moleculeId: "mol_other", mismatches: 2, seedMismatches: 2 });
   });
 });
