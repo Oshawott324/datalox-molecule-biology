@@ -55,7 +55,7 @@ type RestrictionLigationProfile = {
   topCutOffset: number;    // cut after this many bases on the recognition top strand
   bottomCutOffset: number; // cut after this many bases on the recognition bottom strand
   endType: "five_prime_overhang" | "three_prime_overhang" | "blunt";
-  overhangSequence: string; // top-strand overhang in recognition orientation; "" for blunt
+  overhangSequence: string; // see convention below; "" for blunt
   source: "NEB" | "REBASE";
 };
 ```
@@ -63,6 +63,16 @@ type RestrictionLigationProfile = {
 Do not infer `bottomCutOffset`, `endType`, or `overhangSequence` from memory or
 from `cutOffset`. Add profiles only after source verification. Enzymes without a
 verified ligation profile return `UNSUPPORTED_ENZYME_PROFILE`.
+
+`overhangSequence` convention:
+
+- For 5' overhangs: top-strand protruding sequence, written 5' to 3' in
+  recognition orientation.
+- For 3' overhangs: recessed top-strand sequence between `bottomCutOffset` and
+  `topCutOffset`, written 5' to 3' in recognition orientation.
+- For blunt ends: `""`.
+
+This convention makes compatibility a single deterministic check:
 
 Compatibility rule:
 
@@ -108,7 +118,7 @@ type SimulateAssemblyInput = {
     moleculeId: string;
     leftEnzyme: string;
     rightEnzyme?: string; // omitted means single-cut vector
-    backbone?: "largest_fragment"; // W3 only supports largest fragment
+    fragment?: "largest_fragment"; // W3 only supports largest fragment
   };
   insert: {
     moleculeId: string;
@@ -184,9 +194,9 @@ Insert:
   fragment.
 - Ties return `AMBIGUOUS_FRAGMENT_SELECTION`.
 
-If an agent wants a smaller insert fragment, it should first create a dedicated
-workspace molecule for that fragment or W3 should later add explicit
-`fragmentStart` / `fragmentEnd` inputs. W3 must not guess intent.
+If an agent wants a smaller vector backbone or insert fragment, it should first
+create a dedicated workspace molecule for that fragment or W3 should later add
+explicit `fragmentStart` / `fragmentEnd` inputs. W3 must not guess intent.
 
 ## End Model
 
@@ -361,13 +371,23 @@ Minimum tests before enabling MCP:
    - Any enzyme added to the digest table without a ligation profile fails with
      `UNSUPPORTED_ENZYME_PROFILE`.
 
-7. **Read-only behavior**
+7. **Ambiguous largest-fragment tie**
+   - A circular molecule with two sites producing equal-length fragments returns
+     `AMBIGUOUS_FRAGMENT_SELECTION`.
+   - The tool must not choose one fragment by coordinate order.
+
+8. **3' overhang enzyme compatibility**
+   - KpnI or PstI ligation is pinned with `endType: "three_prime_overhang"`.
+   - The test verifies `overhangSequence` follows the spec convention and that
+     compatibility uses `reverseComplement(overhangA) === overhangB`.
+
+9. **Read-only behavior**
    - `simulate_assembly` writes GenBank artifacts but does not add molecules to
      `molecule.workspace.json`.
    - Persisting a candidate requires an explicit later `open_sequence` call with
      `expectedRevision`.
 
-8. **Workspace confinement**
+10. **Workspace confinement**
    - Candidate artifacts are written under `reports/assembly/`.
    - Output path traversal is not accepted.
 
