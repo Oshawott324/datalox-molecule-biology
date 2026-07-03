@@ -475,6 +475,17 @@ describe("restriction ligation profiles", () => {
     ]);
   });
 
+  it("propagates AMBIGUOUS_FRAGMENT_SELECTION when two enzymes produce equal-length circular fragments", async () => {
+    // EcoRI (G^AATTC) at pos 1 gives cutIndex 1; BamHI (G^GATCC) at pos 11 gives cutIndex 11.
+    // Both cuts divide the 20 bp circular molecule into two 10 bp fragments, producing a size tie.
+    const source = await importCircularGenBank("GAATTCAAAAGGATCCAAAA", "mol_ambig_frag");
+    await expect(resolveAssemblyFragmentsForMolecule({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      enzymes: ["EcoRI", "BamHI"],
+    })).rejects.toMatchObject({ code: "AMBIGUOUS_FRAGMENT_SELECTION" });
+  });
+
   it("constructs a forward EcoRI/BamHI directional ligation candidate with junction metadata", async () => {
     const vector = await importCircularGenBank(
       "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
@@ -782,5 +793,66 @@ describe("restriction ligation profiles", () => {
     })).rejects.toMatchObject({ code: "INCOMPATIBLE_RESTRICTION_ENDS" });
     await expect(fs.stat(path.join(pair.workspaceDir, "reports", "assembly", "mol_should_not_exist.gb")))
       .rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("names the artifact using candidateId when product is not specified", async () => {
+    const pair = await importVectorAndInsert(
+      "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT",
+      "AAAA" + "GAATTC" + "GGGGGGGGGGGGGG" + "GGATCC" + "AAAA",
+      { vectorId: "mol_vector_defprod", insertId: "mol_insert_defprod" },
+    );
+    const result = await simulateAssembly({
+      workspacePath: pair.workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: pair.vectorId, leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+      insert: { moleculeId: pair.insertId, leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+    });
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].artifacts[0].relativePath).toBe(
+      path.join("reports", "assembly", "candidate_forward.gb"),
+    );
+    expect((await fs.stat(result.candidates[0].artifacts[0].path)).isFile()).toBe(true);
+  });
+
+  it("simulates SmaI blunt-end ligation with regenerated recognition sequences at both junctions", async () => {
+    // Both molecules are circular with a single SmaI (CCC^GGG) site; each linearizes as a full fragment.
+    // SmaI at pos 5 in both molecules gives cutIndex 7. Product = 20 + 15 = 35 bp circular.
+    // These SmaI-generated blunt ends regenerate CCCGGG at the junction because the left end
+    // ends with CCC and the right end starts with GGG.
+    const pair = await importVectorAndInsert(
+      "AAAACCCGGGAAAAAAAAAA", // 20 bp circular; SmaI CCCGGG at pos 5, cutIndex 7
+      "TTTTCCCGGGTTTTT",      // 15 bp circular; SmaI CCCGGG at pos 5, cutIndex 7
+      { vectorId: "mol_smai_vector", insertId: "mol_smai_insert", insertCircular: true },
+    );
+    const result = await simulateAssembly({
+      workspacePath: pair.workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: pair.vectorId, leftEnzyme: "SmaI" },
+      insert: { moleculeId: pair.insertId, leftEnzyme: "SmaI" },
+      product: { moleculeId: "mol_smai_product", topology: "circular" },
+    });
+    expect(result.candidates).toHaveLength(1);
+    const [candidate] = result.candidates;
+    expect(candidate).toMatchObject({
+      topology: "circular",
+      length: 35,
+      orientation: "forward",
+      junctions: [
+        {
+          leftSource: { enzyme: "SmaI", side: "right" },
+          rightSource: { enzyme: "SmaI", side: "left" },
+          endType: "blunt",
+          overhangSequence: "",
+          regeneratedRecognitionSequence: "CCCGGG",
+        },
+        {
+          leftSource: { enzyme: "SmaI", side: "right" },
+          rightSource: { enzyme: "SmaI", side: "left" },
+          endType: "blunt",
+          overhangSequence: "",
+          regeneratedRecognitionSequence: "CCCGGG",
+        },
+      ],
+    });
   });
 });
