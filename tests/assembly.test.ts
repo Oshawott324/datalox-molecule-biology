@@ -116,6 +116,14 @@ describe("restriction ligation profiles", () => {
         overhangSequence: "",
         sourceUrl: "https://www.neb.com/en/products/r0141-smai",
       },
+      XmaI: {
+        recognitionSequence: "CCCGGG",
+        topCutOffset: 1,
+        bottomCutOffset: 5,
+        endType: "five_prime_overhang",
+        overhangSequence: "CCGG",
+        sourceUrl: "https://www.neb.com/en-us/products/r0180-xmai",
+      },
       KpnI: {
         recognitionSequence: "GGTACC",
         topCutOffset: 5,
@@ -167,6 +175,21 @@ describe("restriction ligation profiles", () => {
       compatible: true,
       left: { enzyme: "SmaI", endType: "blunt", overhangSequence: "" },
       right: { enzyme: "SmaI", endType: "blunt", overhangSequence: "" },
+    });
+  });
+
+  it("pins XmaI as a 5-prime overhang neoschizomer of blunt SmaI", () => {
+    const xma = restrictionEndFromProfile(resolveLigationProfile("XmaI"));
+    const sma = restrictionEndFromProfile(resolveLigationProfile("SmaI"));
+    expect(xma).toMatchObject({
+      enzyme: "XmaI",
+      endType: "five_prime_overhang",
+      overhangSequence: "CCGG",
+    });
+    expect(compatibleRestrictionEnds(xma, xma)).toMatchObject({ compatible: true });
+    expect(compatibleRestrictionEnds(xma, sma)).toMatchObject({
+      compatible: false,
+      reason: "END_TYPE_MISMATCH",
     });
   });
 
@@ -518,6 +541,7 @@ describe("restriction ligation profiles", () => {
     expect(insertResolved.selectedFragment).toMatchObject({ start: 6, end: 25, size: 20 });
     expect(candidate).toMatchObject({
       candidateId: "candidate_forward",
+      name: "candidate_forward",
       topology: "circular",
       length: 50,
       orientation: "forward",
@@ -534,6 +558,40 @@ describe("restriction ligation profiles", () => {
           role: "insert",
           moleculeId: "mol_insert",
           segments: [{ start: 6, end: 25, strand: "+" }],
+        },
+      ],
+      ends: [
+        {
+          role: "vector",
+          moleculeId: "mol_vector",
+          enzyme: "BamHI",
+          side: "left",
+          endType: "five_prime_overhang",
+          overhangSequence: "GATC",
+        },
+        {
+          role: "vector",
+          moleculeId: "mol_vector",
+          enzyme: "EcoRI",
+          side: "right",
+          endType: "five_prime_overhang",
+          overhangSequence: "AATT",
+        },
+        {
+          role: "insert",
+          moleculeId: "mol_insert",
+          enzyme: "EcoRI",
+          side: "left",
+          endType: "five_prime_overhang",
+          overhangSequence: "AATT",
+        },
+        {
+          role: "insert",
+          moleculeId: "mol_insert",
+          enzyme: "BamHI",
+          side: "right",
+          endType: "five_prime_overhang",
+          overhangSequence: "GATC",
         },
       ],
       junctions: [
@@ -709,6 +767,7 @@ describe("restriction ligation profiles", () => {
       candidates: [
         {
           candidateId: "candidate_forward",
+          name: "product_sim",
           topology: "circular",
           length: 50,
           orientation: "forward",
@@ -834,9 +893,16 @@ describe("restriction ligation profiles", () => {
     expect(result.candidates).toHaveLength(1);
     const [candidate] = result.candidates;
     expect(candidate).toMatchObject({
+      name: "mol_smai_product",
       topology: "circular",
       length: 35,
       orientation: "forward",
+      ends: [
+        { role: "vector", enzyme: "SmaI", side: "left", endType: "blunt", overhangSequence: "" },
+        { role: "vector", enzyme: "SmaI", side: "right", endType: "blunt", overhangSequence: "" },
+        { role: "insert", enzyme: "SmaI", side: "left", endType: "blunt", overhangSequence: "" },
+        { role: "insert", enzyme: "SmaI", side: "right", endType: "blunt", overhangSequence: "" },
+      ],
       junctions: [
         {
           leftSource: { enzyme: "SmaI", side: "right" },

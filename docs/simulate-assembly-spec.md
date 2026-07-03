@@ -1,6 +1,7 @@
 # W3 `simulate_assembly` Spec
 
-Status: specification pinned; implementation pending.
+Status: restriction-ligation implementation complete; this document remains the
+contract for W3 boundaries and future hardening.
 
 This document scopes W3 as deterministic restriction-ligation simulation only.
 Gibson, Golden Gate, Gateway, In-Fusion, overlap-primer design, and wet-lab
@@ -204,12 +205,13 @@ Each selected fragment has two ordered ends:
 
 ```ts
 type RestrictionFragmentEnd = {
-  sourceMoleculeId: string;
+  role: "vector" | "insert";
+  moleculeId: string;
   enzyme: string;
   side: "left" | "right";
   endType: "five_prime_overhang" | "three_prime_overhang" | "blunt";
   overhangSequence: string;
-  compatibleWith: string[];
+  ligationProfileVersion: string;
 };
 ```
 

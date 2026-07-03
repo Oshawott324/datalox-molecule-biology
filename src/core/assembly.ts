@@ -87,8 +87,19 @@ export type AssemblyJunction = {
   regeneratedRecognitionSequence?: string;
 };
 
+export type AssemblyCandidateEnd = {
+  role: "vector" | "insert";
+  moleculeId: string;
+  enzyme: string;
+  side: "left" | "right";
+  endType: RestrictionEndType;
+  overhangSequence: string;
+  ligationProfileVersion: typeof RESTRICTION_LIGATION_PROFILE_VERSION;
+};
+
 export type AssemblyCandidate = {
   candidateId: string;
+  name: string;
   topology: "circular" | "linear";
   length: number;
   sequence: string;
@@ -100,6 +111,7 @@ export type AssemblyCandidate = {
     segments: AssemblySourceSegment[];
   }>;
   junctions: AssemblyJunction[];
+  ends: AssemblyCandidateEnd[];
 };
 
 export type ConstructRestrictionLigationCandidatesInput = {
@@ -196,6 +208,16 @@ export const RESTRICTION_LIGATION_PROFILES: Record<string, RestrictionLigationPr
     overhangSequence: "",
     source: "NEB",
     sourceUrl: "https://www.neb.com/en/products/r0141-smai",
+  },
+  XmaI: {
+    enzyme: "XmaI",
+    recognitionSequence: "CCCGGG",
+    topCutOffset: 1,
+    bottomCutOffset: 5,
+    endType: "five_prime_overhang",
+    overhangSequence: "CCGG",
+    source: "NEB",
+    sourceUrl: "https://www.neb.com/en-us/products/r0180-xmai",
   },
   KpnI: {
     enzyme: "KpnI",
@@ -377,24 +399,29 @@ export async function simulateAssembly(input: SimulateAssemblyInput): Promise<Si
     topology: input.product?.topology ?? "circular",
   });
   const withArtifacts: SimulateAssemblyCandidate[] = [];
+  const productName = input.product?.name ?? input.product?.moleculeId;
   for (const candidate of candidates) {
     const artifactMoleculeId = input.product?.moleculeId === undefined
       ? undefined
       : candidates.length === 1
         ? input.product.moleculeId
         : `${input.product.moleculeId}_${candidate.orientation}`;
-    const artifactName = input.product?.name === undefined
+    const artifactName = productName === undefined
       ? undefined
       : candidates.length === 1
-        ? input.product.name
-        : `${input.product.name} ${candidate.orientation}`;
+        ? productName
+        : `${productName} ${candidate.orientation}`;
     const artifact = await writeAssemblyCandidateGenBank(input.workspacePath, candidate, {
       moleculeId: artifactMoleculeId,
       name: artifactName,
     });
     const { sequence: _sequence, ...publicCandidate } = candidate;
     void _sequence;
-    withArtifacts.push({ ...publicCandidate, artifacts: [artifact] });
+    withArtifacts.push({
+      ...publicCandidate,
+      name: artifactName ?? publicCandidate.name,
+      artifacts: [artifact],
+    });
   }
   return {
     method: "restriction_ligation",
@@ -517,6 +544,7 @@ function constructRestrictionLigationCandidate(
 
   return {
     candidateId: `candidate_${orientation}`,
+    name: `candidate_${orientation}`,
     topology: input.topology ?? "circular",
     length: productSequence.length,
     sequence: productSequence,
@@ -535,6 +563,29 @@ function constructRestrictionLigationCandidate(
       },
     ],
     junctions: [directJunction, closingJunction],
+    ends: [
+      assemblyCandidateEnd("vector", input.vector.resolved.moleculeId, "left", vectorEnds.left),
+      assemblyCandidateEnd("vector", input.vector.resolved.moleculeId, "right", vectorEnds.right),
+      assemblyCandidateEnd("insert", input.insert.resolved.moleculeId, "left", insertEnds.left),
+      assemblyCandidateEnd("insert", input.insert.resolved.moleculeId, "right", insertEnds.right),
+    ],
+  };
+}
+
+function assemblyCandidateEnd(
+  role: "vector" | "insert",
+  moleculeId: string,
+  side: "left" | "right",
+  boundary: { enzyme: string; end: RestrictionFragmentEnd },
+): AssemblyCandidateEnd {
+  return {
+    role,
+    moleculeId,
+    enzyme: boundary.enzyme,
+    side,
+    endType: boundary.end.endType,
+    overhangSequence: boundary.end.overhangSequence,
+    ligationProfileVersion: boundary.end.ligationProfileVersion,
   };
 }
 

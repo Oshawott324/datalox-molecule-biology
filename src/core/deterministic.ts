@@ -23,6 +23,7 @@ export {
 export type {
   AssemblyArtifact,
   AssemblyCandidate,
+  AssemblyCandidateEnd,
   AssemblyFragment,
   AssemblyFragmentSelector,
   AssemblyInputFragment,

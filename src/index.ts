@@ -112,6 +112,7 @@ export type {
   AlignSequencesOptions,
   AssemblyArtifact,
   AssemblyCandidate,
+  AssemblyCandidateEnd,
   AssemblyFragment,
   AssemblyFragmentSelector,
   AssemblyInputFragment,
