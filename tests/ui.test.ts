@@ -138,6 +138,46 @@ describe("compact sequence editor server", () => {
     }
   });
 
+  it("rejects a stale expectedRevision on the /api/features endpoint", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const imported = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_single",
+    });
+    const server = await startSequenceEditorServer({ workspacePath: imported.workspacePath, moleculeId: "mol_single" });
+
+    const featureBase = {
+      moleculeId: "mol_single",
+      name: "feat",
+      type: "misc_feature",
+      segments: [{ start: 1, end: 4, strand: "+" }],
+    };
+
+    try {
+      // First write at revision 0 succeeds → workspace advances to revision 1.
+      const first = await fetch(new URL("/api/features", server.url).toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ expectedRevision: 0, feature: { id: "feat_a", ...featureBase } }),
+      });
+      expect((await first.json() as { ok: boolean }).ok).toBe(true);
+
+      // Second write still at revision 0 is now stale → server returns ok:false with STALE_REVISION.
+      const stale = await fetch(new URL("/api/features", server.url).toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ expectedRevision: 0, feature: { id: "feat_b", ...featureBase } }),
+      });
+      const body = await stale.json() as { ok: boolean; error?: { code: string } };
+      expect(body.ok).toBe(false);
+      expect(body.error?.code).toBe("STALE_REVISION");
+    } finally {
+      await server.close();
+    }
+  });
+
   it("reuses one managed editor per workspace instead of leaking servers", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
