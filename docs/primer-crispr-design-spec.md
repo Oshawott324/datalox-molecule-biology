@@ -246,6 +246,8 @@ Optional live integration test:
 
 ## CR1: `design_grnas`
 
+Status: complete.
+
 ### Scope
 
 CR1 is pure TypeScript:
@@ -303,6 +305,9 @@ Input rules:
 - `pamType` is only `"SpCas9"` in CR1.
 - `guideLength` must be 20 in CR1 unless a later PAM model explicitly supports
   another length.
+- CR1 returns candidates whose 20 bp protospacer lies fully inside
+  `targetRegion`. The PAM may sit immediately outside the interval depending on
+  strand and coordinates.
 
 ### Output
 

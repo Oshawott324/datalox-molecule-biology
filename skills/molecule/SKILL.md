@@ -222,6 +222,7 @@ Use these tools instead of reasoning from memory:
 - `export_genbank`
 - `render_digest_gel`
 - `design_primers`
+- `design_grnas`
 
 Examples:
 
@@ -322,6 +323,32 @@ choose a candidate before calling `upsert_primer` with `expectedRevision`.
 will normally place primers outside that interval. Overhangs are reported as
 `sequenceWithOverhang` and are not part of Primer3's annealing-sequence scoring.
 
+Use `design_grnas` for CR1 SpCas9 guide candidates. This tool is deterministic
+PAM scanning plus workspace-scale off-target reporting. It does not perform
+genome-scale off-target search and does not return Doench or other efficacy
+scores.
+
+```json
+{
+  "tool": "design_grnas",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_example",
+    "targetRegion": { "start": 100, "end": 500 },
+    "options": {
+      "pamType": "SpCas9",
+      "strand": "both",
+      "gcRange": [20, 80],
+      "offTargetMoleculeIds": ["mol_example"],
+      "maxOffTargetMismatches": 3
+    }
+  }
+}
+```
+
+Interpret `offTargetScope: "workspace_molecules_only"` literally. If a user
+needs genome-scale CRISPR safety, say that CR1 does not support it yet.
+
 For plasmid maps with restriction ticks, call `find_restriction_sites` first and
 pass the returned cut positions into `render_plasmid_map`. The renderer draws
 caller-supplied annotations; it does not secretly compute enzyme sites.
@@ -412,5 +439,6 @@ Before answering the user:
 5. State any unsupported biological operation clearly.
 
 Do not claim support for SBOL, AB1, Sanger alignment, Gibson assembly, Golden
-Gate assembly, accurate supercoiled gel migration, or CRISPR design unless
-those tools have been implemented and validated in this repo.
+Gate assembly, accurate supercoiled gel migration, genome-scale CRISPR
+off-target search, or CRISPR efficacy scoring unless those tools have been
+implemented and validated in this repo.

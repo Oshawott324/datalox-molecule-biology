@@ -6,8 +6,14 @@ Status note, 2026-07-02:
 - Root README rewrite is complete.
 - W2 primer design and CR1/CR2 CRISPR guide design are scoped in
   `docs/primer-crispr-design-spec.md`. These do not depend on P5.
-- Ziyu should use the P5 `align_sequences` instructions below, specifically
-  Goal A. Do not redo the README unless asked in a new task.
+- W2 `design_primers` is complete.
+- CR1 `design_grnas` scaffold is complete.
+- CR2 validated CRISPR on-target scoring is not implemented.
+- P5 `align_sequences` global Needleman-Wunsch has landed. Local
+  Smith-Waterman mode remains pending and should be assigned back to Ziyu as an
+  additive extension to `src/core/align.ts`.
+- Do not use `align_sequences` for Sanger/read-to-plasmid verification until
+  local mode lands.
 
 ## Jingting — D1 Demo Script
 

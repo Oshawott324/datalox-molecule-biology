@@ -43,6 +43,7 @@ export type {
 } from "./core/writes.js";
 export {
   designPrimers,
+  designGrnas,
   exportGenBank,
   findOrfs,
   findRestrictionSites,
@@ -64,6 +65,9 @@ export { formatPrimer3BoulderInput, normalizePrimerDesignOptions, parsePrimer3Ou
 export type {
   DigestFragment,
   DesignedPrimer,
+  DesignGrnasInput,
+  DesignGrnasOptions,
+  DesignGrnasResult,
   DesignPrimersInput,
   DesignPrimersOptions,
   DesignPrimersResult,
@@ -73,10 +77,12 @@ export type {
   GelBand,
   GelFragment,
   GelLane,
+  GuideCandidate,
   OrfResult,
   OrfStrand,
   PcrProduct,
   PrimerPairCandidate,
+  OffTargetHit,
   RestrictionEnzyme,
   RestrictionSite,
   RenderDigestGelOptions,
@@ -91,6 +97,7 @@ export type {
 export {
   handleDeleteFeature,
   handleDeletePrimer,
+  handleDesignGrnas,
   handleDesignPrimers,
   handleDoctor,
   handleExportGenBank,
@@ -126,6 +133,7 @@ export type {
   AlignSequencesInput,
   DeleteFeatureInput,
   DeletePrimerInput,
+  DesignGrnasToolInput,
   DesignPrimersToolInput,
   EnzymeInput,
   ExportGenBankInput,

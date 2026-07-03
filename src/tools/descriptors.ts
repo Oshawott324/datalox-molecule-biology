@@ -368,4 +368,38 @@ export const moleculeToolDescriptors = [
       },
     },
   },
+  {
+    name: "design_grnas",
+    description: "Design SpCas9 NGG guide RNA candidates with deterministic PAM scanning and workspace-scale off-target reporting.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "targetRegion"],
+      additionalProperties: false,
+      properties: {
+        ...moleculeProperties,
+        targetRegion: {
+          type: "object",
+          required: ["start", "end"],
+          additionalProperties: false,
+          properties: {
+            start: { type: "integer", minimum: 1 },
+            end: { type: "integer", minimum: 1 },
+          },
+        },
+        options: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            pamType: { type: "string", enum: ["SpCas9"] },
+            guideLength: { type: "integer", minimum: 1 },
+            strand: { type: "string", enum: ["both", "+", "-"] },
+            gcRange: { type: "array", items: { type: "number" } },
+            maxSeedHomopolymerRun: { type: "integer", minimum: 1 },
+            offTargetMoleculeIds: { type: "array", items: { type: "string" } },
+            maxOffTargetMismatches: { type: "integer", minimum: 0 },
+          },
+        },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

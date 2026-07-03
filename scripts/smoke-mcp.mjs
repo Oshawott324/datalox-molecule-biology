@@ -29,6 +29,7 @@ try {
   assertTool(tools, "render_plasmid_map");
   assertTool(tools, "render_digest_gel");
   assertTool(tools, "design_primers");
+  assertTool(tools, "design_grnas");
 
   const reverse = envelope(await client.callTool({
     name: "reverse_complement",

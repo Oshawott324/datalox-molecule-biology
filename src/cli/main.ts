@@ -14,6 +14,7 @@ import {
   type AlignSequencesInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
+  type DesignGrnasToolInput,
   type DesignPrimersToolInput,
   type EnzymeInput,
   type ExportGenBankInput,
@@ -69,6 +70,7 @@ const commandToTool: Record<string, ToolName> = {
   "render-digest-gel": "render_digest_gel",
   "align-sequences": "align_sequences",
   "design-primers": "design_primers",
+  "design-grnas": "design_grnas",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
@@ -181,6 +183,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
+  if (tool === "design_grnas") return designGrnasInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -379,6 +382,27 @@ function designPrimersInput(parsed: ParsedArgs): DesignPrimersToolInput {
       ...(stringFlag(parsed, "num-return") !== undefined ? { numReturn: numberFlag(parsed, "num-return") } : {}),
       ...(stringFlag(parsed, "left-overhang") ? { leftOverhang: stringFlag(parsed, "left-overhang") } : {}),
       ...(stringFlag(parsed, "right-overhang") ? { rightOverhang: stringFlag(parsed, "right-overhang") } : {}),
+    },
+  };
+}
+
+function designGrnasInput(parsed: ParsedArgs): DesignGrnasToolInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    targetRegion: {
+      start: numberFlag(parsed, "target-start") || numberFlag(parsed, "target-region-start"),
+      end: numberFlag(parsed, "target-end") || numberFlag(parsed, "target-region-end"),
+    },
+    options: {
+      ...(stringFlag(parsed, "pam-type") ? { pamType: stringFlag(parsed, "pam-type") as "SpCas9" } : {}),
+      ...(stringFlag(parsed, "guide-length") !== undefined ? { guideLength: numberFlag(parsed, "guide-length") } : {}),
+      ...(stringFlag(parsed, "strand") ? { strand: stringFlag(parsed, "strand") as "both" | "+" | "-" } : {}),
+      ...(stringFlag(parsed, "gc-range") ? { gcRange: numberPairFlag(parsed, "gc-range") } : {}),
+      ...(stringFlag(parsed, "max-seed-homopolymer-run") !== undefined ? { maxSeedHomopolymerRun: numberFlag(parsed, "max-seed-homopolymer-run") } : {}),
+      ...(stringFlag(parsed, "off-target-molecule-ids") ? { offTargetMoleculeIds: commaListFlag(parsed, "off-target-molecule-ids") } : {}),
+      ...(stringFlag(parsed, "max-off-target-mismatches") !== undefined ? { maxOffTargetMismatches: numberFlag(parsed, "max-off-target-mismatches") } : {}),
     },
   };
 }

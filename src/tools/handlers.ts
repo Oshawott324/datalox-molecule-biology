@@ -6,6 +6,7 @@ import {
   alignSequences,
   exportGenBank,
   designPrimers,
+  designGrnas,
   findOrfs,
   findRestrictionSites,
   renderDigestGel,
@@ -48,7 +49,8 @@ export type ToolName =
   | "render_plasmid_map"
   | "render_digest_gel"
   | "align_sequences"
-  | "design_primers";
+  | "design_primers"
+  | "design_grnas";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -184,6 +186,22 @@ export type DesignPrimersToolInput = MoleculeToolInput & {
   };
 };
 
+export type DesignGrnasToolInput = MoleculeToolInput & {
+  targetRegion: {
+    start: number;
+    end: number;
+  };
+  options?: {
+    pamType?: "SpCas9";
+    guideLength?: number;
+    strand?: "both" | "+" | "-";
+    gcRange?: [number, number];
+    maxSeedHomopolymerRun?: number;
+    offTargetMoleculeIds?: string[];
+    maxOffTargetMismatches?: number;
+  };
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -208,6 +226,7 @@ export type ToolInputByName = {
   render_digest_gel: RenderDigestGelInput;
   align_sequences: AlignSequencesInput;
   design_primers: DesignPrimersToolInput;
+  design_grnas: DesignGrnasToolInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -236,6 +255,7 @@ export const toolHandlers = {
   render_digest_gel: handleRenderDigestGel,
   align_sequences: handleAlignSequences,
   design_primers: handleDesignPrimers,
+  design_grnas: handleDesignGrnas,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -656,6 +676,28 @@ export async function handleDesignPrimers(input: DesignPrimersToolInput): Promis
       workspacePath,
       moleculeId,
       target,
+      ...(input.options ? { options: input.options } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, { workspacePath });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleDesignGrnas(input: DesignGrnasToolInput): Promise<ToolResultEnvelope> {
+  const tool = "design_grnas";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    assertRecord(input.targetRegion, "targetRegion");
+    const targetRegion = {
+      start: assertPositiveInteger(input.targetRegion.start, "targetRegion.start"),
+      end: assertPositiveInteger(input.targetRegion.end, "targetRegion.end"),
+    };
+    const result = await designGrnas({
+      workspacePath,
+      moleculeId,
+      targetRegion,
       ...(input.options ? { options: input.options } : {}),
     });
     return toolSuccess(tool, { workspacePath, ...result }, { workspacePath });
