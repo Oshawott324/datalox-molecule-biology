@@ -113,6 +113,34 @@ describe("restriction ligation profiles", () => {
     });
   });
 
+  it("throws INVALID_ARGUMENT for an enzyme absent from the digest table entirely", () => {
+    expect(() => resolveLigationProfile("NotAnEnzyme")).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+  });
+
+  it("confirms EcoRI self-ligation compatibility: AATT is its own reverse complement", () => {
+    const eco = restrictionEndFromProfile(resolveLigationProfile("EcoRI"));
+    expect(compatibleRestrictionEnds(eco, eco)).toMatchObject({
+      compatible: true,
+      left: { enzyme: "EcoRI", endType: "five_prime_overhang", overhangSequence: "AATT" },
+      right: { enzyme: "EcoRI", endType: "five_prime_overhang", overhangSequence: "AATT" },
+    });
+  });
+
+  it("rejects a 5-prime end against a 3-prime end with END_TYPE_MISMATCH", () => {
+    const bam = restrictionEndFromProfile(resolveLigationProfile("BamHI"));
+    const kpn = restrictionEndFromProfile(resolveLigationProfile("KpnI"));
+    expect(compatibleRestrictionEnds(bam, kpn)).toMatchObject({
+      compatible: false,
+      reason: "END_TYPE_MISMATCH",
+    });
+    expect(compatibleRestrictionEnds(kpn, bam)).toMatchObject({
+      compatible: false,
+      reason: "END_TYPE_MISMATCH",
+    });
+  });
+
   it("does not claim regenerated recognition sites for BamHI/BglII scars", () => {
     const bam = resolveLigationProfile("BamHI");
     const bgl = resolveLigationProfile("BglII");
@@ -120,5 +148,26 @@ describe("restriction ligation profiles", () => {
     expect(regeneratedRecognitionSequence("AAAGG", "ATCTAAA", bam)).toBeUndefined(); // GGATCT scar
     expect(regeneratedRecognitionSequence("AAAAG", "ATCCAAA", bgl)).toBeUndefined(); // AGATCC scar
     expect(regeneratedRecognitionSequence("AAAG", "GATCCAAA", bam)).toBe("GGATCC");
+  });
+
+  it("detects regenerated recognition sequences across the ligation junction for EcoRI, KpnI, and SmaI", () => {
+    const eco = resolveLigationProfile("EcoRI"); // GAATTC, 5' overhang AATT
+    const kpn = resolveLigationProfile("KpnI");  // GGTACC, 3' overhang GTAC; cut GGTAC^C
+    const sma = resolveLigationProfile("SmaI");  // CCCGGG, blunt CCC^GGG
+
+    // EcoRI: left ends in "G" (the one base before cut), right starts with "AATTC" (4-overhang + last base)
+    // junction = slice(-5)="AAAAG" + slice(0,5)="AATTC" = "AAAAGAATTC" ⊃ "GAATTC"
+    expect(regeneratedRecognitionSequence("AAAAG", "AATTCAAA", eco)).toBe("GAATTC");
+    expect(regeneratedRecognitionSequence("AAAAA", "AATTCAAA", eco)).toBeUndefined(); // no G before AATTC
+
+    // KpnI: left ends in "GGTAC" (5 bases before 3' cut), right starts with "C" (1 base after cut)
+    // junction = "GGTAC" + "CAAAA" = "GGTACCAAAA" ⊃ "GGTACC"
+    expect(regeneratedRecognitionSequence("AAAAGGTAC", "CAAAA", kpn)).toBe("GGTACC");
+    expect(regeneratedRecognitionSequence("AAAAGGTAC", "AAAAA", kpn)).toBeUndefined();
+
+    // SmaI: left ends in "CCC" (3 bases before blunt cut), right starts with "GGG" (3 bases after cut)
+    // junction = "AACCC" + "GGGAA" = "AACCCGGGAA" ⊃ "CCCGGG"
+    expect(regeneratedRecognitionSequence("AAACCC", "GGGAAA", sma)).toBe("CCCGGG");
+    expect(regeneratedRecognitionSequence("AAACCC", "AAAAA", sma)).toBeUndefined();
   });
 });
