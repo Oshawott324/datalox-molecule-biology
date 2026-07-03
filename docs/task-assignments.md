@@ -14,6 +14,8 @@ Status note, 2026-07-02:
   against larger molecules.
 - `align_sequences` does not parse AB1 chromatograms. Convert observed reads to
   sequence strings before alignment.
+- P4 static dual-view editor is complete. W3 remains reserved for
+  `simulate_assembly`; CRISPR work should be labeled CR1/CR2, not W3a/W3b.
 
 ## Jingting — D1 Demo Script
 

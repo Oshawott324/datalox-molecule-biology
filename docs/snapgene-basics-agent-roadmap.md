@@ -342,6 +342,8 @@ Acceptance:
 
 ### P4: Static Dual-View Editor
 
+Status: **complete**.
+
 Update `src/ui/server.ts` after P1-P3 exist.
 
 Target layout:
@@ -477,6 +479,10 @@ P5 before D1.
 | W6 | Full Gibson / Golden Gate / Gateway workflows | Specific customer demo or customer pull |
 | CR1 | SpCas9 `design_grnas` scaffold | CRISPR guide-design workflow needs plasmid/workspace-scale guide candidates |
 | CR2 | Validated CRISPR on-target scoring | Coefficient source, license, sequence-context convention, and reference scores are pinned |
+
+Naming boundary: W-series is reserved for plasmid/cloning workflows, so W3
+remains `simulate_assembly`. CRISPR work uses CR1/CR2 and should not be labeled
+W3a/W3b.
 
 ## Human-in-the-Loop Patterns
 

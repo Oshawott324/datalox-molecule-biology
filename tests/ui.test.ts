@@ -33,6 +33,9 @@ describe("compact sequence editor server", () => {
       const html = await fetch(server.url).then((response) => response.text());
       expect(html).toContain("Molecule Biology");
       expect(html).toContain("/api/workspace");
+      expect(html).toContain("dual-view");
+      expect(html).toContain("Restriction Sites");
+      expect(html).toContain("renderAnnotatedSequence");
 
       const workspace = await jsonFetch(new URL("/api/workspace", server.url).toString());
       expect(workspace).toMatchObject({
@@ -104,6 +107,32 @@ describe("compact sequence editor server", () => {
       });
       expect(map.svg).toEqual(expect.stringContaining("<svg"));
       expect(map.svg).toEqual(expect.stringContaining("pUC19"));
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("serves restriction sites with sequence context for the static dual view", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const imported = await importSequenceFile({
+      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_puc19",
+    });
+    const server = await startSequenceEditorServer({ workspacePath: imported.workspacePath, moleculeId: "mol_puc19" });
+
+    try {
+      const context = await jsonFetch(new URL("/api/context?moleculeId=mol_puc19&start=390&end=455&includeSequence=true&enzymes=EcoRI,HindIII", server.url).toString());
+      expect(context).toMatchObject({
+        ok: true,
+        molecule: expect.objectContaining({ id: "mol_puc19" }),
+        region: expect.objectContaining({ start: 390, end: 455 }),
+        restrictionSites: expect.arrayContaining([
+          expect.objectContaining({ enzyme: "EcoRI", cutPosition: 396 }),
+          expect.objectContaining({ enzyme: "HindIII", cutPosition: 447 }),
+        ]),
+      });
     } finally {
       await server.close();
     }

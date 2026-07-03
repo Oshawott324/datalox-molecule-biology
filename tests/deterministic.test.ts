@@ -516,6 +516,24 @@ ORIGIN
     });
   });
 
+  it("local alignment reports queryAlignedStart > 1 when the query has unmatched leading bases", () => {
+    // Sanger use case: read "TTTACGT" has 3 leading bases that don't match the target "ACGT"
+    const result = alignSequences("TTTACGT", "ACGT", { mode: "local" });
+    expect(result).toMatchObject({
+      mode: "local",
+      queryAligned: "ACGT",
+      targetAligned: "ACGT",
+      identityPercent: 100,
+      identicalPositions: 4,
+      alignedLength: 4,
+      queryAlignedStart: 4,
+      queryAlignedEnd: 7,
+      targetAlignedStart: 1,
+      targetAlignedEnd: 4,
+      score: 4,
+    });
+  });
+
   it("rejects ambiguous or missing sequence sources through the align_sequences tool", async () => {
     const bothSources = await handleAlignSequences({ sequence: "ACGT", moleculeId: "mol_query", targetSequence: "ACGT" });
     expect(bothSources).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });

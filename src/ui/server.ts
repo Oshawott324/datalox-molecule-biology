@@ -99,7 +99,9 @@ async function handleRequest(
       ...(start !== undefined && end !== undefined ? { region: { start, end, strand: "+" } } : {}),
       includeSequence: url.searchParams.get("includeSequence") === "true",
     });
-    sendJson(response, 200, { ok: true, workspacePath, ...context });
+    const enzymes = commaParam(url, "enzymes");
+    const restrictionSites = enzymes.length > 0 ? await findRestrictionSites(workspacePath, moleculeId, enzymes) : [];
+    sendJson(response, 200, { ok: true, workspacePath, ...context, restrictionSites });
     return;
   }
 
@@ -168,25 +170,35 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     label { font-size: 12px; color: #bbcbc7; }
     select, input { width: 100%; border: 1px solid #cbd4d1; border-radius: 5px; padding: 7px 8px; background: #fff; color: #18201f; }
     .side input, .side select { border-color: #36534d; background: #0d1917; color: #f7fbf9; }
-    .main { padding: 18px; display: grid; grid-template-rows: auto minmax(160px, auto) auto auto; gap: 14px; }
-    .toolbar { display: grid; grid-template-columns: 1fr repeat(3, minmax(90px, 120px)) auto; gap: 8px; align-items: end; }
+    .main { padding: 18px; display: grid; grid-template-rows: auto minmax(360px, auto) auto; gap: 14px; }
+    .toolbar { display: grid; grid-template-columns: repeat(2, minmax(90px, 120px)) minmax(220px, 1fr) auto; gap: 8px; align-items: end; }
+    .dual-view { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr); gap: 14px; align-items: stretch; }
     .panel { background: #fff; border: 1px solid #d8dfdd; border-radius: 7px; overflow: hidden; }
     .panel h2 { margin: 0; padding: 10px 12px; font-size: 13px; background: #e9efec; border-bottom: 1px solid #d8dfdd; }
-    .sequence { margin: 0; padding: 12px; min-height: 140px; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
-    .map { min-height: 260px; display: grid; place-items: center; padding: 10px; }
+    .sequence { margin: 0; padding: 12px; min-height: 320px; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; }
+    .sequence span { border-radius: 2px; padding: 1px 0; }
+    .ann-feature { background: #FBE5AE; }
+    .ann-primer { background: #D7EAFE; box-shadow: inset 0 -2px 0 #1976D2; }
+    .ann-cut { background: #F8D7DA; box-shadow: inset 0 -2px 0 #303A3A; }
+    .map { min-height: 320px; display: grid; place-items: center; padding: 10px; }
     .map svg { max-width: 100%; height: auto; }
-    .tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .tracks { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { padding: 7px 8px; border-bottom: 1px solid #edf1ef; text-align: left; vertical-align: top; }
     th { color: #53615d; font-weight: 700; background: #fbfcfc; }
     .feature-chip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; color: #53615d; font-size: 12px; border-top: 1px solid #edf1ef; }
+    .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .legend .legend-feature::before { background: #FBE5AE; }
+    .legend .legend-primer::before { background: #D7EAFE; }
+    .legend .legend-cut::before { background: #F8D7DA; }
     .form { display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 8px; padding: 12px; align-items: end; }
     .primary { border: 0; border-radius: 5px; background: #1f6f5b; color: #fff; padding: 8px 10px; min-height: 34px; cursor: pointer; }
     .primary:disabled { background: #91aaa2; cursor: default; }
     .status { min-height: 18px; color: #5d6a66; font-size: 12px; }
     @media (max-width: 760px) {
       .shell { grid-template-columns: 1fr; }
-      .toolbar, .form, .tracks { grid-template-columns: 1fr; }
+      .toolbar, .dual-view, .form, .tracks { grid-template-columns: 1fr; }
       .side { min-height: auto; }
     }
   </style>
@@ -211,15 +223,23 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       <section class="toolbar">
         <div class="field"><label for="region-start">Start</label><input id="region-start" inputmode="numeric" value="1"></div>
         <div class="field"><label for="region-end">End</label><input id="region-end" inputmode="numeric" value="120"></div>
+        <div class="field"><label for="enzymes">Restriction enzymes</label><input id="enzymes" value="EcoRI,HindIII"></div>
         <button class="primary" id="load-region">Load</button>
       </section>
-      <section class="panel">
-        <h2>Sequence</h2>
-        <pre class="sequence" id="sequence"></pre>
-      </section>
-      <section class="panel">
-        <h2>Plasmid Map</h2>
-        <div class="map" id="map"></div>
+      <section class="dual-view">
+        <div class="panel">
+          <h2>Plasmid Map</h2>
+          <div class="map" id="map"></div>
+        </div>
+        <div class="panel">
+          <h2>Sequence</h2>
+          <pre class="sequence" id="sequence"></pre>
+          <div class="legend">
+            <span class="legend-feature">feature</span>
+            <span class="legend-primer">primer</span>
+            <span class="legend-cut">cut site</span>
+          </div>
+        </div>
       </section>
       <section class="tracks">
         <div class="panel">
@@ -239,13 +259,17 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
           <h2>Primers</h2>
           <table><thead><tr><th>Name</th><th>Sequence</th><th>Binding</th></tr></thead><tbody id="primers"></tbody></table>
         </div>
+        <div class="panel">
+          <h2>Restriction Sites</h2>
+          <table><thead><tr><th>Enzyme</th><th>Cut</th><th>Recognition</th></tr></thead><tbody id="restriction-sites"></tbody></table>
+        </div>
       </section>
     </main>
   </div>
   <script>
     const initialMoleculeId = ${initialMolecule};
     const featureColors = ${featureColors};
-    const state = { revision: -1, moleculeId: initialMoleculeId, molecules: [] };
+    const state = { revision: -1, moleculeId: initialMoleculeId, molecules: [], restrictionSites: [] };
     const $ = (id) => document.getElementById(id);
 
     async function json(url, options) {
@@ -261,6 +285,10 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
 
     function featureColor(type) {
       return featureColors[type] || "#546E7A";
+    }
+
+    function selectedEnzymes() {
+      return $("enzymes").value.split(",").map((entry) => entry.trim()).filter(Boolean);
     }
 
     function rows(target, items, mapper) {
@@ -309,16 +337,47 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       if (!state.moleculeId) return;
       const start = Number($("region-start").value || "1");
       const end = Number($("region-end").value || "120");
-      const payload = await json("/api/context?moleculeId=" + encodeURIComponent(state.moleculeId) + "&start=" + start + "&end=" + end + "&includeSequence=true");
-      $("sequence").textContent = payload.sequence || "";
+      const enzymes = selectedEnzymes().join(",");
+      const payload = await json("/api/context?moleculeId=" + encodeURIComponent(state.moleculeId) + "&start=" + start + "&end=" + end + "&includeSequence=true&enzymes=" + encodeURIComponent(enzymes));
+      state.restrictionSites = payload.restrictionSites || [];
+      renderAnnotatedSequence(payload.sequence || "", start, payload.features || [], payload.primers || [], state.restrictionSites);
+      rows($("restriction-sites"), state.restrictionSites, (item) => [item.enzyme, String(item.cutPosition), item.recognitionSequence]);
       $("status").textContent = "ready";
       await loadMap();
+    }
+
+    function renderAnnotatedSequence(sequence, regionStart, features, primers, restrictionSites) {
+      const container = $("sequence");
+      const annotations = new Map();
+      const addRange = (start, end, kind, label) => {
+        const left = Math.max(start, regionStart);
+        const right = Math.min(end, regionStart + sequence.length - 1);
+        for (let pos = left; pos <= right; pos += 1) {
+          const offset = pos - regionStart;
+          if (!annotations.has(offset)) annotations.set(offset, []);
+          annotations.get(offset).push({ kind, label });
+        }
+      };
+      features.forEach((feature) => (feature.segments || []).forEach((segment) => addRange(segment.start, segment.end, "feature", feature.name + " (" + feature.type + ")")));
+      primers.forEach((primer) => (primer.binding?.segments || []).forEach((segment) => addRange(segment.start, segment.end, "primer", primer.name)));
+      restrictionSites.forEach((site) => addRange(site.cutPosition, site.cutPosition, "cut", site.enzyme + " cut at " + site.cutPosition));
+      container.replaceChildren();
+      [...sequence].forEach((base, index) => {
+        const span = document.createElement("span");
+        const ann = annotations.get(index) || [];
+        const kind = ann.some((item) => item.kind === "cut") ? "cut" : ann.some((item) => item.kind === "primer") ? "primer" : ann.some((item) => item.kind === "feature") ? "feature" : "";
+        if (kind) span.className = "ann-" + kind;
+        if (ann.length > 0) span.title = ann.map((item) => item.label).join("; ");
+        span.textContent = base;
+        container.appendChild(span);
+      });
     }
 
     async function loadMap() {
       if (!state.moleculeId) return;
       try {
-        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId) + "&showPrimers=true");
+        const enzymes = selectedEnzymes().join(",");
+        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId) + "&showPrimers=true&enzymes=" + encodeURIComponent(enzymes));
         $("map").innerHTML = payload.svg || "";
       } catch (error) {
         $("map").textContent = error.message;
