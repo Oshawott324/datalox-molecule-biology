@@ -16,7 +16,8 @@ source of truth. Do not infer sequence facts from screenshots or prose.
 - Use `get_sequence_context` before making claims about a molecule sequence,
   feature, primer, or region.
 - Use deterministic tools for ORFs, restriction enzymes, digests, PCR,
-  translation, reverse complement, GenBank export, and gel rendering.
+  Primer3-backed primer design, translation, reverse complement, GenBank
+  export, and gel rendering.
 - Every write must include the current `expectedRevision`.
 - On `STALE_REVISION`, call `read_workspace` or `open_workspace`, inspect the
   new revision, then retry intentionally.
@@ -220,6 +221,7 @@ Use these tools instead of reasoning from memory:
 - `simulate_pcr`
 - `export_genbank`
 - `render_digest_gel`
+- `design_primers`
 
 Examples:
 
@@ -291,6 +293,34 @@ requires a ladder starting at 50 bp or lower to be calibrated normally.
 `render_digest_gel` uses the ladder as the calibrated range, adds ladder size
 labels to the SVG, and marks fragments outside the ladder range with
 `outOfLadderRange` / `rangeWarning` metadata.
+
+Use `design_primers` when primer candidates are needed. This tool calls the
+external `primer3_core` binary; if it is not installed, return the structured
+`DEPENDENCY_MISSING` error to the user or agent instead of inventing primers.
+The tool is read-only: it returns candidates, and the agent must explicitly
+choose a candidate before calling `upsert_primer` with `expectedRevision`.
+
+```json
+{
+  "tool": "design_primers",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_example",
+    "target": { "start": 100, "end": 500 },
+    "options": {
+      "productSizeRange": [200, 1000],
+      "tmRange": [57, 63],
+      "primerSizeRange": [18, 27],
+      "numReturn": 5,
+      "leftOverhang": "GAATTC"
+    }
+  }
+}
+```
+
+`target` means the interval that must be included inside the amplicon; Primer3
+will normally place primers outside that interval. Overhangs are reported as
+`sequenceWithOverhang` and are not part of Primer3's annealing-sequence scoring.
 
 For plasmid maps with restriction ticks, call `find_restriction_sites` first and
 pass the returned cut positions into `render_plasmid_map`. The renderer draws
@@ -382,5 +412,5 @@ Before answering the user:
 5. State any unsupported biological operation clearly.
 
 Do not claim support for SBOL, AB1, Sanger alignment, Gibson assembly, Golden
-Gate assembly, accurate supercoiled gel migration, or Primer3 design unless
+Gate assembly, accurate supercoiled gel migration, or CRISPR design unless
 those tools have been implemented and validated in this repo.

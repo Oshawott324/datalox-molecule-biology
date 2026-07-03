@@ -404,10 +404,11 @@ CLI:
 align-sequences
 ```
 
-Algorithm:
+Algorithms:
 
 ```text
-Needleman-Wunsch global alignment
+Needleman-Wunsch global alignment for similarly sized sequences
+Smith-Waterman local alignment for reads or short sequences against larger molecules
 ```
 
 Inputs:
@@ -422,12 +423,15 @@ Output:
 - mismatch positions
 - gap count
 - scoring parameters used
+- mode used: global or local
 
 Acceptance:
 
 - Identical inputs produce 100% identity.
 - Known single-base mismatch reports the correct position.
 - Gap examples are pinned.
+- Local alignment reports the correct target interval for a short read against a
+  larger molecule.
 - No network calls or heuristic post-processing.
 
 P5 enables construct-verification workflows, but it does not block the diagnostic
@@ -469,6 +473,8 @@ P5 before D1.
 | W4 | Sanger alignment with AB1/chromatogram | Sequencing-confirmation workflow |
 | W5 | IDT/Twist synthesis export | Design-to-order pipeline |
 | W6 | Full Gibson / Golden Gate / Gateway workflows | Specific customer demo or customer pull |
+| CR1 | SpCas9 `design_grnas` scaffold | CRISPR guide-design workflow needs plasmid/workspace-scale guide candidates |
+| CR2 | Validated CRISPR on-target scoring | Coefficient source, license, sequence-context convention, and reference scores are pinned |
 
 ## Human-in-the-Loop Patterns
 
@@ -553,6 +559,35 @@ Gate: proposed feature list and evidence shown before workspace write
 - Synthesis ordering approval gate — W5; pre-design `await_human_review` as a
   `nextAction` type now so it slots cleanly into the envelope contract when
   ordering lands
+
+## Competitive Framing Notes
+
+SnapGene's history tracking is a GUI document-history and undo/redo feature. It
+is useful for human editing, but it is not the same thing as this repo's
+revision gates and replay bundles.
+
+For agent-operated biology, the Datalox audit story should be framed as:
+
+```text
+expectedRevision gates every structured write
+tool calls return structured envelopes
+replay bundles capture the exact tool I/O
+bundle verification proves the record was not silently changed
+```
+
+Do not describe this as "SnapGene-style history." It is a stronger audit model
+for agent-driven workflows, even though it is not a familiar GUI history panel.
+
+P5 `align_sequences` should support both global and local pairwise alignment.
+Needleman-Wunsch global alignment is appropriate for similarly sized construct
+versions. Smith-Waterman local alignment is required for Sanger reads, primer
+annealing checks, and amplicon-vs-plasmid checks where one sequence is much
+shorter than the other.
+
+RNA/mRNA design is a separate future product track, not a bolt-on to plasmid
+cloning. If mRNA therapeutics becomes a target segment, scope a separate track
+for codon optimization, UTR design, cap/poly(A) considerations, modified bases,
+and synthesis constraints.
 
 ## Decision Notes
 

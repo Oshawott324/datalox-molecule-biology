@@ -5,6 +5,7 @@ import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from 
 import {
   alignSequences,
   exportGenBank,
+  designPrimers,
   findOrfs,
   findRestrictionSites,
   renderDigestGel,
@@ -46,7 +47,8 @@ export type ToolName =
   | "export_genbank"
   | "render_plasmid_map"
   | "render_digest_gel"
-  | "align_sequences";
+  | "align_sequences"
+  | "design_primers";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -167,6 +169,21 @@ export type AlignSequencesInput = WorkspaceInput & {
   gap?: number;
 };
 
+export type DesignPrimersToolInput = MoleculeToolInput & {
+  target: {
+    start: number;
+    end: number;
+  };
+  options?: {
+    productSizeRange?: [number, number];
+    tmRange?: [number, number];
+    primerSizeRange?: [number, number];
+    numReturn?: number;
+    leftOverhang?: string;
+    rightOverhang?: string;
+  };
+};
+
 export type ToolInputByName = {
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
@@ -190,6 +207,7 @@ export type ToolInputByName = {
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
   align_sequences: AlignSequencesInput;
+  design_primers: DesignPrimersToolInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -217,6 +235,7 @@ export const toolHandlers = {
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
   align_sequences: handleAlignSequences,
+  design_primers: handleDesignPrimers,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -623,6 +642,28 @@ export async function handleAlignSequences(input: AlignSequencesInput): Promise<
   }
 }
 
+export async function handleDesignPrimers(input: DesignPrimersToolInput): Promise<ToolResultEnvelope> {
+  const tool = "design_primers";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    assertRecord(input.target, "target");
+    const target = {
+      start: assertPositiveInteger(input.target.start, "target.start"),
+      end: assertPositiveInteger(input.target.end, "target.end"),
+    };
+    const result = await designPrimers({
+      workspacePath,
+      moleculeId,
+      target,
+      ...(input.options ? { options: input.options } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, { workspacePath });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
 async function resolveAlignmentSequence(
   input: WorkspaceInput,
   sequence: string | undefined,
@@ -649,7 +690,8 @@ async function resolveAlignmentSequence(
   return { sequence: resolved.sequence, moleculeId };
 }
 
-async function readWorkspaceEnvelope(tool: "open_workspace" | "read_workspace", input: WorkspaceInput): Promise<ToolResultEnvelope> {  try {
+async function readWorkspaceEnvelope(tool: "open_workspace" | "read_workspace", input: WorkspaceInput): Promise<ToolResultEnvelope> {
+  try {
     const workspacePath = workspacePathFromInput(input);
     const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: input.checkSequenceDigests ?? true });
     return toolSuccess(tool, { workspacePath, workspace }, {

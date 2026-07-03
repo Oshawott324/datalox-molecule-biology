@@ -42,6 +42,7 @@ export type {
   UpsertPrimerPayload,
 } from "./core/writes.js";
 export {
+  designPrimers,
   exportGenBank,
   findOrfs,
   findRestrictionSites,
@@ -59,8 +60,13 @@ export {
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
+export { formatPrimer3BoulderInput, normalizePrimerDesignOptions, parsePrimer3Output } from "./core/primer-design.js";
 export type {
   DigestFragment,
+  DesignedPrimer,
+  DesignPrimersInput,
+  DesignPrimersOptions,
+  DesignPrimersResult,
   ExportGenBankResult,
   FindOrfsOptions,
   FindRestrictionSitesOptions,
@@ -70,6 +76,7 @@ export type {
   OrfResult,
   OrfStrand,
   PcrProduct,
+  PrimerPairCandidate,
   RestrictionEnzyme,
   RestrictionSite,
   RenderDigestGelOptions,
@@ -84,6 +91,7 @@ export type {
 export {
   handleDeleteFeature,
   handleDeletePrimer,
+  handleDesignPrimers,
   handleDoctor,
   handleExportGenBank,
   handleFindOrfs,
@@ -118,6 +126,7 @@ export type {
   AlignSequencesInput,
   DeleteFeatureInput,
   DeletePrimerInput,
+  DesignPrimersToolInput,
   EnzymeInput,
   ExportGenBankInput,
   ExpectedRevisionInput,

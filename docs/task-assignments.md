@@ -4,6 +4,8 @@ Status note, 2026-07-02:
 
 - D1 diagnostic digest demo is complete.
 - Root README rewrite is complete.
+- W2 primer design and CR1/CR2 CRISPR guide design are scoped in
+  `docs/primer-crispr-design-spec.md`. These do not depend on P5.
 - Ziyu should use the P5 `align_sequences` instructions below, specifically
   Goal A. Do not redo the README unless asked in a new task.
 
@@ -309,9 +311,15 @@ Bundle: ${bundle.bundlePath}
 
 ### Goal A: `align_sequences` MCP tool
 
-Implement a deterministic Needleman-Wunsch global pairwise alignment as a new
-MCP tool, following the exact same layered pattern as every other tool in this
-repo.
+Implement deterministic pairwise alignment as a new MCP tool, following the
+exact same layered pattern as every other tool in this repo.
+
+The tool must support both algorithms:
+
+- `mode: "global"`: Needleman-Wunsch, for similarly sized sequences such as two
+  construct versions.
+- `mode: "local"`: Smith-Waterman, for Sanger reads, primer/amplicon checks, or
+  any short observed sequence aligned against a larger molecule.
 
 **Files to create or modify (in order):**
 
@@ -330,8 +338,13 @@ Export these types:
 
 ```ts
 export type AlignmentResult = {
+  mode: "global" | "local";
   queryAligned: string;      // query with gaps inserted, e.g. "ACG-T"
   targetAligned: string;     // target with gaps inserted, e.g. "ACGAT"
+  queryAlignedStart?: number; // local mode only, 1-based inclusive coordinate in query
+  queryAlignedEnd?: number;   // local mode only, 1-based inclusive coordinate in query
+  targetAlignedStart?: number; // local mode only, 1-based inclusive coordinate in target
+  targetAlignedEnd?: number;   // local mode only, 1-based inclusive coordinate in target
   identityPercent: number;   // 0–100, two decimal places
   identicalPositions: number;
   alignedLength: number;     // includes gap columns
@@ -346,6 +359,7 @@ export type AlignmentResult = {
 };
 
 export type AlignSequencesOptions = {
+  mode?: "global" | "local"; // default: "global"
   match?: number;     // default: 1
   mismatch?: number;  // default: -1
   gap?: number;       // default: -2
@@ -362,12 +376,19 @@ export function alignSequences(
 ): AlignmentResult
 ```
 
-The algorithm is classic Needleman-Wunsch. There is no web search or library
-needed; implement the DP table and traceback directly. The matrix is
+For `mode: "global"`, use classic Needleman-Wunsch. For `mode: "local"`, use
+classic Smith-Waterman. There is no web search or library needed; implement the
+DP table and traceback directly. The matrix is
 `(query.length + 1) × (target.length + 1)`.
 
 Linear gap penalty (not affine): each gap character costs `gap` points. Default
-scoring: match +1, mismatch −1, gap −2.
+scoring: match +1, mismatch −1, gap −2. For Smith-Waterman, cells are floored
+at 0 and traceback starts from the highest-scoring cell.
+
+For `mode: "local"`, populate `queryAlignedStart`, `queryAlignedEnd`,
+`targetAlignedStart`, and `targetAlignedEnd` from the traceback coordinates.
+For `mode: "global"`, omit those four fields. Empty local alignments should
+return aligned length 0, score 0, and no aligned coordinate fields.
 
 Do not use uppercase normalization, ambiguity codes, or heuristics. The caller
 is responsible for passing uppercase sequences if they want case-insensitive
@@ -383,6 +404,9 @@ pattern. The `align_sequences` handler accepts two input shapes:
 
 For the workspace path, read both sequences via `readMoleculeSequence`, then
 call `alignSequences`. Return the `AlignmentResult` in `data`.
+
+The handler accepts optional `mode`, `match`, `mismatch`, and `gap` fields.
+Default `mode` is `"global"`.
 
 #### Layer 3 — descriptor in `src/tools/descriptors.ts`
 
@@ -435,6 +459,16 @@ For the insertion case, pin `queryAligned = "ACG-T"` and
 
 Also add a workspace-molecule alignment case: import two short FASTA sequences
 and call `handleAlignSequences` with workspace inputs.
+
+Add local-alignment cases:
+
+| Test | Query | Target | Expected |
+|---|---|---|---|
+| Local read against larger target | `ACGT` | `TTTACGTTT` | `mode: "local"`, `queryAlignedStart: 1`, `queryAlignedEnd: 4`, `targetAlignedStart: 4`, `targetAlignedEnd: 7`, 100% identity |
+| Local no positive match | `AAAA` | `TTTT` with mismatch -1 | aligned length 0, score 0 |
+
+The Sanger/observed-read use case must use `mode: "local"`; global alignment is
+not appropriate for aligning a short read against a larger plasmid.
 
 ### Goal B: README
 

@@ -335,4 +335,37 @@ export const moleculeToolDescriptors = [
       },
     },
   },
+  {
+    name: "design_primers",
+    description: "Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "target"],
+      additionalProperties: false,
+      properties: {
+        ...moleculeProperties,
+        target: {
+          type: "object",
+          required: ["start", "end"],
+          additionalProperties: false,
+          properties: {
+            start: { type: "integer", minimum: 1 },
+            end: { type: "integer", minimum: 1 },
+          },
+        },
+        options: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            productSizeRange: { type: "array", items: { type: "number" } },
+            tmRange: { type: "array", items: { type: "number" } },
+            primerSizeRange: { type: "array", items: { type: "number" } },
+            numReturn: { type: "integer", minimum: 1 },
+            leftOverhang: { type: "string" },
+            rightOverhang: { type: "string" },
+          },
+        },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

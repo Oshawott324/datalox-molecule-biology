@@ -14,6 +14,7 @@ import {
   type AlignSequencesInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
+  type DesignPrimersToolInput,
   type EnzymeInput,
   type ExportGenBankInput,
   type FindOrfsInput,
@@ -67,6 +68,7 @@ const commandToTool: Record<string, ToolName> = {
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
   "align-sequences": "align_sequences",
+  "design-primers": "design_primers",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
@@ -178,6 +180,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
+  if (tool === "design_primers") return designPrimersInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -360,6 +363,26 @@ function alignSequencesInput(parsed: ParsedArgs): AlignSequencesInput {
   };
 }
 
+function designPrimersInput(parsed: ParsedArgs): DesignPrimersToolInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    target: {
+      start: numberFlag(parsed, "target-start"),
+      end: numberFlag(parsed, "target-end"),
+    },
+    options: {
+      ...(stringFlag(parsed, "product-size-range") ? { productSizeRange: numberPairFlag(parsed, "product-size-range") } : {}),
+      ...(stringFlag(parsed, "tm-range") ? { tmRange: numberPairFlag(parsed, "tm-range") } : {}),
+      ...(stringFlag(parsed, "primer-size-range") ? { primerSizeRange: numberPairFlag(parsed, "primer-size-range") } : {}),
+      ...(stringFlag(parsed, "num-return") !== undefined ? { numReturn: numberFlag(parsed, "num-return") } : {}),
+      ...(stringFlag(parsed, "left-overhang") ? { leftOverhang: stringFlag(parsed, "left-overhang") } : {}),
+      ...(stringFlag(parsed, "right-overhang") ? { rightOverhang: stringFlag(parsed, "right-overhang") } : {}),
+    },
+  };
+}
+
 function stringFlag(parsed: ParsedArgs, name: string): string | undefined {
   const value = parsed.flags[name];
   return typeof value === "string" ? value : undefined;
@@ -373,6 +396,11 @@ function numberFlag(parsed: ParsedArgs, name: string): number {
 function commaListFlag(parsed: ParsedArgs, name: string): string[] {
   const value = stringFlag(parsed, name);
   return value === undefined ? [] : value.split(",").map((entry) => entry.trim()).filter(Boolean);
+}
+
+function numberPairFlag(parsed: ParsedArgs, name: string): [number, number] {
+  const values = commaListFlag(parsed, name).map((entry) => Number(entry));
+  return [values[0] ?? Number.NaN, values[1] ?? Number.NaN];
 }
 
 async function jsonFileFlag(parsed: ParsedArgs, name: string): Promise<unknown> {
