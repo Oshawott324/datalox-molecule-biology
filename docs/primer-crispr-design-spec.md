@@ -395,6 +395,135 @@ off-target and should not appear in the result.
 - Unsupported CR1 option values return structured `INVALID_ARGUMENT` errors.
 - Workspace-scale scope is reported as `workspace_molecules_only`.
 
+## CR1.1-CR1.4: Guide Persistence, Visualization, And Reports
+
+Status: planned.
+
+CR1 is currently read-only: it returns guide candidates but does not persist a
+chosen guide into the workspace. The next CR1 work should make the agent loop
+complete while keeping guide efficacy scoring out of scope.
+
+Implementation order:
+
+1. Add `rankingEvidence` to each `GuideCandidate`.
+2. Add `design_grnas.nextAction`.
+3. Add `upsert_grna`.
+4. Render persisted guides on map and sequence-region artifacts.
+5. Add `export_grna_report`.
+6. Gate PAM expansion as a later scoped task.
+
+### CR1.1 Ranking Evidence
+
+Add a structured explanation for candidate ordering:
+
+```ts
+type GuideRankingEvidence = {
+  passingFilters: boolean;
+  filterFailures: string[];
+  offTargetHitCount: number;
+  gcDistanceFrom50: number;
+  coordinateTieBreak: number;
+  strandTieBreak: "+" | "-";
+  efficacyScoreIncluded: false;
+};
+```
+
+`efficacyScoreIncluded` must remain `false` until CR2 validation is complete.
+This field is evidence for the agent; it is not a new scoring model.
+
+### CR1.1 `design_grnas.nextAction`
+
+`design_grnas` should return an agent-facing next action:
+
+```ts
+nextAction: {
+  type: "select_grna";
+  tool: "upsert_grna";
+  instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.";
+}
+```
+
+The tool remains read-only. The write happens only through `upsert_grna`.
+
+### CR1.2 `upsert_grna`
+
+Persist selected guides in a dedicated workspace `guides` collection, not in
+`features`.
+
+Rationale:
+
+- Primers already use a dedicated collection; guides should follow that pattern.
+- Guide-specific fields such as PAM, seed filters, off-target count, and ranking
+  evidence should remain structured.
+- `features` should continue to represent biological sequence annotations, not
+  tool-candidate evidence.
+
+Proposed persisted shape:
+
+```ts
+type GuideRecord = {
+  id: string;
+  moleculeId: string;
+  name: string;
+  sequence: string;
+  pam: string;
+  strand: "+" | "-";
+  start: number;
+  end: number;
+  pamStart: number;
+  pamEnd: number;
+  pamType: "SpCas9";
+  gcPercent: number;
+  seedRegionMaxHomopolymer: number;
+  offTargetScope: "workspace_molecules_only";
+  offTargetHitCount: number;
+  rankingEvidence: GuideRankingEvidence;
+  sourceTool: "design_grnas";
+};
+```
+
+`upsert_grna` must be revision-safe and require `expectedRevision`, matching
+`upsert_primer` and `upsert_feature`.
+
+### CR1.3 Visualization
+
+After guides are persisted:
+
+- `render_plasmid_map` should optionally render guide protospacer arcs and PAM
+  ticks.
+- Sequence-region rendering should highlight protospacer and PAM separately.
+- Plus and minus strand guides should use distinct visual conventions.
+- Visual rendering must read persisted `guides`; it should not rerun
+  `design_grnas`.
+
+### CR1.4 `export_grna_report`
+
+Add an artifact-producing report tool after persistence and visualization:
+
+```ts
+type ExportGrnaReportInput = {
+  workspacePath: string;
+  guideIds: string[];
+  outputPath?: string;
+};
+```
+
+The report should include coordinates, PAM, GC, filter failures, off-target
+scope, off-target hits, and ranking evidence. It must explicitly state that no
+validated on-target efficacy score is included unless CR2 has populated
+`onTargetScore`.
+
+### Later PAM Expansion
+
+Do not add new PAM types opportunistically. Each new PAM model must pin:
+
+- PAM expression and recognition orientation.
+- guide length.
+- plus/minus strand coordinate convention.
+- seed-region convention.
+- compatible off-target PAM logic.
+- positive and negative tests.
+
 ## CR2: Validated On-Target Scoring
 
 Do not implement Doench Rule Set 2 as an unvalidated transcription task.
