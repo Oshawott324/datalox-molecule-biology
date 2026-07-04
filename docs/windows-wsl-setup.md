@@ -140,18 +140,106 @@ Use the same WSL launch pattern in Cursor's MCP config:
 
 Reload Cursor after editing the config.
 
-## Codex
+## Using Codex With MCP And Primer3
 
-For best results, run Codex from the WSL repo directory:
+Codex must run inside WSL so it shares the same environment as the MCP server
+and `primer3_core`. Running Codex natively on Windows means it cannot reach the
+Linux `primer3_core` binary.
+
+### Step 1 — Verify the environment before opening Codex
+
+Open an Ubuntu terminal and run:
+
+```bash
+which primer3_core       # should print a path such as /usr/bin/primer3_core
+node --version           # should print v20.x.x or newer
+ls ~/datalox-molecule-biology/dist/src/cli/main.js   # should exist
+```
+
+If `which primer3_core` prints nothing:
+
+```bash
+sudo apt-get install -y primer3
+```
+
+If `dist/src/cli/main.js` does not exist:
+
+```bash
+cd ~/datalox-molecule-biology && npm run build
+```
+
+### Step 2 — Run the primer design tests to confirm the live path works
+
+```bash
+cd ~/datalox-molecule-biology
+npm test -- tests/primer-design.test.ts --reporter=verbose
+```
+
+Expected output: the test `designs primers for a pUC19 target with primer3_core`
+should **pass** (not be skipped). The test `returns DEPENDENCY_MISSING when
+primer3_core is absent` should be **skipped** because primer3 is present.
+If both are correct, Primer3 is wired up end-to-end.
+
+### Step 3 — Configure the MCP server in Codex
+
+Codex reads MCP server config from `~/.codex/config.toml`. Create or edit it:
+
+```bash
+mkdir -p ~/.codex
+nano ~/.codex/config.toml
+```
+
+Add this block (adjust the path if your repo is named or located differently):
+
+```toml
+[mcp_servers.molecule-biology]
+command = "node"
+args = ["/home/YOUR_USERNAME/datalox-molecule-biology/dist/src/cli/main.js", "mcp-server"]
+```
+
+Replace `YOUR_USERNAME` with your WSL username (`whoami` prints it). Save and
+close. Then start Codex from the repo directory:
 
 ```bash
 cd ~/datalox-molecule-biology
 codex
 ```
 
-If Codex is running natively on Windows, it may not see WSL's `primer3_core`.
-For Primer3 validation, use Codex inside WSL or use an MCP host that launches
-the server through `wsl.exe` as shown above.
+Type `/mcp` inside Codex to verify the server is connected and lists the 24
+tools. Look for `design_primers` and `design_grnas` in the tool list.
+
+### Step 4 — Test with an example prompt
+
+Paste this into the Codex prompt to exercise the full chain:
+
+```
+Import the pUC19 GenBank fixture from fixtures/genbank/puc19.gb into a
+temporary workspace under /tmp, then use design_primers to design primers
+targeting the lacZ region (positions 149 to 507). Return the top 3
+candidates with forward sequence, reverse sequence, Tm, and product size.
+```
+
+This exercises `open_sequence` → `design_primers` (primer3_core) → structured
+result. Expected: three primer pairs with Tm near 60°C and product sizes in the
+700–900 bp range.
+
+## Your Own Project Files: /mnt/c vs Native WSL
+
+Keep the MCP server repo on a **native WSL path** (`~/` or `/home/user/`).
+Running `npm install` or `npm test` on `/mnt/c/` is significantly slower because
+every file operation crosses the WSL filesystem boundary.
+
+Your own sequence files and workspace directories can live anywhere:
+
+| File location | Works? | Notes |
+|---|---|---|
+| `/home/user/myproject/` | Yes, fast | Recommended for active workspaces |
+| `/mnt/c/Users/you/myproject/` | Yes, slower | Fine for occasional reads; avoid for npm |
+| Windows path in MCP tool call | No | Always use Linux absolute paths inside WSL |
+
+When passing paths to MCP tools from inside WSL, always use Linux-style absolute
+paths. `/mnt/c/Users/fangxf/sequences/my.gb` is the correct form for a file on
+the Windows C drive accessed from WSL.
 
 ## Quick Check
 
