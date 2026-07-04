@@ -58,6 +58,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `simulate_pcr` | Simulate deterministic exact-match PCR. |
 | `simulate_assembly` | Simulate read-only restriction-ligation candidates and GenBank artifacts. |
 | `export_genbank` | Export a molecule and workspace features to GenBank. |
+| `export_grna_report` | Write a Markdown report artifact for selected persisted guide RNA records. |
 | `render_plasmid_map` | Render a deterministic circular plasmid SVG map artifact. |
 | `render_digest_gel` | Render a deterministic SVG gel artifact from digest or PCR fragment sizes. |
 | `align_sequences` | Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment. |

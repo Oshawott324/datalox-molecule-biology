@@ -18,6 +18,7 @@ import {
   type DesignPrimersToolInput,
   type EnzymeInput,
   type ExportGenBankInput,
+  type ExportGrnaReportInput,
   type FindOrfsInput,
   type OpenSequenceInput,
   type OpenSequenceEditorInput,
@@ -70,6 +71,7 @@ const commandToTool: Record<string, ToolName> = {
   "simulate-pcr": "simulate_pcr",
   "simulate-assembly": "simulate_assembly",
   "export-genbank": "export_genbank",
+  "export-grna-report": "export_grna_report",
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
   "align-sequences": "align_sequences",
@@ -185,6 +187,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "simulate_pcr") return simulatePcrInput(parsed);
   if (tool === "simulate_assembly") return simulateAssemblyInput(parsed);
   if (tool === "export_genbank") return exportGenBankInput(parsed);
+  if (tool === "export_grna_report") return exportGrnaReportInput(parsed);
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
@@ -345,6 +348,15 @@ function exportGenBankInput(parsed: ParsedArgs): ExportGenBankInput {
     ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
     ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
     outputPath: stringFlag(parsed, "output") ?? stringFlag(parsed, "output-path") ?? "",
+  };
+}
+
+function exportGrnaReportInput(parsed: ParsedArgs): ExportGrnaReportInput {
+  return {
+    ...workspaceInput(parsed),
+    guideIds: commaListFlag(parsed, "guide-ids"),
+    ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
   };
 }
 

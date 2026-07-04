@@ -226,6 +226,7 @@ Use these tools instead of reasoning from memory:
 - `design_primers`
 - `design_grnas`
 - `upsert_grna`
+- `export_grna_report`
 
 Examples:
 
@@ -459,6 +460,22 @@ record.
       },
       "sourceTool": "design_grnas"
     }
+  }
+}
+```
+
+To produce a human-readable guide summary artifact, call `export_grna_report`
+on persisted guide ids. The report states the CR1 evidence boundary explicitly:
+workspace-scale off-target count is included, genome-scale off-target search and
+validated efficacy scoring are not.
+
+```json
+{
+  "tool": "export_grna_report",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "guideIds": ["grna_example_1"],
+    "outputPath": "reports/guides/grna_example_1.md"
   }
 }
 ```

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { designGrnas, findWorkspaceOffTargets, normalizeGrnaOptions, scanSpCas9Guides } from "../src/core/crispr.js";
 import type { GuideCandidate } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
-import { handleDesignGrnas, handleUpsertGrna, importSequenceFile, readWorkspace } from "../src/index.js";
+import { handleDesignGrnas, handleExportGrnaReport, handleUpsertGrna, importSequenceFile, readWorkspace } from "../src/index.js";
 import type { GuideRecord } from "../src/index.js";
 
 async function tempWorkspaceDir(): Promise<string> {
@@ -251,6 +251,54 @@ describe("CR1 SpCas9 guide design", () => {
     expect(workspace.guides).toEqual([guide]);
   });
 
+  it("exports a Markdown report for selected persisted guides", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    await handleUpsertGrna({
+      workspacePath: sourceImport.workspacePath,
+      expectedRevision: 0,
+      guide,
+    });
+
+    const report = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds: [guide.id],
+      outputPath: "reports/guides/selected.md",
+    });
+
+    expect(report).toMatchObject({
+      ok: true,
+      tool: "export_grna_report",
+      data: {
+        guideIds: [guide.id],
+        relativePath: path.join("reports", "guides", "selected.md"),
+        mimeType: "text/markdown",
+        reportsDetailedOffTargetHits: false,
+      },
+      artifacts: [
+        {
+          kind: "grna_report",
+          mimeType: "text/markdown",
+        },
+      ],
+      nextAction: { tool: "validate_workspace" },
+    });
+    if (!report.ok) throw new Error("expected export_grna_report success");
+    const markdown = await fs.readFile(report.artifacts?.[0]?.path ?? "", "utf8");
+    expect(markdown).toContain("# gRNA Report");
+    expect(markdown).toContain("selected guide 1");
+    expect(markdown).toContain("No validated on-target efficacy score is included");
+    expect(markdown).toContain("Detailed off-target hit rows are not persisted");
+  });
+
   it("runs design-grnas through the CLI", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
@@ -311,6 +359,43 @@ describe("CR1 SpCas9 guide design", () => {
       tool: "upsert_grna",
       data: { guideId: guide.id, action: "created" },
       revision: 1,
+    });
+  });
+
+  it("runs export-grna-report through the CLI", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    await handleUpsertGrna({
+      workspacePath: sourceImport.workspacePath,
+      expectedRevision: 0,
+      guide,
+    });
+
+    const result = await runCli([
+      "export-grna-report",
+      sourceImport.workspacePath,
+      "--guide-ids",
+      guide.id,
+      "--output",
+      "reports/guides/cli-report.md",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      tool: "export_grna_report",
+      data: {
+        guideCount: 1,
+        relativePath: path.join("reports", "guides", "cli-report.md"),
+      },
     });
   });
 

@@ -312,6 +312,21 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "export_grna_report",
+    description: "Write a Markdown report artifact for selected persisted guide RNA records.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "guideIds"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+      guideIds: { type: "array", items: { type: "string" } },
+        outputPath: { type: "string" },
+      },
+    },
+  },
+  {
     name: "render_digest_gel",
     description: "Render a deterministic SVG gel artifact from digest or PCR fragment sizes.",
     inputSchema: {

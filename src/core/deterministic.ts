@@ -54,3 +54,5 @@ export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPr
 export { designGrnas } from "./crispr.js";
 export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCandidate, OffTargetHit } from "./crispr.js";
 export type { GuideRankingEvidence } from "./schema.js";
+export { exportGrnaReport } from "./grna-report.js";
+export type { ExportGrnaReportOptions, ExportGrnaReportResult } from "./grna-report.js";

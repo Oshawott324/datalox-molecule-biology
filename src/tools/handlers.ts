@@ -6,6 +6,7 @@ import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from 
 import {
   alignSequences,
   exportGenBank,
+  exportGrnaReport,
   designPrimers,
   designGrnas,
   findOrfs,
@@ -50,6 +51,7 @@ export type ToolName =
   | "simulate_pcr"
   | "simulate_assembly"
   | "export_genbank"
+  | "export_grna_report"
   | "render_plasmid_map"
   | "render_digest_gel"
   | "align_sequences"
@@ -166,6 +168,11 @@ export type SimulateAssemblyToolInput = WorkspaceInput & {
 
 export type ExportGenBankInput = MoleculeToolInput & {
   outputPath: string;
+};
+
+export type ExportGrnaReportInput = WorkspaceInput & {
+  guideIds: string[];
+  outputPath?: string;
 };
 
 export type RenderPlasmidMapInput = MoleculeToolInput & {
@@ -285,6 +292,7 @@ export type ToolInputByName = {
   simulate_pcr: SimulatePcrInput;
   simulate_assembly: SimulateAssemblyToolInput;
   export_genbank: ExportGenBankInput;
+  export_grna_report: ExportGrnaReportInput;
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
   align_sequences: AlignSequencesInput;
@@ -316,6 +324,7 @@ export const toolHandlers = {
   simulate_pcr: handleSimulatePcr,
   simulate_assembly: handleSimulateAssembly,
   export_genbank: handleExportGenBank,
+  export_grna_report: handleExportGrnaReport,
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
   align_sequences: handleAlignSequences,
@@ -702,6 +711,34 @@ export async function handleExportGenBank(input: ExportGenBankInput): Promise<To
           description: "GenBank flat file export of the molecule and its workspace features.",
         },
       ],
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleExportGrnaReport(input: ExportGrnaReportInput): Promise<ToolResultEnvelope> {
+  const tool = "export_grna_report";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const guideIds = assertStringArray(input.guideIds, "guideIds");
+    const result = await exportGrnaReport(workspacePath, guideIds, {
+      ...(input.outputPath ? { outputPath: input.outputPath } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      artifacts: [
+        {
+          kind: "grna_report",
+          path: result.outputPath,
+          mimeType: result.mimeType,
+          description: "Markdown report for selected persisted guide RNA records.",
+        },
+      ],
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: { workspacePath },
+      },
     });
   } catch (error) {
     return toolFailureFromError(tool, error);

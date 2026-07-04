@@ -5,7 +5,7 @@ hosts: Claude Desktop, Cursor, and the MCP Inspector. All three speak the same
 contract — they launch the built CLI with the `mcp-server` subcommand and talk
 JSON-RPC over stdio.
 
-The server advertises itself as `@datalox/molecule-biology` and exposes 25 tools
+The server advertises itself as `@datalox/molecule-biology` and exposes 26 tools
 via `tools/list`. Discover tools at runtime; do not rely on a memorized list.
 
 ## Prerequisites
@@ -127,12 +127,12 @@ npx @modelcontextprotocol/inspector node dist/src/cli/main.js mcp-server
 This opens the Inspector UI in a browser, connected to the server over stdio.
 Verify the server end to end:
 
-1. **`tools/list`** — expect 25 tools (`open_sequence`, `open_workspace`,
+1. **`tools/list`** — expect 26 tools (`open_sequence`, `open_workspace`,
    `open_sequence_editor`, `read_workspace`, `validate_workspace`,
    `list_molecules`, `get_sequence_context`, `upsert_feature`, `delete_feature`,
    `upsert_primer`, `delete_primer`, `upsert_grna`, `reverse_complement`, `translate_region`,
    `find_orfs`, `find_restriction_sites`, `simulate_digest`, `simulate_pcr`,
-   `simulate_assembly`, `export_genbank`, `render_plasmid_map`, `render_digest_gel`,
+   `simulate_assembly`, `export_genbank`, `export_grna_report`, `render_plasmid_map`, `render_digest_gel`,
    `align_sequences`, `design_primers`, `design_grnas`).
 
 2. **`reverse_complement`** — a pure tool with no workspace needed:
