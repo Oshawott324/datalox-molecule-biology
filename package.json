@@ -25,7 +25,8 @@
     "replay:demo": "npm run build --silent && node dist/src/cli/main.js replay-demo --input-path fixtures/fasta/single.fa --molecule-id mol_replay_demo",
     "smoke:mcp": "npm run build --silent && node scripts/smoke-mcp.mjs",
     "smoke:mcp:cwd": "npm run build --silent && node scripts/smoke-mcp-cwd.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "validate:cr2:azimuth": "node scripts/validate-azimuth-reference.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

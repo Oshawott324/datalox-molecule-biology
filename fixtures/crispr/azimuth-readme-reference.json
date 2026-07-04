@@ -1,0 +1,29 @@
+{
+  "source": "https://github.com/MicrosoftResearch/Azimuth/blob/master/README.md",
+  "model": "Azimuth V3_model_full default",
+  "inputConvention": "30-mer: 4bp upstream + 20bp guide + 3bp PAM + 3bp downstream",
+  "tolerance": 1e-12,
+  "records": [
+    {
+      "id": "azimuth_readme_1",
+      "sequence30": "ACAGCTGATCTCCAGATATGACCATGGGTT",
+      "aminoAcidCutPosition": 2,
+      "percentPeptide": 0.1,
+      "expectedScore": 0.672298196907
+    },
+    {
+      "id": "azimuth_readme_2",
+      "sequence30": "CAGCTGATCTCCAGATATGACCATGGGTTT",
+      "aminoAcidCutPosition": 2,
+      "percentPeptide": 0.1,
+      "expectedScore": 0.687944237021
+    },
+    {
+      "id": "azimuth_readme_3",
+      "sequence30": "CCAGAAGTTTGAGCCACAAACCCATGGTCA",
+      "aminoAcidCutPosition": 2,
+      "percentPeptide": 0.1,
+      "expectedScore": 0.659245390401
+    }
+  ]
+}

@@ -54,6 +54,8 @@ Do not add `onTargetScore` to `GuideCandidate` until all of these are true:
      use.
    - Treat Azimuth code, saved model pickle files, training/reference data, and
      any redistributed dependency as separate assets.
+   - Keep product/commercial notes in
+     `docs/crispr-commercial-license-review.md`.
 
 3. **Input convention pinned**
    - Document the exact required sequence window.
@@ -83,6 +85,13 @@ Do not add `onTargetScore` to `GuideCandidate` until all of these are true:
      - `ACAGCTGATCTCCAGATATGACCATGGGTT` -> `0.672298196907`
      - `CAGCTGATCTCCAGATATGACCATGGGTTT` -> `0.687944237021`
      - `CCAGAAGTTTGAGCCACAAACCCATGGTCA` -> `0.659245390401`
+   - The initial fixture lives at
+     `fixtures/crispr/azimuth-readme-reference.json`.
+   - Validate it in a reviewed Azimuth Python environment with:
+
+     ```bash
+     npm run validate:cr2:azimuth
+     ```
 
 5. **Agent-facing semantics defined**
    - Keep CR1 `filterFailures` as hard-filter evidence.
