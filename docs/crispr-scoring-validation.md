@@ -9,6 +9,10 @@ It does not claim guide efficacy.
 CR2 should add an optional efficacy score only after source, license, model, and
 reference-score validation are pinned.
 
+CR2 should be framed as Azimuth-compatible scoring unless a different validated
+model is explicitly chosen. Do not describe CR2 as a hand-transcribed Doench
+coefficient table.
+
 ## Current Source Findings
 
 - The Microsoft Research Azimuth repository is archived and read-only.
@@ -17,6 +21,9 @@ reference-score validation are pinned.
   for CRISPR/Cas9 guide efficiency and cites Doench et al. 2016.
 - The README describes the selected model as gradient-boosted regression trees,
   not a simple hand-transcribed 20-feature linear model.
+- The README example scores are produced by
+  `azimuth.model_comparison.predict(sequences, amino_acid_cut_positions,
+  percent_peptides)`, using `V3_model_full` by default.
 
 Sources checked:
 
@@ -32,24 +39,50 @@ Do not add `onTargetScore` to `GuideCandidate` until all of these are true:
    - Decide whether CR2 means Azimuth-compatible scoring, a specific published
      Rule Set 2 model, or a different explicitly named score.
    - Do not call a heuristic "Doench RS2".
+   - Pick the implementation path before writing code:
+     - **Python subprocess**: call a pinned Azimuth scorer script, following the
+       same dependency-boundary pattern as `primer3_core`.
+     - **TypeScript reimplementation**: only allowed if feature engineering,
+       serialized model parameters, and reference-score fixtures are pinned.
+   - The default recommendation is the Python subprocess path because it reduces
+     the risk of silent feature-engineering drift.
 
 2. **License reviewed**
    - Confirm the license for any code, model weights, serialized model files,
      and reference data used for validation.
    - Record whether the source is acceptable for this repo and intended product
      use.
+   - Treat Azimuth code, saved model pickle files, training/reference data, and
+     any redistributed dependency as separate assets.
 
 3. **Input convention pinned**
    - Document the exact required sequence window.
    - Include protospacer, PAM, strand convention, and any flanking context.
    - State whether coordinates are reported in plus-strand workspace coordinates
      while sequence input is model-orientation sequence.
+   - For Azimuth-compatible CR2, the scoring input is a 30-mer:
+     `4 bp upstream + 20 bp guide + 3 bp PAM + 3 bp downstream`.
+   - If the guide protospacer is at 1-based molecule coordinates `start..end`,
+     the plus-strand 30-mer starts at `start - 4` for plus-strand guides before
+     orientation conversion.
+   - For minus-strand guides, derive the 30-mer from the plus-strand molecule
+     coordinates, then reverse-complement it into guide orientation before
+     scoring.
+   - For linear molecules, if the full 30-mer is unavailable because the guide
+     lies within 4 bp of the 5' edge or lacks 3 downstream bases after the PAM,
+     return no score with reason `INSUFFICIENT_FLANKING_CONTEXT`. Do not pad,
+     trim, or infer missing context.
+   - Circular molecules may wrap around the origin to provide the full 30-mer.
 
 4. **Reference-score fixture added**
    - Add 5-10 guide sequences with expected scores from an authoritative
      reference implementation or publication.
    - Pin accepted numeric tolerance.
    - The implementation must fail tests if scores drift.
+   - At minimum, include the three Azimuth README examples:
+     - `ACAGCTGATCTCCAGATATGACCATGGGTT` -> `0.672298196907`
+     - `CAGCTGATCTCCAGATATGACCATGGGTTT` -> `0.687944237021`
+     - `CCAGAAGTTTGAGCCACAAACCCATGGTCA` -> `0.659245390401`
 
 5. **Agent-facing semantics defined**
    - Keep CR1 `filterFailures` as hard-filter evidence.
@@ -65,13 +98,20 @@ When CR2 is validated, extend `GuideCandidate` additively:
 ```ts
 type GuideCandidate = {
   // existing CR1 fields stay unchanged
-  onTargetScore?: {
-    method: "azimuth_v2" | "doench_rs2_validated";
-    value: number;
-    range: [0, 1];
-    modelSource: string;
-    validationSet: string;
-  };
+  onTargetScore?:
+    | {
+        method: "azimuth_v2";
+        value: number;
+        range: [0, 1];
+        modelSource: string;
+        validationSet: string;
+        inputWindow: "4bp_upstream_20bp_guide_3bp_pam_3bp_downstream";
+      }
+    | {
+        value: null;
+        reason: "INSUFFICIENT_FLANKING_CONTEXT";
+        inputWindow: "4bp_upstream_20bp_guide_3bp_pam_3bp_downstream";
+      };
 };
 ```
 
