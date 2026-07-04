@@ -362,6 +362,142 @@ describe("CR1 SpCas9 guide design", () => {
     });
   });
 
+  it("includes guide sequence, PAM, coordinates, and evidence boundary fields in report markdown", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    await handleUpsertGrna({ workspacePath: sourceImport.workspacePath, expectedRevision: 0, guide });
+
+    const report = await handleExportGrnaReport({ workspacePath: sourceImport.workspacePath, guideIds: [guide.id] });
+    if (!report.ok) throw new Error("expected export_grna_report success");
+    const markdown = await fs.readFile(report.artifacts?.[0]?.path ?? "", "utf8");
+
+    expect(markdown).toContain("Sequence: ACGTACGTACGTACGTACGT");
+    expect(markdown).toContain("PAM: AGG (SpCas9)");
+    expect(markdown).toContain("Protospacer coordinates: 1..20");
+    expect(markdown).toContain("PAM coordinates: 21..23");
+    expect(markdown).toContain("GC percent: 50");
+    expect(markdown).toContain("Filter failures: none");
+    expect(markdown).toContain("Efficacy score included: false");
+    expect(markdown).toContain("CR1 does not include validated Azimuth/Doench on-target efficacy scoring");
+  });
+
+  it("uses the guide id to name the report file when outputPath is omitted", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    await handleUpsertGrna({ workspacePath: sourceImport.workspacePath, expectedRevision: 0, guide });
+
+    const report = await handleExportGrnaReport({ workspacePath: sourceImport.workspacePath, guideIds: [guide.id] });
+
+    expect(report).toMatchObject({
+      ok: true,
+      data: {
+        relativePath: path.join("reports", "guides", `${guide.id}.grna-report.md`),
+      },
+    });
+  });
+
+  it("writes a multi-guide report with both guides in the table and detail sections", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const seq = "ACGTACGTACGTACGTACGTAGG" + "GCGCGCGCGCGCGCGCGCGCAGG";
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", seq);
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_two",
+    });
+    const [cand1, cand2] = scanSpCas9Guides(seq, { start: 1, end: seq.length }, { strand: "+" });
+    const guide1 = { ...guideRecordFromCandidate("mol_two", cand1), id: "grna_two_1", name: "guide alpha" };
+    const guide2 = { ...guideRecordFromCandidate("mol_two", cand2), id: "grna_two_2", name: "guide beta" };
+    await handleUpsertGrna({ workspacePath: sourceImport.workspacePath, expectedRevision: 0, guide: guide1 });
+    await handleUpsertGrna({ workspacePath: sourceImport.workspacePath, expectedRevision: 1, guide: guide2 });
+
+    const report = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds: [guide1.id, guide2.id],
+      outputPath: "reports/guides/multi.md",
+    });
+
+    expect(report).toMatchObject({
+      ok: true,
+      data: { guideCount: 2, guideIds: [guide1.id, guide2.id] },
+    });
+    if (!report.ok) throw new Error("expected export_grna_report success");
+    const markdown = await fs.readFile(report.artifacts?.[0]?.path ?? "", "utf8");
+    expect(markdown).toContain("guide alpha");
+    expect(markdown).toContain("guide beta");
+    expect(markdown).toContain(`## ${guide1.id}`);
+    expect(markdown).toContain(`## ${guide2.id}`);
+  });
+
+  it("returns GUIDE_NOT_FOUND when a requested guide id is not persisted", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+
+    const result = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds: ["grna_does_not_exist"],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      tool: "export_grna_report",
+      error: { code: "GUIDE_NOT_FOUND" },
+    });
+  });
+
+  it("rejects empty guideIds, duplicates, and path traversal outputPath", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    await handleUpsertGrna({ workspacePath: sourceImport.workspacePath, expectedRevision: 0, guide });
+
+    const emptyIds = await handleExportGrnaReport({ workspacePath: sourceImport.workspacePath, guideIds: [] });
+    expect(emptyIds).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
+
+    const duplicates = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds: [guide.id, guide.id],
+    });
+    expect(duplicates).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
+
+    const traversal = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds: [guide.id],
+      outputPath: "../../etc/report.md",
+    });
+    expect(traversal).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
+  });
+
   it("runs export-grna-report through the CLI", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");

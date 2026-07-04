@@ -16,6 +16,7 @@ export type ExportGrnaReportResult = {
   relativePath: string;
   mimeType: "text/markdown";
   guideCount: number;
+  // CR1.4 reports persisted guide summaries only. Widen this deliberately if a future guide schema stores full off-target rows.
   reportsDetailedOffTargetHits: false;
   offTargetDetailInstruction: string;
 };
@@ -88,7 +89,7 @@ function formatGrnaReport(guides: GuideRecord[]): string {
   lines.push("| Guide | Molecule | Strand | Coordinates | PAM | GC % | Filters | Workspace off-target count |");
   lines.push("|---|---|---:|---|---|---:|---|---:|");
   for (const guide of guides) {
-    lines.push([
+    const row = [
       escapeMarkdown(guide.name),
       escapeMarkdown(guide.moleculeId),
       guide.strand,
@@ -97,7 +98,8 @@ function formatGrnaReport(guides: GuideRecord[]): string {
       formatNumber(guide.gcPercent),
       guide.rankingEvidence.filterFailures.length === 0 ? "pass" : escapeMarkdown(guide.rankingEvidence.filterFailures.join(", ")),
       String(guide.offTargetHitCount),
-    ].join(" | ").replace(/^/, "| ").replace(/$/, " |"));
+    ].join(" | ");
+    lines.push(`| ${row} |`);
   }
   lines.push("");
   for (const guide of guides) {

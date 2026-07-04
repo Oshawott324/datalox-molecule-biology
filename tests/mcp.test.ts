@@ -31,6 +31,7 @@ describe("MCP server", () => {
       "upsert_feature",
       "upsert_grna",
       "design_grnas",
+      "export_grna_report",
       "validate_workspace",
     ]));
   });
