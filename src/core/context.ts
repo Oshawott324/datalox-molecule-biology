@@ -4,7 +4,7 @@ import path from "node:path";
 import { extractSegments, validateSegments } from "./coordinates.js";
 import { MoleculeError } from "./errors.js";
 import { workspaceRootFromPath } from "./paths.js";
-import type { CoordinateSegment, Feature, Molecule, Primer } from "./schema.js";
+import type { CoordinateSegment, Feature, GuideRecord, Molecule, Primer } from "./schema.js";
 import { parseStoredSequenceContent } from "./sequence.js";
 import { readWorkspace } from "./workspace.js";
 
@@ -13,6 +13,7 @@ export type SequenceContextOptions = {
   includeSequence?: boolean;
   includeFeatures?: boolean;
   includePrimers?: boolean;
+  includeGuides?: boolean;
 };
 
 export type MoleculeSummary = Pick<Molecule, "id" | "name" | "length" | "topology" | "moleculeType" | "alphabet" | "sourceFormat" | "sequenceDigest">;
@@ -29,6 +30,7 @@ export type SequenceContext = {
   sequence?: string;
   features?: Feature[];
   primers?: Primer[];
+  guides?: GuideRecord[];
 };
 
 export async function listMoleculeSummaries(workspacePath: string): Promise<{ revision: number; molecules: MoleculeSummary[] }> {
@@ -87,6 +89,12 @@ export async function getSequenceContext(
     context.primers = region
       ? workspace.primers.filter((primer) => primer.moleculeId === moleculeId && primer.binding && overlapsRegion(primer.binding.segments, region))
       : workspace.primers.filter((primer) => primer.moleculeId === moleculeId);
+  }
+
+  if (options.includeGuides ?? true) {
+    context.guides = region
+      ? workspace.guides.filter((guide) => guide.moleculeId === moleculeId && overlapsRegion([{ start: guide.start, end: guide.end, strand: guide.strand }], region))
+      : workspace.guides.filter((guide) => guide.moleculeId === moleculeId);
   }
 
   return context;

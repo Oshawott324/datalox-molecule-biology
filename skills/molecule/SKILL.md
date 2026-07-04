@@ -499,6 +499,8 @@ site.cutPosition }`:
 `showPrimers: true` renders only primers that already have canonical
 `binding.segments` in workspace state. If primer binding is needed, call
 `upsert_primer` with `bindToMolecule: true` before rendering the map.
+`showGuides: true` renders only guide records already persisted with
+`upsert_grna`; it does not rerun `design_grnas`.
 
 ## Visual Context
 

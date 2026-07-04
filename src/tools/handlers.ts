@@ -174,6 +174,7 @@ export type RenderPlasmidMapInput = MoleculeToolInput & {
   height?: number;
   cutSites?: PlasmidMapCutSite[];
   showPrimers?: boolean;
+  showGuides?: boolean;
 };
 
 export type RenderDigestGelInput = WorkspaceInput & {
@@ -718,6 +719,7 @@ export async function handleRenderPlasmidMap(input: RenderPlasmidMapInput): Prom
       ...(input.height !== undefined ? { height: assertPositiveInteger(input.height, "height") } : {}),
       ...(input.cutSites ? { cutSites: assertCutSites(input.cutSites) } : {}),
       ...(input.showPrimers !== undefined ? { showPrimers: input.showPrimers } : {}),
+      ...(input.showGuides !== undefined ? { showGuides: input.showGuides } : {}),
     });
     return toolSuccess(tool, { workspacePath, ...result }, {
       workspacePath,

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { getSequenceContext } from "./context.js";
 import { MoleculeError } from "./errors.js";
-import type { CoordinateSegment, Feature, Primer } from "./schema.js";
+import type { CoordinateSegment, Feature, GuideRecord, Primer } from "./schema.js";
 import { workspaceRootFromPath } from "./paths.js";
 
 export type PlasmidMapCutSite = {
@@ -17,6 +17,7 @@ export type RenderPlasmidMapOptions = {
   height?: number;
   cutSites?: PlasmidMapCutSite[];
   showPrimers?: boolean;
+  showGuides?: boolean;
 };
 
 export type RenderPlasmidMapResult = {
@@ -29,6 +30,7 @@ export type RenderPlasmidMapResult = {
   length: number;
   renderedFeatureIds: string[];
   renderedPrimerIds: string[];
+  renderedGuideIds: string[];
   renderedCutSites: PlasmidMapCutSite[];
   rules: {
     baseOneAngle: "12_o_clock";
@@ -37,6 +39,7 @@ export type RenderPlasmidMapResult = {
     multiSegmentRendering: "one_arc_per_segment_one_label_per_feature";
     labelPlacement: "feature_anchor_midpoint_with_radius_staggered_by_sorted_index";
     primerRendering: "bound_primers_only_one_arrow_per_binding_segment";
+    guideRendering: "persisted_guides_only_protospacer_arc_with_pam_tick";
     cutSiteRendering: "caller_supplied_ticks_at_cut_position";
   };
 };
@@ -102,6 +105,11 @@ export async function renderPlasmidMap(
       .filter((primer) => primer.moleculeId === moleculeId && primer.binding && primer.binding.segments.length > 0)
       .sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id))
     : [];
+  const guides = options.showGuides
+    ? (context.guides ?? [])
+      .filter((guide) => guide.moleculeId === moleculeId)
+      .sort((left, right) => left.start - right.start || left.end - right.end || left.id.localeCompare(right.id))
+    : [];
   const cutSites = normalizeCutSites(options.cutSites ?? [], context.molecule.length);
   const svg = renderSvg({
     moleculeName: context.molecule.name,
@@ -109,6 +117,7 @@ export async function renderPlasmidMap(
     length: context.molecule.length,
     features,
     primers,
+    guides,
     cutSites,
     width,
     height,
@@ -127,6 +136,7 @@ export async function renderPlasmidMap(
     length: context.molecule.length,
     renderedFeatureIds: features.map((feature) => feature.id),
     renderedPrimerIds: primers.map((primer) => primer.id),
+    renderedGuideIds: guides.map((guide) => guide.id),
     renderedCutSites: cutSites,
     rules: {
       baseOneAngle: "12_o_clock",
@@ -135,6 +145,7 @@ export async function renderPlasmidMap(
       multiSegmentRendering: "one_arc_per_segment_one_label_per_feature",
       labelPlacement: "feature_anchor_midpoint_with_radius_staggered_by_sorted_index",
       primerRendering: "bound_primers_only_one_arrow_per_binding_segment",
+      guideRendering: "persisted_guides_only_protospacer_arc_with_pam_tick",
       cutSiteRendering: "caller_supplied_ticks_at_cut_position",
     },
   };
@@ -146,6 +157,7 @@ function renderSvg(input: {
   length: number;
   features: RenderableFeature[];
   primers: Primer[];
+  guides: GuideRecord[];
   cutSites: PlasmidMapCutSite[];
   width: number;
   height: number;
@@ -155,12 +167,17 @@ function renderSvg(input: {
   const radius = Math.min(input.width, input.height) * 0.31;
   const featureRadius = radius + 10;
   const primerRadius = radius - 13;
+  const guideRadius = radius - 34;
+  const pamInnerRadius = radius - 46;
+  const pamOuterRadius = radius - 22;
   const cutInnerRadius = radius - 11;
   const cutOuterRadius = radius + 22;
   const cutLabelRadius = radius + 78;
   const labelBaseRadius = radius + 58;
   const paths: string[] = [];
   const primerPaths: string[] = [];
+  const guidePaths: string[] = [];
+  const guideTicks: string[] = [];
   const cutTicks: string[] = [];
   const labels: string[] = [];
 
@@ -194,6 +211,20 @@ function renderSvg(input: {
     });
   });
 
+  input.guides.forEach((guide, guideIndex) => {
+    const segment: CoordinateSegment = { start: guide.start, end: guide.end, strand: guide.strand };
+    const color = guide.strand === "-" ? "#7B1FA2" : "#00897B";
+    guidePaths.push(`<path d="${primerArcPath(centerX, centerY, guideRadius - (guideIndex % 3) * 7, input.length, segment)}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" marker-end="url(#guide-arrow-${guide.strand === "-" ? "reverse" : "forward"})"><title>${escapeXml(guide.name)} ${guide.sequence} ${guide.pam}</title></path>`);
+    const pamPosition = guide.strand === "-" ? guide.pamEnd : guide.pamStart;
+    const inner = polar(centerX, centerY, pamInnerRadius, input.length, pamPosition);
+    const outer = polar(centerX, centerY, pamOuterRadius, input.length, pamPosition);
+    guideTicks.push(`<line x1="${format(inner.x)}" y1="${format(inner.y)}" x2="${format(outer.x)}" y2="${format(outer.y)}" stroke="${color}" stroke-width="2"><title>${escapeXml(guide.name)} PAM ${escapeXml(guide.pam)}</title></line>`);
+    const midpoint = segmentMidpoint(segment, input.length);
+    const point = polar(centerX, centerY, guideRadius - 44 - (guideIndex % 3) * 12, input.length, midpoint);
+    const textAnchor = point.x < centerX - 8 ? "end" : point.x > centerX + 8 ? "start" : "middle";
+    labels.push(`<text class="guide-label" x="${format(point.x)}" y="${format(point.y)}" text-anchor="${textAnchor}" dominant-baseline="middle">${escapeXml(guide.name)}</text>`);
+  });
+
   input.cutSites.forEach((site, index) => {
     const inner = polar(centerX, centerY, cutInnerRadius, input.length, site.position);
     const outer = polar(centerX, centerY, cutOuterRadius, input.length, site.position);
@@ -209,16 +240,21 @@ function renderSvg(input: {
     text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; fill: #1f2927; }
     .meta { font-size: 12px; fill: #5d6a66; }
     .primer-label { font-size: 11px; fill: #2b3c39; }
+    .guide-label { font-size: 11px; fill: #2b3c39; font-weight: 700; }
     .cut-label { font-size: 11px; fill: #263238; font-weight: 700; }
   </style>
   <defs>
     <marker id="primer-arrow-forward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#1976D2"/></marker>
     <marker id="primer-arrow-reverse" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#D32F2F"/></marker>
+    <marker id="guide-arrow-forward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#00897B"/></marker>
+    <marker id="guide-arrow-reverse" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#7B1FA2"/></marker>
   </defs>
   <rect width="100%" height="100%" fill="#ffffff"/>
   <circle cx="${format(centerX)}" cy="${format(centerY)}" r="${format(radius)}" fill="none" stroke="#c9d3d0" stroke-width="9"/>
   ${primerPaths.join("\n  ")}
+  ${guidePaths.join("\n  ")}
   ${paths.join("\n  ")}
+  ${guideTicks.join("\n  ")}
   ${cutTicks.join("\n  ")}
   <text x="${format(centerX)}" y="${format(centerY - 8)}" text-anchor="middle" font-weight="700">${escapeXml(input.moleculeName)}</text>
   <text class="meta" x="${format(centerX)}" y="${format(centerY + 14)}" text-anchor="middle">${input.length} bp circular DNA</text>

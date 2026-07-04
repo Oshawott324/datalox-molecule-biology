@@ -83,6 +83,7 @@ async function handleRequest(
       molecules: molecules.molecules,
       features: workspace.features,
       primers: workspace.primers,
+      guides: workspace.guides,
     });
     return;
   }
@@ -117,6 +118,7 @@ async function handleRequest(
       width: 720,
       height: 520,
       showPrimers: url.searchParams.get("showPrimers") === "true",
+      showGuides: url.searchParams.get("showGuides") === "true",
       cutSites: sites.map((site) => ({ enzyme: site.enzyme, position: site.cutPosition })),
     });
     const svg = await fs.readFile(result.outputPath, "utf8");
@@ -179,6 +181,8 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     .sequence span { border-radius: 2px; padding: 1px 0; }
     .ann-feature { background: #FBE5AE; }
     .ann-primer { background: #D7EAFE; box-shadow: inset 0 -2px 0 #1976D2; }
+    .ann-guide { background: #DDF4EE; box-shadow: inset 0 -2px 0 #00897B; }
+    .ann-pam { background: #E8D7F3; box-shadow: inset 0 -2px 0 #7B1FA2; }
     .ann-cut { background: #F8D7DA; box-shadow: inset 0 -2px 0 #303A3A; }
     .map { min-height: 320px; display: grid; place-items: center; padding: 10px; }
     .map svg { max-width: 100%; height: auto; }
@@ -191,6 +195,8 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
     .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
     .legend .legend-feature::before { background: #FBE5AE; }
     .legend .legend-primer::before { background: #D7EAFE; }
+    .legend .legend-guide::before { background: #DDF4EE; }
+    .legend .legend-pam::before { background: #E8D7F3; }
     .legend .legend-cut::before { background: #F8D7DA; }
     .form { display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 8px; padding: 12px; align-items: end; }
     .primary { border: 0; border-radius: 5px; background: #1f6f5b; color: #fff; padding: 8px 10px; min-height: 34px; cursor: pointer; }
@@ -237,6 +243,8 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
           <div class="legend">
             <span class="legend-feature">feature</span>
             <span class="legend-primer">primer</span>
+            <span class="legend-guide">guide</span>
+            <span class="legend-pam">PAM</span>
             <span class="legend-cut">cut site</span>
           </div>
         </div>
@@ -258,6 +266,10 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
         <div class="panel">
           <h2>Primers</h2>
           <table><thead><tr><th>Name</th><th>Sequence</th><th>Binding</th></tr></thead><tbody id="primers"></tbody></table>
+        </div>
+        <div class="panel">
+          <h2>Guides</h2>
+          <table><thead><tr><th>Name</th><th>Guide</th><th>PAM</th></tr></thead><tbody id="guides"></tbody></table>
         </div>
         <div class="panel">
           <h2>Restriction Sites</h2>
@@ -330,6 +342,7 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       $("type").textContent = molecule ? molecule.moleculeType : "-";
       rows($("features"), payload.features.filter((item) => item.moleculeId === state.moleculeId), (item) => [item.name, item.type, segmentText(item.segments)]);
       rows($("primers"), payload.primers.filter((item) => item.moleculeId === state.moleculeId), (item) => [item.name, item.sequence, segmentText(item.binding?.segments)]);
+      rows($("guides"), payload.guides.filter((item) => item.moleculeId === state.moleculeId), (item) => [item.name, item.sequence, item.pam + " " + item.strand]);
       await loadContext();
     }
 
@@ -340,13 +353,13 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       const enzymes = selectedEnzymes().join(",");
       const payload = await json("/api/context?moleculeId=" + encodeURIComponent(state.moleculeId) + "&start=" + start + "&end=" + end + "&includeSequence=true&enzymes=" + encodeURIComponent(enzymes));
       state.restrictionSites = payload.restrictionSites || [];
-      renderAnnotatedSequence(payload.sequence || "", start, payload.features || [], payload.primers || [], state.restrictionSites);
+      renderAnnotatedSequence(payload.sequence || "", start, payload.features || [], payload.primers || [], payload.guides || [], state.restrictionSites);
       rows($("restriction-sites"), state.restrictionSites, (item) => [item.enzyme, String(item.cutPosition), item.recognitionSequence]);
       $("status").textContent = "ready";
       await loadMap();
     }
 
-    function renderAnnotatedSequence(sequence, regionStart, features, primers, restrictionSites) {
+    function renderAnnotatedSequence(sequence, regionStart, features, primers, guides, restrictionSites) {
       const container = $("sequence");
       const annotations = new Map();
       const addRange = (start, end, kind, label) => {
@@ -360,12 +373,16 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       };
       features.forEach((feature) => (feature.segments || []).forEach((segment) => addRange(segment.start, segment.end, "feature", feature.name + " (" + feature.type + ")")));
       primers.forEach((primer) => (primer.binding?.segments || []).forEach((segment) => addRange(segment.start, segment.end, "primer", primer.name)));
+      guides.forEach((guide) => {
+        addRange(guide.start, guide.end, "guide", guide.name + " guide");
+        addRange(guide.pamStart, guide.pamEnd, "pam", guide.name + " PAM " + guide.pam);
+      });
       restrictionSites.forEach((site) => addRange(site.cutPosition, site.cutPosition, "cut", site.enzyme + " cut at " + site.cutPosition));
       container.replaceChildren();
       [...sequence].forEach((base, index) => {
         const span = document.createElement("span");
         const ann = annotations.get(index) || [];
-        const kind = ann.some((item) => item.kind === "cut") ? "cut" : ann.some((item) => item.kind === "primer") ? "primer" : ann.some((item) => item.kind === "feature") ? "feature" : "";
+        const kind = ann.some((item) => item.kind === "cut") ? "cut" : ann.some((item) => item.kind === "pam") ? "pam" : ann.some((item) => item.kind === "guide") ? "guide" : ann.some((item) => item.kind === "primer") ? "primer" : ann.some((item) => item.kind === "feature") ? "feature" : "";
         if (kind) span.className = "ann-" + kind;
         if (ann.length > 0) span.title = ann.map((item) => item.label).join("; ");
         span.textContent = base;
@@ -377,7 +394,7 @@ function renderEditorHtml(defaultMoleculeId?: string): string {
       if (!state.moleculeId) return;
       try {
         const enzymes = selectedEnzymes().join(",");
-        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId) + "&showPrimers=true&enzymes=" + encodeURIComponent(enzymes));
+        const payload = await json("/api/map?moleculeId=" + encodeURIComponent(state.moleculeId) + "&showPrimers=true&showGuides=true&enzymes=" + encodeURIComponent(enzymes));
         $("map").innerHTML = payload.svg || "";
       } catch (error) {
         $("map").textContent = error.message;

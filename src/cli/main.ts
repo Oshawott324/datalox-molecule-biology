@@ -146,7 +146,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
-    if (rawName === "include-sequence" || rawName === "no-check-sequence-digests" || rawName === "bind-to-molecule" || rawName === "show-primers") {
+    if (rawName === "include-sequence" || rawName === "no-check-sequence-digests" || rawName === "bind-to-molecule" || rawName === "show-primers" || rawName === "show-guides") {
       flags[rawName] = true;
       continue;
     }
@@ -359,6 +359,7 @@ async function renderPlasmidMapInput(parsed: ParsedArgs): Promise<RenderPlasmidM
     ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
     ...(stringFlag(parsed, "cut-sites") ? { cutSites: await jsonFileFlag(parsed, "cut-sites") as RenderPlasmidMapInput["cutSites"] } : {}),
     ...(parsed.flags["show-primers"] === true ? { showPrimers: true } : {}),
+    ...(parsed.flags["show-guides"] === true ? { showGuides: true } : {}),
   };
 }
 

@@ -295,6 +295,7 @@ export const moleculeToolDescriptors = [
         width: { type: "integer", minimum: 1 },
         height: { type: "integer", minimum: 1 },
         showPrimers: { type: "boolean" },
+        showGuides: { type: "boolean" },
         cutSites: {
           type: "array",
           items: {

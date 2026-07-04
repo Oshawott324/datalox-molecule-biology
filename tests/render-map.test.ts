@@ -12,6 +12,7 @@ import {
   readMoleculeSequence,
   renderPlasmidMap,
   reverseComplement,
+  upsertGuide,
   upsertPrimer,
 } from "../src/index.js";
 
@@ -144,6 +145,55 @@ describe("plasmid map rendering", () => {
     expect(svg).toContain(">HindIII</text>");
     expect(svg).toContain("EcoRI cut at 396");
     expect(svg).toContain("HindIII cut at 447");
+  });
+
+  it("renders persisted guide arcs and PAM ticks when showGuides is true", async () => {
+    const { workspacePath, moleculeId } = await importPuc19();
+    const { sequence } = await readMoleculeSequence(workspacePath, moleculeId);
+    await upsertGuide(workspacePath, 0, {
+      id: "grna_puc19_mcs",
+      moleculeId,
+      name: "pUC19 MCS guide",
+      sequence: sequence.slice(395, 415),
+      pam: sequence.slice(415, 418),
+      strand: "+",
+      start: 396,
+      end: 415,
+      pamStart: 416,
+      pamEnd: 418,
+      pamType: "SpCas9",
+      gcPercent: 50,
+      seedRegionMaxHomopolymer: 2,
+      offTargetScope: "workspace_molecules_only",
+      offTargetHitCount: 0,
+      rankingEvidence: {
+        passingFilters: true,
+        filterFailures: [],
+        offTargetHitCount: 0,
+        gcDistanceFrom50: 0,
+        guideStart: 396,
+        strand: "+",
+        efficacyScoreIncluded: false,
+      },
+      sourceTool: "design_grnas",
+    });
+
+    const result = await renderPlasmidMap(workspacePath, moleculeId, {
+      outputPath: "reports/maps/puc19-guides.svg",
+      showGuides: true,
+      width: 640,
+      height: 520,
+    });
+    const svg = await fs.readFile(result.outputPath, "utf8");
+
+    expect(result.renderedGuideIds).toEqual(["grna_puc19_mcs"]);
+    expect(result.rules).toMatchObject({
+      guideRendering: "persisted_guides_only_protospacer_arc_with_pam_tick",
+    });
+    expect(svg).toContain("pUC19 MCS guide");
+    expect(svg).toContain("PAM");
+    expect(svg).toContain('stroke="#00897B"');
+    expect(svg).toContain("guide-arrow-forward");
   });
 
   it("uses stable biological feature colors", () => {
