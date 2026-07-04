@@ -389,11 +389,19 @@ off-target and should not appear in the result.
   molecule.
 - Off-target detection excludes the on-target site even when the source molecule
   is included in `offTargetMoleculeIds`.
+- Off-target detection still reports exact duplicate sites elsewhere in the
+  same source molecule.
+- Near-matches without a compatible SpCas9 PAM are ignored.
+- Unsupported CR1 option values return structured `INVALID_ARGUMENT` errors.
 - Workspace-scale scope is reported as `workspace_molecules_only`.
 
 ## CR2: Validated On-Target Scoring
 
 Do not implement Doench Rule Set 2 as an unvalidated transcription task.
+
+See `docs/crispr-scoring-validation.md` before implementing CR2. The validation
+work must settle source, license, model type, input convention, and reference
+score pins first.
 
 Before adding an `onTargetScore` field:
 

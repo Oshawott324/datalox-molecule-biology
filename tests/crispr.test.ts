@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { designGrnas, findWorkspaceOffTargets, scanSpCas9Guides } from "../src/core/crispr.js";
+import { designGrnas, findWorkspaceOffTargets, normalizeGrnaOptions, scanSpCas9Guides } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
 import { handleDesignGrnas, importSequenceFile } from "../src/index.js";
 
@@ -239,5 +239,71 @@ describe("CR1 SpCas9 guide design", () => {
     expect(hitsStrict).toHaveLength(0);
     expect(hitsPermissive).toHaveLength(1);
     expect(hitsPermissive[0]).toMatchObject({ moleculeId: "mol_other", mismatches: 2, seedMismatches: 2 });
+  });
+
+  it("reports an exact same-molecule duplicate guide as an off-target when it is not the designed locus", () => {
+    const sequence = "ACGTACGTACGTACGTACGTAGGAAAAACGTACGTACGTACGTACGTAGG";
+    const [candidate] = scanSpCas9Guides(sequence, { start: 1, end: 20 }, { strand: "+" });
+
+    const hits = findWorkspaceOffTargets(candidate, [{ moleculeId: "mol_source", sequence }], {
+      sourceMoleculeId: "mol_source",
+      maxMismatches: 0,
+    });
+
+    expect(hits).toEqual([
+      {
+        moleculeId: "mol_source",
+        start: 28,
+        end: 47,
+        strand: "+",
+        pam: "AGG",
+        mismatches: 0,
+        seedMismatches: 0,
+      },
+    ]);
+  });
+
+  it("ignores near-matches that do not have a compatible SpCas9 PAM", () => {
+    const candidate = {
+      sequence: "ACGTACGTACGTACGTACGT",
+      pam: "AGG",
+      strand: "+" as const,
+      start: 1,
+      end: 20,
+      pamStart: 21,
+      pamEnd: 23,
+      gcPercent: 50,
+      seedRegionMaxHomopolymer: 1,
+      offTargets: [],
+      passingFilters: true,
+      filterFailures: [] as string[],
+    };
+    const refs = [{ moleculeId: "mol_no_pam", sequence: "ACGTACGTACGTACGTACGTAAA" }];
+
+    expect(findWorkspaceOffTargets(candidate, refs, {
+      sourceMoleculeId: "mol_source",
+      maxMismatches: 0,
+    })).toEqual([]);
+  });
+
+  it("validates CR1 option boundaries explicitly", () => {
+    expect(() => normalizeGrnaOptions({ pamType: "Cas12a" as "SpCas9" })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+    expect(() => normalizeGrnaOptions({ guideLength: 21 })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+    expect(() => normalizeGrnaOptions({ gcRange: [80, 20] })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+    expect(() => normalizeGrnaOptions({ maxSeedHomopolymerRun: 0 })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+    expect(() => normalizeGrnaOptions({ maxOffTargetMismatches: -1 })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
+    expect(() => normalizeGrnaOptions({ offTargetMoleculeIds: [""] })).toThrow(expect.objectContaining({
+      code: "INVALID_ARGUMENT",
+    }));
   });
 });
