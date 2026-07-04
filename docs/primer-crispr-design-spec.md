@@ -418,15 +418,21 @@ Add a structured explanation for candidate ordering:
 
 ```ts
 type GuideRankingEvidence = {
+  // passingFilters and filterFailures mirror the top-level GuideCandidate fields
+  // intentionally: the evidence bundle must be self-contained for agent inspection.
   passingFilters: boolean;
   filterFailures: string[];
   offTargetHitCount: number;
   gcDistanceFrom50: number;
-  coordinateTieBreak: number;
-  strandTieBreak: "+" | "-";
+  guideStart: number;      // start coordinate used as position tie-breaker in sort
+  strand: "+" | "-";       // strand used as final tie-breaker in sort
   efficacyScoreIncluded: false;
 };
 ```
+
+`efficacyScoreIncluded` is typed as the literal `false` for CR1. When CR2 lands
+this field widens to `boolean` (a breaking type change); callers must not narrow
+on `false` unless they also handle `true`.
 
 `efficacyScoreIncluded` must remain `false` until CR2 validation is complete.
 This field is evidence for the agent; it is not a new scoring model.
@@ -437,11 +443,13 @@ This field is evidence for the agent; it is not a new scoring model.
 
 ```ts
 nextAction: {
-  type: "select_grna";
   tool: "upsert_grna";
   instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.";
 }
 ```
+
+This shape matches the `simulate_assembly.nextAction` contract (`tool` +
+`instruction`, no `type` discriminant).
 
 The tool remains read-only. The write happens only through `upsert_grna`.
 
@@ -476,7 +484,7 @@ type GuideRecord = {
   gcPercent: number;
   seedRegionMaxHomopolymer: number;
   offTargetScope: "workspace_molecules_only";
-  offTargetHitCount: number;
+  offTargetHitCount: number;  // count only; export_grna_report re-scans for full hit details
   rankingEvidence: GuideRankingEvidence;
   sourceTool: "design_grnas";
 };
@@ -545,18 +553,23 @@ score labeled as Doench RS2.
 
 ## Scope Boundaries
 
-| Feature | W2 | CR1 | Deferred |
-|---|---:|---:|---:|
-| Amplification primer pairs | yes | no | no |
-| Restriction adapter overhangs | yes | no | no |
-| Gibson/overlap primer design | no | no | later assembly track |
-| Sequencing/mutagenesis primers | no | no | later |
-| SpCas9 NGG guide extraction | no | yes | no |
-| Cas12a / SaCas9 PAM types | no | no | later |
-| Deterministic GC/homopolymer filters | no | yes | no |
-| Doench RS2 scoring | no | no | CR2 after validation |
-| Off-target vs workspace molecules | no | yes | no |
-| Genome-scale off-target search | no | no | cas-offinder or equivalent |
+| Feature | W2 | CR1 | CR1.x | Deferred |
+|---|---:|---:|---:|---:|
+| Amplification primer pairs | yes | no | no | no |
+| Restriction adapter overhangs | yes | no | no | no |
+| Gibson/overlap primer design | no | no | no | later assembly track |
+| Sequencing/mutagenesis primers | no | no | no | later |
+| SpCas9 NGG guide extraction | no | yes | no | no |
+| Cas12a / SaCas9 PAM types | no | no | no | later |
+| Deterministic GC/homopolymer filters | no | yes | no | no |
+| Doench RS2 scoring | no | no | no | CR2 after validation |
+| Off-target vs workspace molecules | no | yes | no | no |
+| Genome-scale off-target search | no | no | no | cas-offinder or equivalent |
+| `rankingEvidence` on candidates | no | no | CR1.1 | no |
+| `design_grnas.nextAction` | no | no | CR1.1 | no |
+| `upsert_grna` persistence | no | no | CR1.2 | no |
+| Guide visualization (map + sequence) | no | no | CR1.3 | no |
+| `export_grna_report` | no | no | CR1.4 | no |
 
 ## Ownership And Sequence
 
@@ -564,9 +577,11 @@ You can implement W2 and CR1 independently of P5 `align_sequences`.
 
 Recommended sequence:
 
-1. W2 `design_primers`.
-2. CR1 `design_grnas` scaffold.
-3. CR2 scoring only after reference-score validation.
-
-W2 should land first because the Primer3 subprocess pattern, dependency error
-shape, and candidate-output style will give CR1 a cleaner implementation model.
+1. W2 `design_primers` — establishes subprocess pattern, dependency error shape,
+   and candidate-output style.
+2. CR1 `design_grnas` — pure TypeScript NGG/CCN scan, filters, off-target scope.
+3. CR1.1 `rankingEvidence` + `design_grnas.nextAction`.
+4. CR1.2 `upsert_grna` — persistence into `guides` collection.
+5. CR1.3 visualization — render guides on plasmid map and sequence regions.
+6. CR1.4 `export_grna_report` — artifact-producing summary.
+7. CR2 scoring only after reference-score validation is complete.
