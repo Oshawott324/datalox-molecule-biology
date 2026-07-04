@@ -48,6 +48,17 @@ export type GuideCandidate = {
   offTargets: OffTargetHit[];
   passingFilters: boolean;
   filterFailures: string[];
+  rankingEvidence: GuideRankingEvidence;
+};
+
+export type GuideRankingEvidence = {
+  passingFilters: boolean;
+  filterFailures: string[];
+  offTargetHitCount: number;
+  gcDistanceFrom50: number;
+  guideStart: number;
+  strand: "+" | "-";
+  efficacyScoreIncluded: false;
 };
 
 export type DesignGrnasResult = {
@@ -56,6 +67,10 @@ export type DesignGrnasResult = {
   pamType: "SpCas9";
   offTargetScope: "workspace_molecules_only";
   candidates: GuideCandidate[];
+  nextAction: {
+    tool: "upsert_grna";
+    instruction: string;
+  };
 };
 
 type NormalizedGrnaOptions = {
@@ -96,7 +111,7 @@ export async function designGrnas(input: DesignGrnasInput): Promise<DesignGrnasR
     return { moleculeId: id, sequence: resolved.sequence };
   }));
 
-  const withOffTargets = candidates.map((candidate) => ({
+  const withOffTargets = candidates.map((candidate) => withRankingEvidence({
     ...candidate,
     offTargets: findWorkspaceOffTargets(candidate, offTargetSequences, {
       sourceMoleculeId: input.moleculeId,
@@ -110,6 +125,10 @@ export async function designGrnas(input: DesignGrnasInput): Promise<DesignGrnasR
     pamType: "SpCas9",
     offTargetScope: "workspace_molecules_only",
     candidates: rankGuideCandidates(withOffTargets),
+    nextAction: {
+      tool: "upsert_grna",
+      instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.",
+    },
   };
 }
 
@@ -252,6 +271,30 @@ function annotateGuide(site: PamSite, options: NormalizedGrnaOptions): GuideCand
     offTargets: [],
     passingFilters: filterFailures.length === 0,
     filterFailures,
+    rankingEvidence: {
+      passingFilters: filterFailures.length === 0,
+      filterFailures: [...filterFailures],
+      offTargetHitCount: 0,
+      gcDistanceFrom50: Math.round(Math.abs(gcPercent - 50) * 100) / 100,
+      guideStart: site.start,
+      strand: site.strand,
+      efficacyScoreIncluded: false,
+    },
+  };
+}
+
+function withRankingEvidence(candidate: GuideCandidate): GuideCandidate {
+  return {
+    ...candidate,
+    rankingEvidence: {
+      passingFilters: candidate.passingFilters,
+      filterFailures: [...candidate.filterFailures],
+      offTargetHitCount: candidate.offTargets.length,
+      gcDistanceFrom50: Math.round(Math.abs(candidate.gcPercent - 50) * 100) / 100,
+      guideStart: candidate.start,
+      strand: candidate.strand,
+      efficacyScoreIncluded: false,
+    },
   };
 }
 

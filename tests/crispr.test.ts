@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { designGrnas, findWorkspaceOffTargets, normalizeGrnaOptions, scanSpCas9Guides } from "../src/core/crispr.js";
+import type { GuideCandidate } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
 import { handleDesignGrnas, importSequenceFile } from "../src/index.js";
 
@@ -16,6 +17,21 @@ async function writeFasta(workspaceDir: string, filename: string, id: string, se
   const inputPath = path.join(workspaceDir, filename);
   await fs.writeFile(inputPath, `>${id}\n${sequence}\n`, "utf8");
   return inputPath;
+}
+
+function testGuideCandidate(input: Omit<GuideCandidate, "rankingEvidence">): GuideCandidate {
+  return {
+    ...input,
+    rankingEvidence: {
+      passingFilters: input.passingFilters,
+      filterFailures: [...input.filterFailures],
+      offTargetHitCount: input.offTargets.length,
+      gcDistanceFrom50: Math.round(Math.abs(input.gcPercent - 50) * 100) / 100,
+      guideStart: input.start,
+      strand: input.strand,
+      efficacyScoreIncluded: false,
+    },
+  };
 }
 
 describe("CR1 SpCas9 guide design", () => {
@@ -36,6 +52,15 @@ describe("CR1 SpCas9 guide design", () => {
       seedRegionMaxHomopolymer: 1,
       passingFilters: true,
       filterFailures: [],
+      rankingEvidence: {
+        passingFilters: true,
+        filterFailures: [],
+        offTargetHitCount: 0,
+        gcDistanceFrom50: 0,
+        guideStart: 1,
+        strand: "+",
+        efficacyScoreIncluded: false,
+      },
     });
   });
 
@@ -101,8 +126,21 @@ describe("CR1 SpCas9 guide design", () => {
       moleculeId: "mol_source",
       pamType: "SpCas9",
       offTargetScope: "workspace_molecules_only",
+      nextAction: {
+        tool: "upsert_grna",
+        instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.",
+      },
     });
     expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].rankingEvidence).toMatchObject({
+      passingFilters: true,
+      filterFailures: [],
+      offTargetHitCount: 1,
+      gcDistanceFrom50: 0,
+      guideStart: 1,
+      strand: "+",
+      efficacyScoreIncluded: false,
+    });
     expect(result.candidates[0].offTargets).toEqual([
       {
         moleculeId: "mol_offtarget",
@@ -139,10 +177,18 @@ describe("CR1 SpCas9 guide design", () => {
         workspacePath: sourceImport.workspacePath,
         moleculeId: "mol_source",
         offTargetScope: "workspace_molecules_only",
+        nextAction: {
+          tool: "upsert_grna",
+          instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.",
+        },
         candidates: [
           expect.objectContaining({
             sequence: "ACGTACGTACGTACGTACGT",
             pam: "AGG",
+            rankingEvidence: expect.objectContaining({
+              offTargetHitCount: 0,
+              efficacyScoreIncluded: false,
+            }),
           }),
         ],
       },
@@ -211,7 +257,7 @@ describe("CR1 SpCas9 guide design", () => {
   it("excludes off-target hits exceeding maxOffTargetMismatches", () => {
     // off-target sequence: ACGTACGTACGTACGTTCATAGGTTTT has a plus-strand guide at positions 1-20
     // that differs from candidate at positions 16 (A→T) and 18 (G→A) = 2 mismatches
-    const candidate = {
+    const candidate = testGuideCandidate({
       sequence: "ACGTACGTACGTACGTACGT",
       pam: "AGG",
       strand: "+" as const,
@@ -224,7 +270,7 @@ describe("CR1 SpCas9 guide design", () => {
       offTargets: [],
       passingFilters: true,
       filterFailures: [] as string[],
-    };
+    });
     const refs = [{ moleculeId: "mol_other", sequence: "ACGTACGTACGTACGTTCATAGGTTTT" }];
 
     const hitsStrict = findWorkspaceOffTargets(candidate, refs, {
@@ -264,7 +310,7 @@ describe("CR1 SpCas9 guide design", () => {
   });
 
   it("ignores near-matches that do not have a compatible SpCas9 PAM", () => {
-    const candidate = {
+    const candidate = testGuideCandidate({
       sequence: "ACGTACGTACGTACGTACGT",
       pam: "AGG",
       strand: "+" as const,
@@ -277,7 +323,7 @@ describe("CR1 SpCas9 guide design", () => {
       offTargets: [],
       passingFilters: true,
       filterFailures: [] as string[],
-    };
+    });
     const refs = [{ moleculeId: "mol_no_pam", sequence: "ACGTACGTACGTACGTACGTAAA" }];
 
     expect(findWorkspaceOffTargets(candidate, refs, {
@@ -344,7 +390,31 @@ describe("CR1 SpCas9 guide design", () => {
     });
 
     expect(result.candidates).toHaveLength(2);
-    expect(result.candidates[0]).toMatchObject({ sequence: "ACGTACGTACGTACGTACGT", passingFilters: true });
-    expect(result.candidates[1]).toMatchObject({ sequence: "AAAAAAAAAAAAAAAAAAAA", passingFilters: false });
+    expect(result.candidates[0]).toMatchObject({
+      sequence: "ACGTACGTACGTACGTACGT",
+      passingFilters: true,
+      rankingEvidence: {
+        passingFilters: true,
+        filterFailures: [],
+        offTargetHitCount: 0,
+        gcDistanceFrom50: 0,
+        guideStart: 1,
+        strand: "+",
+        efficacyScoreIncluded: false,
+      },
+    });
+    expect(result.candidates[1]).toMatchObject({
+      sequence: "AAAAAAAAAAAAAAAAAAAA",
+      passingFilters: false,
+      rankingEvidence: {
+        passingFilters: false,
+        filterFailures: ["GC_OUT_OF_RANGE", "SEED_HOMOPOLYMER_TOO_LONG"],
+        offTargetHitCount: 0,
+        gcDistanceFrom50: 50,
+        guideStart: 24,
+        strand: "+",
+        efficacyScoreIncluded: false,
+      },
+    });
   });
 });

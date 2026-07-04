@@ -52,4 +52,4 @@ export type { AlignMode, AlignmentResult, AlignSequencesOptions } from "./align.
 export { designPrimers } from "./primer-design.js";
 export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPrimersResult, PrimerPairCandidate } from "./primer-design.js";
 export { designGrnas } from "./crispr.js";
-export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCandidate, OffTargetHit } from "./crispr.js";
+export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCandidate, GuideRankingEvidence, OffTargetHit } from "./crispr.js";
