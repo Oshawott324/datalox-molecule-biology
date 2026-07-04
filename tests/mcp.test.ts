@@ -29,6 +29,8 @@ describe("MCP server", () => {
       "open_sequence",
       "get_sequence_context",
       "upsert_feature",
+      "upsert_grna",
+      "design_grnas",
       "validate_workspace",
     ]));
   });

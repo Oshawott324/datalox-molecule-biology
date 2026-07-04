@@ -287,6 +287,15 @@ describe("structured workspace writes", () => {
     await expect(upsertPrimer(workspacePath, 1, primer)).rejects.toMatchObject({ code: "NO_CHANGE" });
   });
 
+  it("rejects no-op guide upserts through transaction no-change detection", async () => {
+    const { workspacePath, moleculeId } = await importGuideFasta();
+    const guide = guideRecord(moleculeId);
+
+    await upsertGuide(workspacePath, 0, guide);
+
+    await expect(upsertGuide(workspacePath, 1, guide)).rejects.toMatchObject({ code: "NO_CHANGE" });
+  });
+
   it("returns structured errors when deleting missing features or primers", async () => {
     const { workspacePath } = await importSingleFasta();
 
