@@ -306,4 +306,45 @@ describe("CR1 SpCas9 guide design", () => {
       code: "INVALID_ARGUMENT",
     }));
   });
+
+  it("rejects a targetRegion whose end exceeds molecule length", () => {
+    // Molecule is 23 bp; end=24 is one base past the end.
+    expect(() => scanSpCas9Guides("ACGTACGTACGTACGTACGTAGG", { start: 1, end: 24 })).toThrow(
+      expect.objectContaining({ code: "COORDINATE_OUT_OF_RANGE" }),
+    );
+  });
+
+  it("passes a guide whose GC is exactly at the lower boundary of the default range", () => {
+    // Guide GGGGATATATATATATATAT: 4 G's out of 20 bases = 20.0% GC — exactly the default lower bound.
+    // gcPercent < gcRange[0] uses strict less-than, so 20 < 20 is false → passingFilters.
+    // Seed (positions 8-19): ATATATATATA T — max homopolymer run = 1, well under threshold.
+    const guides = scanSpCas9Guides("GGGGATATATATATATATATAGG", { start: 1, end: 20 }, { strand: "+" });
+    expect(guides).toHaveLength(1);
+    expect(guides[0]).toMatchObject({
+      gcPercent: 20,
+      passingFilters: true,
+      filterFailures: [],
+    });
+  });
+
+  it("ranks passing candidates before failing candidates in designGrnas output", async () => {
+    // Two plus-strand guides in one molecule:
+    //   guide 1 (pos 1-20): ACGTACGTACGTACGTACGT — 50% GC, seed max run 1 → passes
+    //   guide 2 (pos 24-43): AAAAAAAAAAAAAAAAAAAA — 0% GC, seed run 12 → fails both filters
+    // rankGuideCandidates must place the passing guide first.
+    const workspaceDir = await tempWorkspaceDir();
+    const seq = "ACGTACGTACGTACGTACGTAGG" + "AAAAAAAAAAAAAAAAAAAA" + "TGG";
+    const inputPath = await writeFasta(workspaceDir, "two_guides.fa", "two_guides", seq);
+    const imported = await importSequenceFile({ inputPath, workspaceDir, format: "fasta", moleculeId: "mol_two_guides" });
+
+    const result = await designGrnas({
+      workspacePath: imported.workspacePath,
+      moleculeId: "mol_two_guides",
+      targetRegion: { start: 1, end: seq.length },
+    });
+
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates[0]).toMatchObject({ sequence: "ACGTACGTACGTACGTACGT", passingFilters: true });
+    expect(result.candidates[1]).toMatchObject({ sequence: "AAAAAAAAAAAAAAAAAAAA", passingFilters: false });
+  });
 });

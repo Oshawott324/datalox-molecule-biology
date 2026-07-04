@@ -843,7 +843,7 @@ function primer3CoreStatus(): DoctorDependencyStatus {
     name: "primer3_core",
     command: "primer3_core",
     requiredFor: ["design_primers"],
-    available: result.status === 0,
+    available: result.error === undefined,
     ...(version ? { version } : {}),
     exitCode: result.status,
     install: primer3InstallInstructions(),
