@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { designGrnas, findWorkspaceOffTargets, normalizeGrnaOptions, scanSpCas9Guides } from "../src/core/crispr.js";
 import type { GuideCandidate } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
-import { handleDesignGrnas, importSequenceFile } from "../src/index.js";
+import { handleDesignGrnas, handleUpsertGrna, importSequenceFile, readWorkspace } from "../src/index.js";
+import type { GuideRecord } from "../src/index.js";
 
 async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-crispr-"));
@@ -31,6 +32,28 @@ function testGuideCandidate(input: Omit<GuideCandidate, "rankingEvidence">): Gui
       strand: input.strand,
       efficacyScoreIncluded: false,
     },
+  };
+}
+
+function guideRecordFromCandidate(moleculeId: string, candidate: GuideCandidate): GuideRecord {
+  return {
+    id: "grna_selected_1",
+    moleculeId,
+    name: "selected guide 1",
+    sequence: candidate.sequence,
+    pam: candidate.pam,
+    strand: candidate.strand,
+    start: candidate.start,
+    end: candidate.end,
+    pamStart: candidate.pamStart,
+    pamEnd: candidate.pamEnd,
+    pamType: "SpCas9",
+    gcPercent: candidate.gcPercent,
+    seedRegionMaxHomopolymer: candidate.seedRegionMaxHomopolymer,
+    offTargetScope: "workspace_molecules_only",
+    offTargetHitCount: candidate.offTargets.length,
+    rankingEvidence: candidate.rankingEvidence,
+    sourceTool: "design_grnas",
   };
 }
 
@@ -195,6 +218,39 @@ describe("CR1 SpCas9 guide design", () => {
     });
   });
 
+  it("persists a selected guide through upsert_grna after design_grnas", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const design = await designGrnas({
+      workspacePath: sourceImport.workspacePath,
+      moleculeId: "mol_source",
+      targetRegion: { start: 1, end: 20 },
+    });
+    const guide = guideRecordFromCandidate("mol_source", design.candidates[0]);
+
+    const upserted = await handleUpsertGrna({
+      workspacePath: sourceImport.workspacePath,
+      expectedRevision: 0,
+      guide,
+    });
+    const workspace = await readWorkspace(sourceImport.workspacePath, { checkSequenceDigests: true });
+
+    expect(upserted).toMatchObject({
+      ok: true,
+      tool: "upsert_grna",
+      revision: 1,
+      data: { guideId: guide.id, action: "created" },
+      nextAction: { tool: "validate_workspace" },
+    });
+    expect(workspace.guides).toEqual([guide]);
+  });
+
   it("runs design-grnas through the CLI", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
@@ -223,6 +279,38 @@ describe("CR1 SpCas9 guide design", () => {
       data: {
         candidates: [expect.objectContaining({ pam: "AGG", strand: "+" })],
       },
+    });
+  });
+
+  it("runs upsert-grna through the CLI", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", "ACGTACGTACGTACGTACGTAGGAAAA");
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_source",
+    });
+    const [candidate] = scanSpCas9Guides("ACGTACGTACGTACGTACGTAGGAAAA", { start: 1, end: 20 }, { strand: "+" });
+    const guide = guideRecordFromCandidate("mol_source", candidate);
+    const guidePath = path.join(workspaceDir, "guide.json");
+    await fs.writeFile(guidePath, `${JSON.stringify(guide, null, 2)}\n`, "utf8");
+
+    const result = await runCli([
+      "upsert-grna",
+      sourceImport.workspacePath,
+      "--expected-revision",
+      "0",
+      "--guide",
+      guidePath,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      tool: "upsert_grna",
+      data: { guideId: guide.id, action: "created" },
+      revision: 1,
     });
   });
 

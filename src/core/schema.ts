@@ -53,6 +53,36 @@ export type Primer = {
   metadata?: Record<string, unknown>;
 };
 
+export type GuideRankingEvidence = {
+  passingFilters: boolean;
+  filterFailures: string[];
+  offTargetHitCount: number;
+  gcDistanceFrom50: number;
+  guideStart: number;
+  strand: "+" | "-";
+  efficacyScoreIncluded: false;
+};
+
+export type GuideRecord = {
+  id: string;
+  moleculeId: string;
+  name: string;
+  sequence: string;
+  pam: string;
+  strand: "+" | "-";
+  start: number;
+  end: number;
+  pamStart: number;
+  pamEnd: number;
+  pamType: "SpCas9";
+  gcPercent: number;
+  seedRegionMaxHomopolymer: number;
+  offTargetScope: "workspace_molecules_only";
+  offTargetHitCount: number;
+  rankingEvidence: GuideRankingEvidence;
+  sourceTool: "design_grnas";
+};
+
 export type MoleculeWorkspace = {
   schema: typeof WORKSPACE_SCHEMA;
   version: typeof WORKSPACE_VERSION;
@@ -63,6 +93,7 @@ export type MoleculeWorkspace = {
   molecules: Molecule[];
   features: Feature[];
   primers: Primer[];
+  guides: GuideRecord[];
   constructs: unknown[];
   experiments: unknown[];
   auditEvents: unknown[];

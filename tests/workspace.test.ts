@@ -66,6 +66,7 @@ function validWorkspace(sequence: string): MoleculeWorkspace {
         metadata: {},
       },
     ],
+    guides: [],
     constructs: [],
     experiments: [],
     auditEvents: [],

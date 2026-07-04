@@ -32,6 +32,7 @@ import {
   type ToolName,
   type ToolResultEnvelope,
   type UpsertFeatureInput,
+  type UpsertGrnaInput,
   type UpsertPrimerInput,
   type WorkspaceInput,
 } from "../tools/index.js";
@@ -60,6 +61,7 @@ const commandToTool: Record<string, ToolName> = {
   "delete-feature": "delete_feature",
   "upsert-primer": "upsert_primer",
   "delete-primer": "delete_primer",
+  "upsert-grna": "upsert_grna",
   "reverse-complement": "reverse_complement",
   "translate-region": "translate_region",
   "find-orfs": "find_orfs",
@@ -175,6 +177,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "delete_feature") return deleteFeatureInput(parsed);
   if (tool === "upsert_primer") return upsertPrimerInput(parsed);
   if (tool === "delete_primer") return deletePrimerInput(parsed);
+  if (tool === "upsert_grna") return upsertGrnaInput(parsed);
   if (tool === "reverse_complement") return reverseComplementInput(parsed);
   if (tool === "translate_region") return translateRegionInput(parsed);
   if (tool === "find_orfs") return findOrfsInput(parsed);
@@ -271,6 +274,14 @@ function deletePrimerInput(parsed: ParsedArgs): DeletePrimerInput {
     expectedRevision: numberFlag(parsed, "expected-revision"),
     primerId: stringFlag(parsed, "primer-id") ?? "",
   };
+}
+
+async function upsertGrnaInput(parsed: ParsedArgs): Promise<UpsertGrnaInput> {
+  return {
+    ...workspaceInput(parsed),
+    expectedRevision: numberFlag(parsed, "expected-revision"),
+    guide: await jsonFileFlag(parsed, "guide"),
+  } as UpsertGrnaInput;
 }
 
 function reverseComplementInput(parsed: ParsedArgs): ReverseComplementInput {

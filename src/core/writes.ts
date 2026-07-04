@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { MoleculeError } from "./errors.js";
 import { workspaceRootFromPath } from "./paths.js";
-import type { CoordinateSegment, Feature, Molecule, Primer, PrimerBinding } from "./schema.js";
+import type { CoordinateSegment, Feature, GuideRecord, Molecule, Primer, PrimerBinding } from "./schema.js";
 import { parseStoredSequenceContent, reverseComplement } from "./sequence.js";
 import { writeWorkspaceTransaction, type WorkspaceTransactionResult } from "./workspace.js";
 
@@ -28,6 +28,11 @@ export type UpsertPrimerPayload = {
 
 export type DeletePrimerPayload = {
   primerId: string;
+};
+
+export type UpsertGuidePayload = {
+  guideId: string;
+  action: "created" | "updated";
 };
 
 export async function upsertFeature(
@@ -99,6 +104,24 @@ export async function deletePrimer(
     }
     workspace.primers.splice(index, 1);
     return { primerId };
+  });
+}
+
+export async function upsertGuide(
+  workspacePath: string,
+  expectedRevision: number,
+  guide: GuideRecord,
+): Promise<WorkspaceTransactionResult<UpsertGuidePayload>> {
+  return writeWorkspaceTransaction(workspacePath, expectedRevision, (workspace) => {
+    workspace.guides ??= [];
+    const index = workspace.guides.findIndex((candidate) => candidate.id === guide.id);
+    const action = index === -1 ? "created" : "updated";
+    if (index === -1) {
+      workspace.guides.push(guide);
+    } else {
+      workspace.guides[index] = guide;
+    }
+    return { guideId: guide.id, action };
   });
 }
 

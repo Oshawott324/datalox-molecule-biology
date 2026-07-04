@@ -225,6 +225,7 @@ Use these tools instead of reasoning from memory:
 - `align_sequences`
 - `design_primers`
 - `design_grnas`
+- `upsert_grna`
 
 Examples:
 
@@ -419,6 +420,48 @@ scores.
 
 Interpret `offTargetScope: "workspace_molecules_only"` literally. If a user
 needs genome-scale CRISPR safety, say that CR1 does not support it yet.
+
+To persist a selected guide, call `upsert_grna` with `expectedRevision`. Do not
+edit `molecule.workspace.json` directly and do not persist every candidate by
+default. Select one candidate using its `rankingEvidence`, then write one guide
+record.
+
+```json
+{
+  "tool": "upsert_grna",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "expectedRevision": 0,
+    "guide": {
+      "id": "grna_example_1",
+      "moleculeId": "mol_example",
+      "name": "example guide 1",
+      "sequence": "ACGTACGTACGTACGTACGT",
+      "pam": "AGG",
+      "strand": "+",
+      "start": 100,
+      "end": 119,
+      "pamStart": 120,
+      "pamEnd": 122,
+      "pamType": "SpCas9",
+      "gcPercent": 50,
+      "seedRegionMaxHomopolymer": 1,
+      "offTargetScope": "workspace_molecules_only",
+      "offTargetHitCount": 0,
+      "rankingEvidence": {
+        "passingFilters": true,
+        "filterFailures": [],
+        "offTargetHitCount": 0,
+        "gcDistanceFrom50": 0,
+        "guideStart": 100,
+        "strand": "+",
+        "efficacyScoreIncluded": false
+      },
+      "sourceTool": "design_grnas"
+    }
+  }
+}
+```
 
 For plasmid maps with restriction ticks, call `find_restriction_sites` first and
 pass the returned cut positions into `render_plasmid_map`. The renderer draws

@@ -22,6 +22,7 @@ export {
   handleSimulatePcr,
   handleTranslateRegion,
   handleUpsertFeature,
+  handleUpsertGrna,
   handleUpsertPrimer,
   handleValidateWorkspace,
   handleAlignSequences,
@@ -50,6 +51,7 @@ export {
   type ToolInputByName,
   type ToolName,
   type UpsertFeatureInput,
+  type UpsertGrnaInput,
   type UpsertPrimerInput,
   type WorkspaceInput,
 } from "./handlers.js";

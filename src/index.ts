@@ -4,6 +4,8 @@ export type {
   Alphabet,
   CoordinateSegment,
   Feature,
+  GuideRecord,
+  GuideRankingEvidence,
   Molecule,
   MoleculeWorkspace,
   MoleculeType,
@@ -33,10 +35,11 @@ export { parseFasta } from "./core/fasta.js";
 export { parseGenBank, parseFeatureLocation } from "./core/genbank.js";
 export { importSequenceFile } from "./core/import.js";
 export type { ImportSequenceFileOptions, ImportSequenceFileResult } from "./core/import.js";
-export { deleteFeature, deletePrimer, upsertFeature, upsertPrimer } from "./core/writes.js";
+export { deleteFeature, deletePrimer, upsertFeature, upsertGuide, upsertPrimer } from "./core/writes.js";
 export type {
   DeleteFeaturePayload,
   DeletePrimerPayload,
+  UpsertGuidePayload,
   UpsertFeaturePayload,
   UpsertPrimerOptions,
   UpsertPrimerPayload,
@@ -149,6 +152,7 @@ export {
   handleSimulatePcr,
   handleTranslateRegion,
   handleUpsertFeature,
+  handleUpsertGrna,
   handleUpsertPrimer,
   handleValidateWorkspace,
   handleAlignSequences,
@@ -190,6 +194,7 @@ export type {
   ToolResultEnvelope,
   ToolSuccessEnvelope,
   UpsertFeatureInput,
+  UpsertGrnaInput,
   UpsertPrimerInput,
   WorkspaceInput,
 } from "./tools/index.js";

@@ -31,6 +31,7 @@ try {
   assertTool(tools, "simulate_assembly");
   assertTool(tools, "design_primers");
   assertTool(tools, "design_grnas");
+  assertTool(tools, "upsert_grna");
 
   const reverse = envelope(await client.callTool({
     name: "reverse_complement",

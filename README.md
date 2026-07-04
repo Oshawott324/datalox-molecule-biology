@@ -49,6 +49,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `delete_feature` | Delete a feature through a revision-safe workspace write. |
 | `upsert_primer` | Create or update a primer through a revision-safe workspace write. |
 | `delete_primer` | Delete a primer through a revision-safe workspace write. |
+| `upsert_grna` | Create or update a selected guide RNA through a revision-safe workspace write. |
 | `reverse_complement` | Return the reverse complement of an explicit DNA/RNA sequence. |
 | `translate_region` | Translate a DNA region using the standard genetic code. |
 | `find_orfs` | Find deterministic ORFs in a DNA molecule. |

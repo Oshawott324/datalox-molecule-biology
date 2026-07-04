@@ -138,6 +138,7 @@ async function readOrCreateWorkspace(workspacePath: string): Promise<{ workspace
       molecules: [],
       features: [],
       primers: [],
+      guides: [],
       constructs: [],
       experiments: [],
       auditEvents: [],

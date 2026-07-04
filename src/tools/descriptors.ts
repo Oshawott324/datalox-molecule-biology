@@ -157,6 +157,16 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "upsert_grna",
+    description: "Create or update a selected guide RNA through a revision-safe workspace write.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "expectedRevision", "guide"],
+      additionalProperties: false,
+      properties: { ...workspaceProperties, expectedRevision: expectedRevisionProperty, guide: { type: "object" } },
+    },
+  },
+  {
     name: "reverse_complement",
     description: "Return the reverse complement of an explicit DNA/RNA sequence.",
     inputSchema: {

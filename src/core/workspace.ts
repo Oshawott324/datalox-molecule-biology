@@ -16,6 +16,7 @@ import {
   WORKSPACE_VERSION,
   type Alphabet,
   type Feature,
+  type GuideRecord,
   type Molecule,
   type MoleculeWorkspace,
   type Primer,
@@ -213,6 +214,106 @@ function validatePrimer(value: unknown, index: number, moleculeById: Map<string,
   return issues.some((issue) => issue.path.startsWith(issuePath)) ? null : value as Primer;
 }
 
+function validateGuide(value: unknown, index: number, moleculeById: Map<string, Molecule>, issues: ValidationIssue[]): GuideRecord | null {
+  const issuePath = `guides[${index}]`;
+  if (!isRecord(value)) {
+    issues.push(validationIssue(issuePath, "VALIDATION_ERROR", "Guide must be an object."));
+    return null;
+  }
+  validateRequiredString(value.id, `${issuePath}.id`, issues);
+  validateRequiredString(value.moleculeId, `${issuePath}.moleculeId`, issues);
+  validateRequiredString(value.name, `${issuePath}.name`, issues);
+  validateRequiredString(value.sequence, `${issuePath}.sequence`, issues);
+  validateRequiredString(value.pam, `${issuePath}.pam`, issues);
+  const molecule = typeof value.moleculeId === "string" ? moleculeById.get(value.moleculeId) : undefined;
+  if (typeof value.moleculeId === "string" && !molecule) {
+    issues.push(validationIssue(`${issuePath}.moleculeId`, "MOLECULE_NOT_FOUND", "Guide references a missing molecule.", {
+      moleculeId: value.moleculeId,
+    }));
+  }
+  if (molecule) {
+    if (molecule.moleculeType !== "dna" || molecule.alphabet !== "iupac_dna") {
+      issues.push(validationIssue(`${issuePath}.moleculeId`, "ALPHABET_MISMATCH", "Guide records require an IUPAC DNA molecule.", {
+        moleculeId: molecule.id,
+        moleculeType: molecule.moleculeType,
+        alphabet: molecule.alphabet,
+      }));
+    }
+    validateGuideCoordinate(value.start, "start", molecule.length, issuePath, issues);
+    validateGuideCoordinate(value.end, "end", molecule.length, issuePath, issues);
+    validateGuideCoordinate(value.pamStart, "pamStart", molecule.length, issuePath, issues);
+    validateGuideCoordinate(value.pamEnd, "pamEnd", molecule.length, issuePath, issues);
+    if (typeof value.start === "number" && typeof value.end === "number" && value.start > value.end) {
+      issues.push(validationIssue(`${issuePath}.start`, "COORDINATE_OUT_OF_RANGE", "Guide start must be <= end.", { start: value.start, end: value.end }));
+    }
+    if (typeof value.pamStart === "number" && typeof value.pamEnd === "number" && value.pamStart > value.pamEnd) {
+      issues.push(validationIssue(`${issuePath}.pamStart`, "COORDINATE_OUT_OF_RANGE", "Guide pamStart must be <= pamEnd.", { pamStart: value.pamStart, pamEnd: value.pamEnd }));
+    }
+  }
+  if (value.strand !== "+" && value.strand !== "-") {
+    issues.push(validationIssue(`${issuePath}.strand`, "VALIDATION_ERROR", "Guide strand must be '+' or '-'."));
+  }
+  if (value.pamType !== "SpCas9") {
+    issues.push(validationIssue(`${issuePath}.pamType`, "VALIDATION_ERROR", "Guide pamType must be 'SpCas9'."));
+  }
+  if (value.offTargetScope !== "workspace_molecules_only") {
+    issues.push(validationIssue(`${issuePath}.offTargetScope`, "VALIDATION_ERROR", "Guide offTargetScope must be 'workspace_molecules_only'."));
+  }
+  if (value.sourceTool !== "design_grnas") {
+    issues.push(validationIssue(`${issuePath}.sourceTool`, "VALIDATION_ERROR", "Guide sourceTool must be 'design_grnas'."));
+  }
+  if (typeof value.sequence === "string") issues.push(...validateSequenceAlphabet(value.sequence, "iupac_dna", `${issuePath}.sequence`));
+  if (typeof value.pam === "string") issues.push(...validateSequenceAlphabet(value.pam, "iupac_dna", `${issuePath}.pam`));
+  validateFiniteNumber(value.gcPercent, "gcPercent", issuePath, issues);
+  validateNonNegativeInteger(value.seedRegionMaxHomopolymer, "seedRegionMaxHomopolymer", issuePath, issues);
+  validateNonNegativeInteger(value.offTargetHitCount, "offTargetHitCount", issuePath, issues);
+  validateGuideRankingEvidence(value.rankingEvidence, `${issuePath}.rankingEvidence`, issues);
+  return issues.some((issue) => issue.path.startsWith(issuePath)) ? null : value as GuideRecord;
+}
+
+function validateGuideCoordinate(value: unknown, field: string, moleculeLength: number, issuePath: string, issues: ValidationIssue[]): void {
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 1 || value > moleculeLength) {
+    issues.push(validationIssue(`${issuePath}.${field}`, "COORDINATE_OUT_OF_RANGE", "Guide coordinate is outside molecule bounds.", {
+      value,
+      moleculeLength,
+    }));
+  }
+}
+
+function validateNonNegativeInteger(value: unknown, field: string, issuePath: string, issues: ValidationIssue[]): void {
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 0) {
+    issues.push(validationIssue(`${issuePath}.${field}`, "VALIDATION_ERROR", "Value must be a non-negative integer."));
+  }
+}
+
+function validateFiniteNumber(value: unknown, field: string, issuePath: string, issues: ValidationIssue[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    issues.push(validationIssue(`${issuePath}.${field}`, "VALIDATION_ERROR", "Value must be a finite number."));
+  }
+}
+
+function validateGuideRankingEvidence(value: unknown, issuePath: string, issues: ValidationIssue[]): void {
+  if (!isRecord(value)) {
+    issues.push(validationIssue(issuePath, "VALIDATION_ERROR", "Guide rankingEvidence must be an object."));
+    return;
+  }
+  if (typeof value.passingFilters !== "boolean") {
+    issues.push(validationIssue(`${issuePath}.passingFilters`, "VALIDATION_ERROR", "passingFilters must be boolean."));
+  }
+  if (!Array.isArray(value.filterFailures) || !value.filterFailures.every((entry) => typeof entry === "string")) {
+    issues.push(validationIssue(`${issuePath}.filterFailures`, "VALIDATION_ERROR", "filterFailures must be an array of strings."));
+  }
+  validateNonNegativeInteger(value.offTargetHitCount, "offTargetHitCount", issuePath, issues);
+  validateFiniteNumber(value.gcDistanceFrom50, "gcDistanceFrom50", issuePath, issues);
+  validateNonNegativeInteger(value.guideStart, "guideStart", issuePath, issues);
+  if (value.strand !== "+" && value.strand !== "-") {
+    issues.push(validationIssue(`${issuePath}.strand`, "VALIDATION_ERROR", "strand must be '+' or '-'."));
+  }
+  if (value.efficacyScoreIncluded !== false) {
+    issues.push(validationIssue(`${issuePath}.efficacyScoreIncluded`, "VALIDATION_ERROR", "efficacyScoreIncluded must be false before CR2."));
+  }
+}
+
 export async function validateWorkspace(
   value: unknown,
   options: { workspacePath?: string; checkSequenceDigests?: boolean } = {},
@@ -237,12 +338,14 @@ export async function validateWorkspace(
   const molecules = validateArray(value.molecules, "molecules", issues) ? value.molecules : [];
   const features = validateArray(value.features, "features", issues) ? value.features : [];
   const primers = validateArray(value.primers, "primers", issues) ? value.primers : [];
+  const guides = value.guides === undefined ? [] : validateArray(value.guides, "guides", issues) ? value.guides : [];
   validateArray(value.constructs, "constructs", issues);
   validateArray(value.experiments, "experiments", issues);
   validateArray(value.auditEvents, "auditEvents", issues);
   validateDuplicateIds(molecules, "molecules", issues);
   validateDuplicateIds(features, "features", issues);
   validateDuplicateIds(primers, "primers", issues);
+  validateDuplicateIds(guides, "guides", issues);
 
   const validMolecules = molecules
     .map((molecule, index) => validateMolecule(molecule, index, workspaceRoot, issues))
@@ -250,6 +353,7 @@ export async function validateWorkspace(
   const moleculeById = new Map(validMolecules.map((molecule) => [molecule.id, molecule]));
   features.forEach((feature, index) => validateFeature(feature, index, moleculeById, issues));
   primers.forEach((primer, index) => validatePrimer(primer, index, moleculeById, issues));
+  guides.forEach((guide, index) => validateGuide(guide, index, moleculeById, issues));
 
   if (options.checkSequenceDigests) {
     await Promise.all(validMolecules.map((molecule, index) => validateStoredSequenceDigest(workspaceRoot, molecule, `molecules[${index}]`, issues)));
@@ -269,7 +373,9 @@ export async function validateWorkspaceOrThrow(
 export async function readWorkspace(workspacePath: string, options: { checkSequenceDigests?: boolean } = {}): Promise<MoleculeWorkspace> {
   const content = await fs.readFile(workspacePath, "utf8");
   const parsed = JSON.parse(content) as unknown;
-  return validateWorkspaceOrThrow(parsed, { workspacePath, checkSequenceDigests: options.checkSequenceDigests });
+  const workspace = await validateWorkspaceOrThrow(parsed, { workspacePath, checkSequenceDigests: options.checkSequenceDigests });
+  workspace.guides ??= [];
+  return workspace;
 }
 
 export type WorkspaceTransactionResult<T> = {

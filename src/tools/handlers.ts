@@ -20,9 +20,9 @@ import { MoleculeError } from "../core/errors.js";
 import { importSequenceFile, type ImportFormat } from "../core/import.js";
 import { reverseComplement } from "../core/sequence.js";
 import { renderPlasmidMap, type PlasmidMapCutSite } from "../core/render-map.js";
-import type { Feature, Primer, Strand } from "../core/schema.js";
+import type { Feature, GuideRecord, Primer, Strand } from "../core/schema.js";
 import { readWorkspace, validateWorkspace } from "../core/workspace.js";
-import { deleteFeature, deletePrimer, upsertFeature, upsertPrimer } from "../core/writes.js";
+import { deleteFeature, deletePrimer, upsertFeature, upsertGuide, upsertPrimer } from "../core/writes.js";
 import { openSequenceEditor } from "../ui/index.js";
 import { toolFailure, toolFailureFromError, toolSuccess, type ToolResultEnvelope } from "./envelope.js";
 
@@ -41,6 +41,7 @@ export type ToolName =
   | "delete_feature"
   | "upsert_primer"
   | "delete_primer"
+  | "upsert_grna"
   | "reverse_complement"
   | "translate_region"
   | "find_orfs"
@@ -103,6 +104,10 @@ export type UpsertPrimerInput = ExpectedRevisionInput & {
 
 export type DeletePrimerInput = ExpectedRevisionInput & {
   primerId: string;
+};
+
+export type UpsertGrnaInput = ExpectedRevisionInput & {
+  guide: GuideRecord;
 };
 
 export type ReverseComplementInput = {
@@ -270,6 +275,7 @@ export type ToolInputByName = {
   delete_feature: DeleteFeatureInput;
   upsert_primer: UpsertPrimerInput;
   delete_primer: DeletePrimerInput;
+  upsert_grna: UpsertGrnaInput;
   reverse_complement: ReverseComplementInput;
   translate_region: TranslateRegionInput;
   find_orfs: FindOrfsInput;
@@ -300,6 +306,7 @@ export const toolHandlers = {
   delete_feature: handleDeleteFeature,
   upsert_primer: handleUpsertPrimer,
   delete_primer: handleDeletePrimer,
+  upsert_grna: handleUpsertGrna,
   reverse_complement: handleReverseComplement,
   translate_region: handleTranslateRegion,
   find_orfs: handleFindOrfs,
@@ -527,6 +534,19 @@ export async function handleDeletePrimer(input: DeletePrimerInput): Promise<Tool
     const expectedRevision = assertNonNegativeInteger(input.expectedRevision, "expectedRevision");
     assertNonEmptyString(input.primerId, "primerId");
     const result = await deletePrimer(workspacePath, expectedRevision, input.primerId);
+    return toolSuccess(tool, result.payload, writeMetadata(workspacePath, result.revision));
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleUpsertGrna(input: UpsertGrnaInput): Promise<ToolResultEnvelope> {
+  const tool = "upsert_grna";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const expectedRevision = assertNonNegativeInteger(input.expectedRevision, "expectedRevision");
+    assertRecord(input.guide, "guide");
+    const result = await upsertGuide(workspacePath, expectedRevision, input.guide);
     return toolSuccess(tool, result.payload, writeMetadata(workspacePath, result.revision));
   } catch (error) {
     return toolFailureFromError(tool, error);

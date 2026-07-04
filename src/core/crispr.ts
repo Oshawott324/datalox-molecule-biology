@@ -1,5 +1,6 @@
 import { readMoleculeSequence } from "./context.js";
 import { MoleculeError } from "./errors.js";
+import type { GuideRankingEvidence } from "./schema.js";
 import { reverseComplement } from "./sequence.js";
 
 export type GrnaStrandOption = "both" | "+" | "-";
@@ -49,16 +50,6 @@ export type GuideCandidate = {
   passingFilters: boolean;
   filterFailures: string[];
   rankingEvidence: GuideRankingEvidence;
-};
-
-export type GuideRankingEvidence = {
-  passingFilters: boolean;
-  filterFailures: string[];
-  offTargetHitCount: number;
-  gcDistanceFrom50: number;
-  guideStart: number;
-  strand: "+" | "-";
-  efficacyScoreIncluded: false;
 };
 
 export type DesignGrnasResult = {

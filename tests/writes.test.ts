@@ -10,8 +10,10 @@ import {
   importSequenceFile,
   readWorkspace,
   upsertFeature,
+  upsertGuide,
   upsertPrimer,
   type Feature,
+  type GuideRecord,
   type Primer,
 } from "../src/index.js";
 
@@ -34,6 +36,55 @@ async function importSingleFasta(): Promise<{ workspaceDir: string; workspacePat
     workspacePath: result.workspacePath,
     moleculeId: workspace.molecules[0].id,
     revision: workspace.revision,
+  };
+}
+
+async function importGuideFasta(): Promise<{ workspaceDir: string; workspacePath: string; moleculeId: string; revision: number }> {
+  const workspaceDir = await tempWorkspaceDir();
+  const inputPath = path.join(workspaceDir, "guide.fa");
+  await fs.writeFile(inputPath, ">guide\nACGTACGTACGTACGTACGTAGG\n", "utf8");
+  const result = await importSequenceFile({
+    inputPath,
+    workspaceDir,
+    format: "fasta",
+    moleculeId: "mol_guide",
+  });
+  const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
+  return {
+    workspaceDir,
+    workspacePath: result.workspacePath,
+    moleculeId: workspace.molecules[0].id,
+    revision: workspace.revision,
+  };
+}
+
+function guideRecord(moleculeId: string): GuideRecord {
+  return {
+    id: "grna_test_1",
+    moleculeId,
+    name: "test guide 1",
+    sequence: "ACGTACGTACGTACGTACGT",
+    pam: "AGG",
+    strand: "+",
+    start: 1,
+    end: 20,
+    pamStart: 21,
+    pamEnd: 23,
+    pamType: "SpCas9",
+    gcPercent: 50,
+    seedRegionMaxHomopolymer: 1,
+    offTargetScope: "workspace_molecules_only",
+    offTargetHitCount: 0,
+    rankingEvidence: {
+      passingFilters: true,
+      filterFailures: [],
+      offTargetHitCount: 0,
+      gcDistanceFrom50: 0,
+      guideStart: 1,
+      strand: "+",
+      efficacyScoreIncluded: false,
+    },
+    sourceTool: "design_grnas",
   };
 }
 
@@ -82,11 +133,13 @@ describe("structured workspace writes", () => {
       sequence: "ACGT",
       moleculeId,
     };
+    const guide = guideRecord(moleculeId);
 
     await expect(upsertFeature(workspacePath, 1, feature)).rejects.toMatchObject({ code: "STALE_REVISION" });
     await expect(deleteFeature(workspacePath, 1, feature.id)).rejects.toMatchObject({ code: "STALE_REVISION" });
     await expect(upsertPrimer(workspacePath, 1, primer)).rejects.toMatchObject({ code: "STALE_REVISION" });
     await expect(deletePrimer(workspacePath, 1, primer.id)).rejects.toMatchObject({ code: "STALE_REVISION" });
+    await expect(upsertGuide(workspacePath, 1, guide)).rejects.toMatchObject({ code: "STALE_REVISION" });
   });
 
   it("leaves the workspace unchanged when feature coordinates are invalid", async () => {
@@ -122,6 +175,41 @@ describe("structured workspace writes", () => {
     ).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
       issues: expect.arrayContaining([expect.objectContaining({ path: "primers[0].sequence", code: "ALPHABET_MISMATCH" })]),
+    });
+  });
+
+  it("upserts selected guide records through revision-safe transactions", async () => {
+    const { workspacePath, moleculeId } = await importGuideFasta();
+    const guide = guideRecord(moleculeId);
+
+    const created = await upsertGuide(workspacePath, 0, guide);
+    const updated = await upsertGuide(workspacePath, 1, {
+      ...guide,
+      name: "test guide updated",
+      offTargetHitCount: 1,
+      rankingEvidence: { ...guide.rankingEvidence, offTargetHitCount: 1 },
+    });
+    const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: true });
+
+    expect(created.payload).toEqual({ guideId: guide.id, action: "created" });
+    expect(created.revision).toBe(1);
+    expect(updated.payload).toEqual({ guideId: guide.id, action: "updated" });
+    expect(updated.revision).toBe(2);
+    expect(workspace.guides).toHaveLength(1);
+    expect(workspace.guides[0]).toMatchObject({ id: guide.id, name: "test guide updated", offTargetHitCount: 1 });
+  });
+
+  it("validates guide records through workspace validation", async () => {
+    const { workspacePath, moleculeId } = await importGuideFasta();
+
+    await expect(
+      upsertGuide(workspacePath, 0, {
+        ...guideRecord(moleculeId),
+        sequence: "ACGTZCGTACGTACGTACGT",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      issues: expect.arrayContaining([expect.objectContaining({ path: "guides[0].sequence", code: "ALPHABET_MISMATCH" })]),
     });
   });
 

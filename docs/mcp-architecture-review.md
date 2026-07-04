@@ -33,7 +33,7 @@ logic.
         ┌──────────────────────────┴──────────────────────────┐
         │  src/mcp/server.ts  (thin adapter — no domain logic) │
         │                                                      │
-        │  tools/list  ─► moleculeToolDescriptors (24 schemas) │
+        │  tools/list  ─► moleculeToolDescriptors (25 schemas) │
         │  tools/call  ─► callMoleculeMcpTool:                 │
         │                  1. isToolName?      (registry gate) │
         │                  2. isRecord(args)?  (shape gate)    │
@@ -63,9 +63,9 @@ Confirmed against the brief's review points:
   and calls the same `runToolHandler`. The MCP server adds no behavior the CLI
   lacks except transport. ✅
 
-### Tool surface: 24 advertised, `doctor` is CLI-only
+### Tool surface: 25 advertised, `doctor` is CLI-only
 
-`moleculeToolDescriptors` advertises 24 tools. `toolHandlers` defines 25
+`moleculeToolDescriptors` advertises 25 tools. `toolHandlers` defines 26
 (it adds `doctor`). Because `isToolName` is built from the descriptor set,
 `doctor` is *not reachable* over MCP** — a `tools/call` for `doctor` returns the
 structured unknown-tool failure. `doctor` is reachable only via the CLI
