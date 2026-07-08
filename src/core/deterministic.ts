@@ -49,6 +49,18 @@ export { renderDigestGel, MAX_GEL_SAMPLE_BANDS } from "./render-gel.js";
 export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";
 export { alignSequences } from "./align.js";
 export type { AlignMode, AlignmentResult, AlignSequencesOptions } from "./align.js";
+export { exportProteinFasta } from "./export-protein.js";
+export type { ExportProteinFastaOptions, ExportProteinFastaResult } from "./export-protein.js";
+export { validateMrnaConstruct } from "./mrna.js";
+export type {
+  MrnaElementType,
+  MrnaTemplateType,
+  MrnaElementReference,
+  ValidateMrnaConstructInput,
+  MrnaCheckStatus,
+  MrnaCheck,
+  ValidateMrnaConstructResult,
+} from "./mrna.js";
 export { designPrimers } from "./primer-design.js";
 export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPrimersResult, PrimerPairCandidate } from "./primer-design.js";
 export { designGrnas, MAX_DESIGN_GRNAS_CANDIDATES } from "./crispr.js";

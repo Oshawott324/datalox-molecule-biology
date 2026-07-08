@@ -7,6 +7,7 @@ import {
   alignSequences,
   exportGenBank,
   exportGrnaReport,
+  exportProteinFasta,
   designPrimers,
   designGrnas,
   findOrfs,
@@ -17,7 +18,9 @@ import {
   simulateDigest,
   simulatePcr,
   translateRegion,
+  validateMrnaConstruct,
 } from "../core/deterministic.js";
+import type { MrnaElementReference, MrnaTemplateType } from "../core/deterministic.js";
 import { MoleculeError } from "../core/errors.js";
 import { importSequenceFile, type ImportFormat } from "../core/import.js";
 import { reverseComplement } from "../core/sequence.js";
@@ -60,7 +63,9 @@ export type ToolName =
   | "render_digest_gel"
   | "align_sequences"
   | "design_primers"
-  | "design_grnas";
+  | "design_grnas"
+  | "export_protein_fasta"
+  | "validate_mrna_construct";
 
 export type OpenSequenceInput = {
   inputPath: string;
@@ -214,6 +219,22 @@ export type AlignSequencesInput = WorkspaceInput & {
   gap?: number;
 };
 
+export type ExportProteinFastaInput = WorkspaceInput & {
+  moleculeId?: string;
+  molecule?: string;
+  cdsStart: number;
+  cdsEnd: number;
+  proteinId?: string;
+  outputPath?: string;
+};
+
+export type ValidateMrnaConstructToolInput = WorkspaceInput & {
+  moleculeId?: string;
+  molecule?: string;
+  templateType: MrnaTemplateType;
+  elements: MrnaElementReference[];
+};
+
 export type DesignPrimersToolInput = MoleculeToolInput & {
   target: {
     start: number;
@@ -302,6 +323,8 @@ export type ToolInputByName = {
   align_sequences: AlignSequencesInput;
   design_primers: DesignPrimersToolInput;
   design_grnas: DesignGrnasToolInput;
+  export_protein_fasta: ExportProteinFastaInput;
+  validate_mrna_construct: ValidateMrnaConstructToolInput;
 };
 
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
@@ -334,6 +357,8 @@ export const toolHandlers = {
   align_sequences: handleAlignSequences,
   design_primers: handleDesignPrimers,
   design_grnas: handleDesignGrnas,
+  export_protein_fasta: handleExportProteinFasta,
+  validate_mrna_construct: handleValidateMrnaConstruct,
 } satisfies { [K in ToolName]: ToolHandler<ToolInputByName[K]> };
 
 export async function runToolHandler<TName extends ToolName>(
@@ -992,6 +1017,61 @@ async function resolveAlignmentSequence(
   const workspacePath = workspacePathFromInput(input);
   const resolved = await readMoleculeSequence(workspacePath, moleculeId);
   return { sequence: resolved.sequence, moleculeId };
+}
+
+export async function handleExportProteinFasta(input: ExportProteinFastaInput): Promise<ToolResultEnvelope> {
+  const tool = "export_protein_fasta";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    const cdsStart = assertPositiveInteger(input.cdsStart, "cdsStart");
+    const cdsEnd = assertPositiveInteger(input.cdsEnd, "cdsEnd");
+    if (input.proteinId !== undefined) assertNonEmptyString(input.proteinId, "proteinId");
+    if (input.outputPath !== undefined) assertNonEmptyString(input.outputPath, "outputPath");
+
+    const result = await exportProteinFasta(workspacePath, moleculeId, {
+      cdsStart,
+      cdsEnd,
+      ...(input.proteinId !== undefined ? { proteinId: input.proteinId } : {}),
+      ...(input.outputPath !== undefined ? { outputPath: input.outputPath } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      artifacts: [
+        {
+          kind: "protein_fasta",
+          path: result.outputPath,
+          mimeType: result.mimeType,
+          description: "Protein FASTA translated from the CDS region for external structure prediction.",
+        },
+      ],
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleValidateMrnaConstruct(input: ValidateMrnaConstructToolInput): Promise<ToolResultEnvelope> {
+  const tool = "validate_mrna_construct";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    const templateType = input.templateType;
+    if (templateType !== "mrna" && templateType !== "plasmid_template") {
+      throw new MoleculeError("INVALID_ARGUMENT", "templateType must be 'mrna' or 'plasmid_template'.", { templateType });
+    }
+    if (!Array.isArray(input.elements)) {
+      throw new MoleculeError("INVALID_ARGUMENT", "elements must be an array of mRNA element references.", { elements: input.elements });
+    }
+
+    const result = await validateMrnaConstruct(workspacePath, { moleculeId, templateType, elements: input.elements });
+    const nextAction = result.summary === "invalid"
+      ? { tool: "manual_review", arguments: { instruction: "Resolve the failed mRNA construct checks before proceeding." } }
+      : { tool: "validate_workspace", arguments: { workspacePath } };
+    return toolSuccess(tool, { workspacePath, ...result }, { workspacePath, nextAction });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
 }
 
 async function readWorkspaceEnvelope(tool: "open_workspace" | "read_workspace", input: WorkspaceInput): Promise<ToolResultEnvelope> {

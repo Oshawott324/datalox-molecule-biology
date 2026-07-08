@@ -19,6 +19,7 @@ import {
   type EnzymeInput,
   type ExportGenBankInput,
   type ExportGrnaReportInput,
+  type ExportProteinFastaInput,
   type FindOrfsInput,
   type OpenSequenceInput,
   type OpenSequenceEditorInput,
@@ -35,6 +36,7 @@ import {
   type UpsertFeatureInput,
   type UpsertGrnaInput,
   type UpsertPrimerInput,
+  type ValidateMrnaConstructToolInput,
   type WorkspaceInput,
 } from "../tools/index.js";
 
@@ -77,6 +79,8 @@ const commandToTool: Record<string, ToolName> = {
   "align-sequences": "align_sequences",
   "design-primers": "design_primers",
   "design-grnas": "design_grnas",
+  "export-protein-fasta": "export_protein_fasta",
+  "validate-mrna-construct": "validate_mrna_construct",
 };
 
 export async function runCli(argv: string[] = process.argv.slice(2)): Promise<CliRunResult> {
@@ -193,6 +197,8 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "align_sequences") return alignSequencesInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
   if (tool === "design_grnas") return designGrnasInput(parsed);
+  if (tool === "export_protein_fasta") return exportProteinFastaInput(parsed);
+  if (tool === "validate_mrna_construct") return validateMrnaConstructInput(parsed);
   return workspaceInput(parsed);
 }
 
@@ -348,6 +354,33 @@ function exportGenBankInput(parsed: ParsedArgs): ExportGenBankInput {
     ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
     ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
     outputPath: stringFlag(parsed, "output") ?? stringFlag(parsed, "output-path") ?? "",
+  };
+}
+
+function exportProteinFastaInput(parsed: ParsedArgs): ExportProteinFastaInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    cdsStart: numberFlag(parsed, "cds-start"),
+    cdsEnd: numberFlag(parsed, "cds-end"),
+    ...(stringFlag(parsed, "protein-id") ? { proteinId: stringFlag(parsed, "protein-id") } : {}),
+    ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
+  };
+}
+
+async function validateMrnaConstructInput(parsed: ParsedArgs): Promise<ValidateMrnaConstructToolInput> {
+  const elements = await jsonFileFlag(parsed, "elements");
+  if (elements === undefined) {
+    throw new MoleculeError("INVALID_ARGUMENT", "validate-mrna-construct requires --elements <json-file>.");
+  }
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { moleculeId: stringFlag(parsed, "molecule") } : {}),
+    templateType: stringFlag(parsed, "template-type") as ValidateMrnaConstructToolInput["templateType"],
+    elements: elements as ValidateMrnaConstructToolInput["elements"],
   };
 }
 

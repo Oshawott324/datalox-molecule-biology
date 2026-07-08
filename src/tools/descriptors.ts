@@ -479,4 +479,73 @@ export const moleculeToolDescriptors = [
       },
     },
   },
+  {
+    name: "export_protein_fasta",
+    description: "Translate a CDS region and write the protein sequence to a FASTA artifact for external structure tools.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "cdsStart", "cdsEnd"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        moleculeId: { type: "string" },
+        molecule: { type: "string", description: "Alias for moleculeId." },
+        cdsStart: { type: "integer", minimum: 1, description: "1-based inclusive CDS start coordinate." },
+        cdsEnd: { type: "integer", minimum: 1, description: "1-based inclusive CDS end coordinate." },
+        proteinId: { type: "string", description: "FASTA header id; defaults to moleculeId." },
+        outputPath: { type: "string", description: "Optional workspace-relative output path." },
+      },
+    },
+  },
+  {
+    name: "validate_mrna_construct",
+    description: "Validate that a molecule's features contain the required mRNA elements in 5'->3' order and pass CDS/Kozak/polyA integrity checks.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "templateType", "elements"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        moleculeId: { type: "string" },
+        molecule: { type: "string", description: "Alias for moleculeId." },
+        templateType: { type: "string", enum: ["mrna", "plasmid_template"] },
+        elements: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["type"],
+            additionalProperties: false,
+            properties: {
+              type: {
+                type: "string",
+                enum: [
+                  "five_utr",
+                  "kozak",
+                  "cds",
+                  "three_utr",
+                  "polya_signal",
+                  "polya_tail",
+                  "t7_promoter",
+                  "sp6_promoter",
+                  "ivt_site",
+                ],
+              },
+              featureId: { type: "string", description: "Existing workspace feature id for this element." },
+              coordinates: {
+                type: "object",
+                required: ["start", "end"],
+                additionalProperties: false,
+                properties: {
+                  start: { type: "integer", minimum: 1, description: "1-based inclusive start." },
+                  end: { type: "integer", minimum: 1, description: "1-based inclusive end." },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 ] satisfies ToolDescriptor[];

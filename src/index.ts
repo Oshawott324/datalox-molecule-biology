@@ -77,6 +77,8 @@ export {
   translateDnaSequence,
   translateRegion,
   alignSequences,
+  exportProteinFasta,
+  validateMrnaConstruct,
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
@@ -119,6 +121,15 @@ export type {
   AlignMode,
   AlignmentResult,
   AlignSequencesOptions,
+  ExportProteinFastaOptions,
+  ExportProteinFastaResult,
+  MrnaElementType,
+  MrnaTemplateType,
+  MrnaElementReference,
+  ValidateMrnaConstructInput,
+  MrnaCheckStatus,
+  MrnaCheck,
+  ValidateMrnaConstructResult,
   AssemblyArtifact,
   AssemblyCandidate,
   AssemblyCandidateEnd,
@@ -163,6 +174,8 @@ export {
   handleUpsertPrimer,
   handleValidateWorkspace,
   handleAlignSequences,
+  handleExportProteinFasta,
+  handleValidateMrnaConstruct,
   moleculeToolDescriptors,
   runToolHandler,
   toolFailure,
@@ -176,6 +189,8 @@ export {
 export type {
   AgentContract,
   AlignSequencesInput,
+  ExportProteinFastaInput,
+  ValidateMrnaConstructToolInput,
   DeleteFeatureInput,
   DeletePrimerInput,
   DesignGrnasToolInput,
