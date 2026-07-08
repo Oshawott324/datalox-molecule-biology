@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { designGrnas, findWorkspaceOffTargets, normalizeGrnaOptions, scanSpCas9Guides } from "../src/core/crispr.js";
 import type { GuideCandidate } from "../src/core/crispr.js";
 import { runCli } from "../src/cli/main.js";
-import { handleDesignGrnas, handleExportGrnaReport, handleUpsertGrna, importSequenceFile, readWorkspace } from "../src/index.js";
+import { handleDesignGrnas, handleExportGrnaReport, handleUpsertGrna, importSequenceFile, MAX_GRNA_REPORT_GUIDES, readWorkspace } from "../src/index.js";
 import type { GuideRecord } from "../src/index.js";
 
 async function tempWorkspaceDir(): Promise<string> {
@@ -444,6 +444,60 @@ describe("CR1 SpCas9 guide design", () => {
     expect(markdown).toContain("guide beta");
     expect(markdown).toContain(`## ${guide1.id}`);
     expect(markdown).toContain(`## ${guide2.id}`);
+  });
+
+  it("truncates oversized guide reports and marks the artifact", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const seq = "ACGTACGTACGTACGTACGTAGGAAAA";
+    const sourcePath = await writeFasta(workspaceDir, "source.fa", "source", seq);
+    const sourceImport = await importSequenceFile({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_many_guides",
+    });
+    const [candidate] = scanSpCas9Guides(seq, { start: 1, end: 20 }, { strand: "+" });
+    const guideIds: string[] = [];
+    for (let index = 0; index < MAX_GRNA_REPORT_GUIDES + 1; index += 1) {
+      const guide = {
+        ...guideRecordFromCandidate("mol_many_guides", candidate),
+        id: `grna_many_${index + 1}`,
+        name: `guide ${index + 1}`,
+      };
+      guideIds.push(guide.id);
+      await handleUpsertGrna({
+        workspacePath: sourceImport.workspacePath,
+        expectedRevision: index,
+        guide,
+      });
+    }
+
+    const report = await handleExportGrnaReport({
+      workspacePath: sourceImport.workspacePath,
+      guideIds,
+      outputPath: "reports/guides/truncated.md",
+    });
+
+    expect(report).toMatchObject({
+      ok: true,
+      tool: "export_grna_report",
+      data: {
+        guideCount: MAX_GRNA_REPORT_GUIDES + 1,
+        reportedGuideCount: MAX_GRNA_REPORT_GUIDES,
+        truncated: true,
+        totalCount: MAX_GRNA_REPORT_GUIDES + 1,
+      },
+      artifacts: [{
+        kind: "grna_report",
+        truncated: true,
+        totalCount: MAX_GRNA_REPORT_GUIDES + 1,
+      }],
+    });
+    if (!report.ok) throw new Error("expected export_grna_report success");
+    const markdown = await fs.readFile(report.artifacts?.[0]?.path ?? "", "utf8");
+    expect(markdown).toContain(`This report is truncated to ${MAX_GRNA_REPORT_GUIDES} of ${MAX_GRNA_REPORT_GUIDES + 1} requested guides.`);
+    expect(markdown).toContain("guide 1");
+    expect(markdown).not.toContain(`guide ${MAX_GRNA_REPORT_GUIDES + 1}`);
   });
 
   it("returns GUIDE_NOT_FOUND when a requested guide id is not persisted", async () => {

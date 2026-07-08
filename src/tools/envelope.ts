@@ -28,6 +28,8 @@ export type ToolArtifact = {
   path: string;
   mimeType?: string;
   description?: string;
+  truncated?: boolean;
+  totalCount?: number;
 };
 
 export type ToolSuccessEnvelope<T> = {
@@ -110,7 +112,7 @@ function redactAbsolutePaths(value: string): string {
   if (path.isAbsolute(value)) return redactedPath(value);
   return value
     .replace(/[A-Za-z]:\\(?:[^\\\r\n]+\\)*[^\\\r\n]*/g, (match) => redactedPath(match))
-    .replace(/(?<![:\w])\/(?:[^/\s]+\/)*[^/\s]*/g, (match) => redactedPath(match));
+    .replace(/(^|[\s([{=])\/(?!\/)(?:[^/\s]+\/)*[^/\s]*/g, (match, prefix: string) => `${prefix}${redactedPath(match.slice(prefix.length))}`);
 }
 
 function redactedPath(value: string): string {

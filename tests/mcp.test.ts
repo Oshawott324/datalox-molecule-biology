@@ -7,6 +7,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors } from "../src/index.js";
+import { toolFailure } from "../src/tools/envelope.js";
 
 async function tempDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -241,6 +242,18 @@ describe("MCP server", () => {
     expect((result.error as { code?: string }).code).not.toBe("SCHEMA_VALIDATION_ERROR");
     expect(JSON.stringify(result)).not.toContain(missingPath);
     expect(JSON.stringify(result)).toContain("<redacted:absolute_path:definitely-missing-mol-input.fa>");
+  });
+
+  it("redacts absolute paths in error details without redacting URLs", () => {
+    const envelope = toolFailure("blast_sequence", "BLAST_TIMEOUT", "NCBI BLAST timed out.", {
+      ncbiUrl: "https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=ABC123&CMD=Get",
+      localPath: path.join(os.tmpdir(), "blast-result.xml"),
+    });
+
+    const serialized = JSON.stringify(envelope);
+    expect(serialized).toContain("https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=ABC123&CMD=Get");
+    expect(serialized).not.toContain(path.join(os.tmpdir(), "blast-result.xml"));
+    expect(serialized).toContain("<redacted:absolute_path:blast-result.xml>");
   });
 
   it("advertises only JSON Schema keywords the boundary validator enforces", () => {

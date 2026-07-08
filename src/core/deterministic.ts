@@ -45,7 +45,7 @@ export { simulatePcr } from "./pcr.js";
 export type { PcrProduct, SimulatePcrResult } from "./pcr.js";
 export { exportGenBank } from "./export-genbank.js";
 export type { ExportGenBankResult } from "./export-genbank.js";
-export { renderDigestGel } from "./render-gel.js";
+export { renderDigestGel, MAX_GEL_SAMPLE_BANDS } from "./render-gel.js";
 export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";
 export { alignSequences } from "./align.js";
 export type { AlignMode, AlignmentResult, AlignSequencesOptions } from "./align.js";
@@ -54,5 +54,5 @@ export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPr
 export { designGrnas } from "./crispr.js";
 export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCandidate, OffTargetHit } from "./crispr.js";
 export type { GuideRankingEvidence } from "./schema.js";
-export { exportGrnaReport } from "./grna-report.js";
+export { exportGrnaReport, MAX_GRNA_REPORT_GUIDES } from "./grna-report.js";
 export type { ExportGrnaReportOptions, ExportGrnaReportResult } from "./grna-report.js";

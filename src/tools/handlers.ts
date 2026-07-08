@@ -734,6 +734,7 @@ export async function handleExportGrnaReport(input: ExportGrnaReportInput): Prom
           path: result.outputPath,
           mimeType: result.mimeType,
           description: "Markdown report for selected persisted guide RNA records.",
+          ...(result.truncated ? { truncated: true, totalCount: result.totalCount } : {}),
         },
       ],
       nextAction: {

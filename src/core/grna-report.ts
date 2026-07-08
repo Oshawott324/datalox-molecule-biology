@@ -10,12 +10,17 @@ export type ExportGrnaReportOptions = {
   outputPath?: string;
 };
 
+export const MAX_GRNA_REPORT_GUIDES = 25;
+
 export type ExportGrnaReportResult = {
   guideIds: string[];
   outputPath: string;
   relativePath: string;
   mimeType: "text/markdown";
   guideCount: number;
+  reportedGuideCount: number;
+  truncated: boolean;
+  totalCount: number;
   // CR1.4 reports persisted guide summaries only. Widen this deliberately if a future guide schema stores full off-target rows.
   reportsDetailedOffTargetHits: false;
   offTargetDetailInstruction: string;
@@ -35,6 +40,7 @@ export async function exportGrnaReport(
     }
     return guide;
   });
+  const reportedGuides = guides.slice(0, MAX_GRNA_REPORT_GUIDES);
   const workspaceRoot = workspaceRootFromPath(workspacePath);
   const relativePath = options.outputPath
     ? path.relative(workspaceRoot, path.isAbsolute(options.outputPath) ? options.outputPath : path.join(workspaceRoot, options.outputPath))
@@ -47,13 +53,16 @@ export async function exportGrnaReport(
   }
   const outputPath = path.join(workspaceRoot, relativePath);
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, formatGrnaReport(guides), "utf8");
+  await fs.writeFile(outputPath, formatGrnaReport(reportedGuides, guides.length), "utf8");
   return {
     guideIds: ids,
     outputPath,
     relativePath,
     mimeType: "text/markdown",
     guideCount: guides.length,
+    reportedGuideCount: reportedGuides.length,
+    truncated: reportedGuides.length < guides.length,
+    totalCount: guides.length,
     reportsDetailedOffTargetHits: false,
     offTargetDetailInstruction: "Persisted guide records store offTargetHitCount and offTargetScope only. Rerun design_grnas with the same target/options to inspect full off-target hit rows.",
   };
@@ -80,11 +89,15 @@ function safeReportId(guideIds: string[]): string {
   return joined.length > 0 ? joined : "selected_guides";
 }
 
-function formatGrnaReport(guides: GuideRecord[]): string {
+function formatGrnaReport(guides: GuideRecord[], totalCount: number): string {
   const lines: string[] = [];
   lines.push("# gRNA Report");
   lines.push("");
   lines.push("CR1 SpCas9 guide report. No validated on-target efficacy score is included.");
+  if (guides.length < totalCount) {
+    lines.push("");
+    lines.push(`This report is truncated to ${guides.length} of ${totalCount} requested guides.`);
+  }
   lines.push("");
   lines.push("| Guide | Molecule | Strand | Coordinates | PAM | GC % | Filters | Workspace off-target count |");
   lines.push("|---|---|---:|---|---|---:|---|---:|");

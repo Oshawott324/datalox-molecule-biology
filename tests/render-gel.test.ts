@@ -9,6 +9,7 @@ import {
   handleOpenSequence,
   handleRenderDigestGel,
   importSequenceFile,
+  MAX_GEL_SAMPLE_BANDS,
   renderDigestGel,
   simulateDigest,
   type ToolResultEnvelope,
@@ -245,5 +246,23 @@ describe("digest gel rendering", () => {
       [{ label: "Digest", fragments: [{ size: 1000 }] }],
       { outputPath: "../escape.gel.svg" },
     )).rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+  });
+
+  it("rejects oversized gel band inputs instead of writing a partial SVG", async () => {
+    const { workspacePath } = await createWorkspace();
+    await expect(renderDigestGel(
+      workspacePath,
+      "too_many_bands",
+      [{
+        label: "Too many",
+        fragments: Array.from({ length: MAX_GEL_SAMPLE_BANDS + 1 }, (_, index) => ({ size: index + 1 })),
+      }],
+    )).rejects.toMatchObject({
+      code: "INVALID_ARGUMENT",
+      details: {
+        totalCount: MAX_GEL_SAMPLE_BANDS + 1,
+        maxBandCount: MAX_GEL_SAMPLE_BANDS,
+      },
+    });
   });
 });

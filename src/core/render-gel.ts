@@ -59,6 +59,7 @@ type RenderBand = GelBand & {
 const DEFAULT_WIDTH = 720;
 const DEFAULT_HEIGHT = 520;
 const DEFAULT_LADDER = [250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000];
+export const MAX_GEL_SAMPLE_BANDS = 100;
 
 export async function renderDigestGel(
   workspacePath: string,
@@ -240,7 +241,7 @@ function normalizeLanes(lanes: GelLane[]): GelLane[] {
   if (!Array.isArray(lanes) || lanes.length === 0) {
     throw new MoleculeError("INVALID_ARGUMENT", "lanes must be a non-empty array.");
   }
-  return lanes.map((lane, index) => {
+  const normalized = lanes.map((lane, index) => {
     if (typeof lane !== "object" || lane === null || Array.isArray(lane)) {
       throw new MoleculeError("INVALID_ARGUMENT", "Each lane must be an object.", { index });
     }
@@ -255,6 +256,14 @@ function normalizeLanes(lanes: GelLane[]): GelLane[] {
       fragments: lane.fragments.map((fragment, fragmentIndex) => normalizeFragment(fragment, index, fragmentIndex)),
     };
   });
+  const totalBandCount = normalized.reduce((sum, lane) => sum + lane.fragments.length, 0);
+  if (totalBandCount > MAX_GEL_SAMPLE_BANDS) {
+    throw new MoleculeError("INVALID_ARGUMENT", "Gel rendering supports a bounded number of sample bands.", {
+      totalCount: totalBandCount,
+      maxBandCount: MAX_GEL_SAMPLE_BANDS,
+    });
+  }
+  return normalized;
 }
 
 function normalizeFragment(fragment: GelFragment, laneIndex: number, fragmentIndex: number): GelFragment {
