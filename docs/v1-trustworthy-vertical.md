@@ -34,9 +34,9 @@ This is the demo. Everything else is deferred until this path is trustworthy.
 |---|---|---|---|---|
 | MB1 | Restriction/PCR ambiguity policy | User | **done** (7620d30) | see below |
 | MB2 | Reverse-strand default or explicit caveat | User | **done** (c055fec) | see below |
-| MB3 | Bounded artifact output (+ stdio envelope ceiling) | User | in progress | see below |
+| MB3 | Bounded artifact output (+ stdio envelope ceiling) | User | **done** (a24e28e + 4351df0) | see below |
 | MB4 | No absolute path leaks in agent-visible errors | User | **done** (adb4d2c) | see below |
-| MB5 | Confine import paths to workspace (arbitrary file read) | User | not started | see below |
+| MB5 | Confine import paths to workspace (arbitrary file read) | User | **done** (4351df0) | see below |
 | MB6 | Workspace write transactionality (TOCTOU) | User | not started | see below |
 | HB1 | Contract/version handshake between hub and mol-bio | User (spec) | not started | to write |
 | HB2 | Provenance bundle with tool/schema versions | User (spec) | schema drafted | to wire |
