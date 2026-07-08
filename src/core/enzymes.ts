@@ -1,7 +1,7 @@
 import { MoleculeError } from "./errors.js";
 import { readMoleculeSequence } from "./context.js";
 import type { CoordinateSegment } from "./schema.js";
-import { reverseComplement } from "./sequence.js";
+import { assertUnambiguousDnaSequence, reverseComplement } from "./sequence.js";
 
 export const RESTRICTION_ENZYME_TABLE_VERSION = "datalox_rebase_common_v2";
 
@@ -69,7 +69,9 @@ export async function findRestrictionSites(
   }
 
   const sites: RestrictionSite[] = [];
+  assertUnambiguousDnaSequence(sequence, moleculeId);
   for (const enzyme of selected) {
+    assertUnambiguousDnaSequence(enzyme.recognitionSequence, `${enzyme.name}.recognitionSequence`);
     sites.push(...findSitesForEnzyme(moleculeId, sequence, molecule.topology, enzyme, "+"));
     const reverseRecognition = reverseComplement(enzyme.recognitionSequence);
     if (options.includeReverseStrand && reverseRecognition !== enzyme.recognitionSequence) {

@@ -134,6 +134,71 @@ describe("deterministic biology core", () => {
     await expect(findRestrictionSites(noSiteFixture.workspacePath, noSiteFixture.moleculeId, ["EcoRI"])).resolves.toEqual([]);
   });
 
+  it("rejects ambiguous DNA before restriction-site search or digest", async () => {
+    const startAmbiguous = await importFasta("NAAAAGAATTC");
+    await expect(findRestrictionSites(startAmbiguous.workspacePath, startAmbiguous.moleculeId, ["EcoRI"])).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        positions: [{ position: 1, base: "N" }],
+        totalAmbiguousCount: 1,
+      },
+    });
+
+    const middleAmbiguous = await importFasta("AAAARGAATTC");
+    await expect(simulateDigest(middleAmbiguous.workspacePath, middleAmbiguous.moleculeId, ["EcoRI"])).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        positions: [{ position: 5, base: "R" }],
+        totalAmbiguousCount: 1,
+      },
+    });
+
+    const endAmbiguous = await importFasta("AAAAGAATTCY");
+    await expect(findRestrictionSites(endAmbiguous.workspacePath, endAmbiguous.moleculeId, ["EcoRI"])).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        positions: [{ position: 11, base: "Y" }],
+        totalAmbiguousCount: 1,
+      },
+    });
+
+    const allAmbiguous = await importFasta("RYSWKMBDHVN");
+    await expect(findRestrictionSites(allAmbiguous.workspacePath, allAmbiguous.moleculeId, ["EcoRI"])).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        positions: [
+          { position: 1, base: "R" },
+          { position: 2, base: "Y" },
+          { position: 3, base: "S" },
+          { position: 4, base: "W" },
+          { position: 5, base: "K" },
+          { position: 6, base: "M" },
+          { position: 7, base: "B" },
+          { position: 8, base: "D" },
+          { position: 9, base: "H" },
+          { position: 10, base: "V" },
+        ],
+        totalAmbiguousCount: 11,
+      },
+    });
+  });
+
+  it("rejects ambiguous deterministic enzyme recognition sequences", async () => {
+    const source = await importFasta("AAAAGCAAGCAAAA");
+    RESTRICTION_ENZYMES.AmbigI = { name: "AmbigI", recognitionSequence: "GCNNGC", cutOffset: 1 };
+    try {
+      await expect(findRestrictionSites(source.workspacePath, source.moleculeId, ["AmbigI"])).rejects.toMatchObject({
+        code: "AMBIGUOUS_SEQUENCE",
+        details: {
+          label: "AmbigI.recognitionSequence",
+          totalAmbiguousCount: 2,
+        },
+      });
+    } finally {
+      delete RESTRICTION_ENZYMES.AmbigI;
+    }
+  });
+
   it("finds circular restriction sites that cross the origin", async () => {
     const circular = await importGenBank(`LOCUS       pOrigin       10 bp    DNA     circular 18-MAY-2026
 DEFINITION  Origin-spanning cutter.
@@ -231,6 +296,30 @@ ORIGIN
       },
     ]);
     await expect(simulatePcr(workspacePath, moleculeId, "AAAAAA", "CCCGG")).resolves.toMatchObject({ products: [] });
+  });
+
+  it("rejects ambiguous DNA before PCR simulation", async () => {
+    const ambiguousTemplate = await importFasta("AAACCCNTGGGGTTAACCGGGTTT");
+    await expect(simulatePcr(ambiguousTemplate.workspacePath, ambiguousTemplate.moleculeId, "ATGGGG", "CCCGG")).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: { totalAmbiguousCount: 1 },
+    });
+
+    const source = await importFasta("AAACCCATGGGGTTAACCGGGTTT");
+    await expect(simulatePcr(source.workspacePath, source.moleculeId, "ATGNGG", "CCCGG")).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        label: "forwardPrimer",
+        positions: [{ position: 4, base: "N" }],
+      },
+    });
+    await expect(simulatePcr(source.workspacePath, source.moleculeId, "ATGGGG", "CCNGG")).rejects.toMatchObject({
+      code: "AMBIGUOUS_SEQUENCE",
+      details: {
+        label: "reversePrimer",
+        positions: [{ position: 3, base: "N" }],
+      },
+    });
   });
 
   it("exports GenBank that re-imports with the same sequence digest and core features", async () => {
@@ -540,5 +629,18 @@ ORIGIN
 
     const missingTarget = await handleAlignSequences({ sequence: "ACGT" });
     expect(missingTarget).toMatchObject({ ok: false, error: { code: "INVALID_ARGUMENT" } });
+
+    const ambiguous = await handleAlignSequences({ sequence: "ACNT", targetSequence: "ACGT" });
+    expect(ambiguous).toMatchObject({
+      ok: false,
+      tool: "align_sequences",
+      error: {
+        code: "AMBIGUOUS_SEQUENCE",
+        details: {
+          label: "query",
+          positions: [{ position: 3, base: "N" }],
+        },
+      },
+    });
   });
 });

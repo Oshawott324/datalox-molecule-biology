@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 
 import { readMoleculeSequence } from "./context.js";
 import { MoleculeError } from "./errors.js";
-import { normalizeSequence } from "./sequence.js";
+import { assertUnambiguousDnaSequence, normalizeSequence } from "./sequence.js";
 
 export type PrimerDesignRange = [number, number];
 
@@ -74,6 +74,7 @@ export async function designPrimers(input: DesignPrimersInput): Promise<DesignPr
       moleculeType: molecule.moleculeType,
     });
   }
+  assertUnambiguousDnaSequence(sequence, input.moleculeId);
 
   const options = normalizePrimerDesignOptions(input.options);
   validateTarget(input.target, sequence.length);
@@ -110,8 +111,8 @@ export function normalizePrimerDesignOptions(options: DesignPrimersOptions = {})
   if (!Number.isInteger(numReturn) || numReturn < 1) {
     throw new MoleculeError("INVALID_ARGUMENT", "numReturn must be a positive integer.", { numReturn });
   }
-  if (options.leftOverhang !== undefined) normalizeSequence(options.leftOverhang, "iupac_dna");
-  if (options.rightOverhang !== undefined) normalizeSequence(options.rightOverhang, "iupac_dna");
+  if (options.leftOverhang !== undefined) assertUnambiguousDnaSequence(normalizeSequence(options.leftOverhang, "iupac_dna"), "leftOverhang");
+  if (options.rightOverhang !== undefined) assertUnambiguousDnaSequence(normalizeSequence(options.rightOverhang, "iupac_dna"), "rightOverhang");
   return { productSizeRange, tmRange, primerSizeRange, numReturn };
 }
 

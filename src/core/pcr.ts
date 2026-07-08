@@ -2,7 +2,7 @@ import { extractCircularRegion } from "./coordinates.js";
 import { readMoleculeSequence } from "./context.js";
 import { MoleculeError } from "./errors.js";
 import type { CoordinateSegment } from "./schema.js";
-import { normalizeSequence, reverseComplement, sequenceDigest } from "./sequence.js";
+import { assertUnambiguousDnaSequence, normalizeSequence, reverseComplement, sequenceDigest } from "./sequence.js";
 
 export type PcrProduct = {
   moleculeId: string;
@@ -28,6 +28,8 @@ export async function simulatePcr(
 ): Promise<SimulatePcrResult> {
   const forward = normalizeSequence(forwardPrimer, "iupac_dna");
   const reverse = normalizeSequence(reversePrimer, "iupac_dna");
+  assertUnambiguousDnaSequence(forward, "forwardPrimer");
+  assertUnambiguousDnaSequence(reverse, "reversePrimer");
   const reverseBindingSequence = reverseComplement(reverse);
   const { molecule, sequence } = await readMoleculeSequence(workspacePath, moleculeId);
   if (molecule.moleculeType !== "dna" || molecule.alphabet !== "iupac_dna") {
@@ -37,6 +39,7 @@ export async function simulatePcr(
       alphabet: molecule.alphabet,
     });
   }
+  assertUnambiguousDnaSequence(sequence, moleculeId);
 
   const forwardStarts = allIndexesOf(sequence, forward);
   const reverseBindingStarts = allIndexesOf(sequence, reverseBindingSequence);

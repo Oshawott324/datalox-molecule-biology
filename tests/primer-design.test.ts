@@ -154,6 +154,48 @@ describe("Primer3-backed primer design", () => {
     })).toThrow("Primer design target coordinates are invalid.");
   });
 
+  it("rejects ambiguous DNA before calling Primer3", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const sourcePath = path.join(workspaceDir, "ambiguous.fa");
+    await fs.writeFile(sourcePath, ">ambiguous\nACGTACGTNNNNACGTACGTACGTACGT\n", "utf8");
+    const open = await handleOpenSequence({
+      inputPath: sourcePath,
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_ambiguous",
+    });
+    expect(open.ok).toBe(true);
+
+    const result = await handleDesignPrimers({
+      workspaceDir,
+      moleculeId: "mol_ambiguous",
+      target: { start: 1, end: 20 },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      tool: "design_primers",
+      error: {
+        code: "AMBIGUOUS_SEQUENCE",
+        details: {
+          label: "mol_ambiguous",
+          positions: [
+            { position: 9, base: "N" },
+            { position: 10, base: "N" },
+            { position: 11, base: "N" },
+            { position: 12, base: "N" },
+          ],
+          totalAmbiguousCount: 4,
+        },
+      },
+    });
+  });
+
+  it("rejects ambiguous primer overhangs before calling Primer3", () => {
+    expect(() => normalizePrimerDesignOptions({ leftOverhang: "GAANNC" })).toThrow("Sequence contains ambiguous bases.");
+    expect(() => normalizePrimerDesignOptions({ rightOverhang: "AAGNTT" })).toThrow("Sequence contains ambiguous bases.");
+  });
+
   it.skipIf(hasPrimer3Core)("returns DEPENDENCY_MISSING when primer3_core is absent", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({

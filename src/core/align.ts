@@ -15,6 +15,8 @@
  * matching.
  */
 
+import { assertUnambiguousDnaSequence } from "./sequence.js";
+
 export type AlignMode = "global" | "local";
 
 export type AlignmentResult = {
@@ -58,6 +60,8 @@ export function alignSequences(
   const match = options.match ?? DEFAULT_MATCH;
   const mismatch = options.mismatch ?? DEFAULT_MISMATCH;
   const gap = options.gap ?? DEFAULT_GAP;
+  assertUnambiguousDnaSequence(query, "query");
+  assertUnambiguousDnaSequence(target, "target");
 
   if (mode === "local") {
     return alignLocal(query, target, { match, mismatch, gap });

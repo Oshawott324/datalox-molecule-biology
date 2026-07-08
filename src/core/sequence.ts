@@ -6,6 +6,12 @@ import type { Alphabet, MoleculeType } from "./schema.js";
 const DNA_ALPHABET = new Set("ACGTRYSWKMBDHVN");
 const RNA_ALPHABET = new Set("ACGURYSWKMBDHVN");
 const PROTEIN_ALPHABET = new Set("ABCDEFGHIKLMNPQRSTVWXYZ*");
+const AMBIGUOUS_DNA_BASES = new Set("RYSWKMBDHVN");
+
+export type AmbiguousBasePosition = {
+  position: number;
+  base: string;
+};
 
 export function defaultAlphabetForMoleculeType(moleculeType: MoleculeType): Alphabet {
   if (moleculeType === "rna") return "iupac_rna";
@@ -48,6 +54,33 @@ export function validateSequenceAlphabet(sequence: unknown, alphabet: Alphabet, 
       alphabet,
     }),
   ];
+}
+
+export function ambiguousDnaBasePositions(sequence: string, maxExamples = 10): {
+  positions: AmbiguousBasePosition[];
+  totalAmbiguousCount: number;
+} {
+  const positions: AmbiguousBasePosition[] = [];
+  let totalAmbiguousCount = 0;
+  for (let index = 0; index < sequence.length; index += 1) {
+    const base = sequence[index].toUpperCase();
+    if (!AMBIGUOUS_DNA_BASES.has(base)) continue;
+    totalAmbiguousCount += 1;
+    if (positions.length < maxExamples) {
+      positions.push({ position: index + 1, base: sequence[index] });
+    }
+  }
+  return { positions, totalAmbiguousCount };
+}
+
+export function assertUnambiguousDnaSequence(sequence: string, label = "sequence"): void {
+  const { positions, totalAmbiguousCount } = ambiguousDnaBasePositions(sequence);
+  if (totalAmbiguousCount === 0) return;
+  throw new MoleculeError("AMBIGUOUS_SEQUENCE", "Sequence contains ambiguous bases. Resolve before calling this tool.", {
+    label,
+    positions,
+    totalAmbiguousCount,
+  });
 }
 
 export function sequenceDigest(sequence: string): string {
