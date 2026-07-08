@@ -11,6 +11,7 @@ import {
   designGrnas,
   findOrfs,
   findRestrictionSites,
+  restrictionStrandScope,
   renderDigestGel,
   simulateAssembly,
   simulateDigest,
@@ -613,7 +614,7 @@ export async function handleFindRestrictionSites(input: EnzymeInput): Promise<To
     const moleculeId = moleculeIdFromInput(input);
     const enzymes = assertStringArray(input.enzymes, "enzymes");
     const sites = await findRestrictionSites(workspacePath, moleculeId, enzymes);
-    return toolSuccess(tool, { workspacePath, moleculeId, sites }, { workspacePath });
+    return toolSuccess(tool, { workspacePath, moleculeId, strandScope: restrictionStrandScope(), sites }, { workspacePath });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }

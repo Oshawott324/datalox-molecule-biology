@@ -1,4 +1,4 @@
-import { findRestrictionSites, type RestrictionSite } from "./enzymes.js";
+import { findRestrictionSites, restrictionStrandScope, type RestrictionSite, type RestrictionStrandScope } from "./enzymes.js";
 import { readMoleculeSequence } from "./context.js";
 
 export type DigestFragment = {
@@ -13,6 +13,7 @@ export type SimulateDigestResult = {
   topology: "linear" | "circular";
   length: number;
   enzymes: string[];
+  strandScope: RestrictionStrandScope;
   sites: RestrictionSite[];
   fragments: DigestFragment[];
 };
@@ -29,6 +30,7 @@ export async function simulateDigest(workspacePath: string, moleculeId: string, 
     topology: molecule.topology,
     length: sequence.length,
     enzymes,
+    strandScope: restrictionStrandScope(),
     sites,
     fragments,
   };

@@ -2,8 +2,8 @@ export { translateRegion, translateDnaSequence, STANDARD_GENETIC_CODE, STANDARD_
 export type { TranslateRegionOptions, TranslateRegionResult } from "./translate.js";
 export { findOrfs } from "./orfs.js";
 export type { FindOrfsOptions, OrfResult, OrfStrand } from "./orfs.js";
-export { findRestrictionSites, resolveEnzymes, RESTRICTION_ENZYMES, RESTRICTION_ENZYME_TABLE_VERSION } from "./enzymes.js";
-export type { FindRestrictionSitesOptions, RestrictionEnzyme, RestrictionSite } from "./enzymes.js";
+export { findRestrictionSites, resolveEnzymes, restrictionStrandScope, RESTRICTION_ENZYMES, RESTRICTION_ENZYME_TABLE_VERSION } from "./enzymes.js";
+export type { FindRestrictionSitesOptions, RestrictionEnzyme, RestrictionSite, RestrictionStrandScope } from "./enzymes.js";
 export { simulateDigest } from "./digest.js";
 export type { DigestFragment, SimulateDigestResult } from "./digest.js";
 export {

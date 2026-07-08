@@ -53,7 +53,7 @@ export type DesignPrimersResult = {
   optionsUsed: Required<Pick<DesignPrimersOptions, "productSizeRange" | "tmRange" | "primerSizeRange" | "numReturn">>;
   candidates: PrimerPairCandidate[];
   nextAction: {
-    type: "select_primer_pair";
+    tool: "upsert_primer";
     instruction: string;
   };
 };
@@ -97,7 +97,7 @@ export async function designPrimers(input: DesignPrimersInput): Promise<DesignPr
     optionsUsed: options,
     candidates,
     nextAction: {
-      type: "select_primer_pair",
+      tool: "upsert_primer",
       instruction: "Choose a candidate, then call upsert_primer twice with expectedRevision if it should be persisted.",
     },
   };

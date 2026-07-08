@@ -25,6 +25,8 @@ export type RestrictionSite = {
   enzymeTableVersion: typeof RESTRICTION_ENZYME_TABLE_VERSION;
 };
 
+export type RestrictionStrandScope = "both_strands_palindromic" | "forward_only";
+
 export type FindRestrictionSitesOptions = {
   includeReverseStrand?: boolean;
 };
@@ -68,10 +70,10 @@ export async function findRestrictionSites(
     });
   }
 
+  assertSupportedRestrictionEnzymes(selected);
   const sites: RestrictionSite[] = [];
   assertUnambiguousDnaSequence(sequence, moleculeId);
   for (const enzyme of selected) {
-    assertUnambiguousDnaSequence(enzyme.recognitionSequence, `${enzyme.name}.recognitionSequence`);
     sites.push(...findSitesForEnzyme(moleculeId, sequence, molecule.topology, enzyme, "+"));
     const reverseRecognition = reverseComplement(enzyme.recognitionSequence);
     if (options.includeReverseStrand && reverseRecognition !== enzyme.recognitionSequence) {
@@ -79,6 +81,10 @@ export async function findRestrictionSites(
     }
   }
   return sites.sort((left, right) => left.start - right.start || left.enzyme.localeCompare(right.enzyme) || left.strand.localeCompare(right.strand));
+}
+
+export function restrictionStrandScope(): RestrictionStrandScope {
+  return "both_strands_palindromic";
 }
 
 export function resolveEnzymes(names: string[]): RestrictionEnzyme[] {
@@ -96,6 +102,19 @@ export function resolveEnzymes(names: string[]): RestrictionEnzyme[] {
     }
     return enzyme;
   });
+}
+
+function assertSupportedRestrictionEnzymes(enzymes: RestrictionEnzyme[]): void {
+  for (const enzyme of enzymes) {
+    assertUnambiguousDnaSequence(enzyme.recognitionSequence, `${enzyme.name}.recognitionSequence`);
+    const reverseRecognition = reverseComplement(enzyme.recognitionSequence);
+    if (reverseRecognition !== enzyme.recognitionSequence) {
+      throw new MoleculeError("NON_PALINDROMIC_ENZYME_NOT_SUPPORTED", "Non-palindromic enzymes require bidirectional strand search, which is not yet supported.", {
+        enzyme: enzyme.name,
+        recognitionSequence: enzyme.recognitionSequence,
+      });
+    }
+  }
 }
 
 function findSitesForEnzyme(

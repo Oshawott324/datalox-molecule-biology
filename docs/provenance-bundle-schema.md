@@ -127,6 +127,8 @@ Redaction is mandatory before persistence. The recorder must scrub:
 - `apiKey`, `api_key`, `token`, `secret`, `password`, `bearer`.
 - Values matching common key patterns (`sk-...`, JWT-looking tokens).
 - Absolute host paths when a workspace-relative path is sufficient.
+- `workspacePath` and other local path fields in shared/exported bundles when a
+  workspace-relative reference or digest is sufficient.
 
 Redaction must preserve shape. Replace values with:
 

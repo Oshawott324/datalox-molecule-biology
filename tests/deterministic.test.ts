@@ -10,6 +10,7 @@ import {
   findOrfs,
   findRestrictionSites,
   handleAlignSequences,
+  handleFindRestrictionSites,
   importSequenceFile,
   readMoleculeSequence,
   readWorkspace,
@@ -132,6 +133,14 @@ describe("deterministic biology core", () => {
 
     const noSiteFixture = await importFasta("ACGTACGT");
     await expect(findRestrictionSites(noSiteFixture.workspacePath, noSiteFixture.moleculeId, ["EcoRI"])).resolves.toEqual([]);
+
+    await expect(handleFindRestrictionSites({ workspacePath, moleculeId, enzymes: ["EcoRI"] })).resolves.toMatchObject({
+      ok: true,
+      tool: "find_restriction_sites",
+      data: {
+        strandScope: "both_strands_palindromic",
+      },
+    });
   });
 
   it("rejects ambiguous DNA before restriction-site search or digest", async () => {
@@ -199,6 +208,23 @@ describe("deterministic biology core", () => {
     }
   });
 
+  it("rejects non-palindromic restriction enzymes until bidirectional search is supported", async () => {
+    const source = await importFasta("AAAAGGTCTCAAAA");
+    RESTRICTION_ENZYMES.BsaI = { name: "BsaI", recognitionSequence: "GGTCTC", cutOffset: 1 };
+    try {
+      await expect(findRestrictionSites(source.workspacePath, source.moleculeId, ["BsaI"])).rejects.toMatchObject({
+        code: "NON_PALINDROMIC_ENZYME_NOT_SUPPORTED",
+        message: "Non-palindromic enzymes require bidirectional strand search, which is not yet supported.",
+        details: {
+          enzyme: "BsaI",
+          recognitionSequence: "GGTCTC",
+        },
+      });
+    } finally {
+      delete RESTRICTION_ENZYMES.BsaI;
+    }
+  });
+
   it("finds circular restriction sites that cross the origin", async () => {
     const circular = await importGenBank(`LOCUS       pOrigin       10 bp    DNA     circular 18-MAY-2026
 DEFINITION  Origin-spanning cutter.
@@ -225,6 +251,7 @@ ORIGIN
   it("simulates complete linear and circular restriction digests with fragment sizes summing to molecule length", async () => {
     const linear = await importFasta("AAAAGAATTCAAGCTTGGATCCAAAA");
     const linearDigest = await simulateDigest(linear.workspacePath, linear.moleculeId, ["EcoRI", "HindIII", "BamHI"]);
+    expect(linearDigest.strandScope).toBe("both_strands_palindromic");
     expect(linearDigest.fragments.map((fragment) => fragment.size)).toEqual([5, 6, 6, 9]);
     expect(linearDigest.fragments.reduce((sum, fragment) => sum + fragment.size, 0)).toBe(linearDigest.length);
 
