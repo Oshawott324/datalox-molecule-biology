@@ -12,8 +12,7 @@ import {
   verifyReplayBundle,
   type ReplayToolRecord,
 } from "../src/index.js";
-
-const fixturesRoot = path.resolve("fixtures");
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-replay-"));
@@ -23,7 +22,7 @@ describe("Datalox replay demo", () => {
   it("captures, packs, verifies, and replays agent-visible tool observations", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await runReplayDemo({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       moleculeId: "mol_replay",
     });
@@ -56,7 +55,7 @@ describe("Datalox replay demo", () => {
   it("fails verification when a record observation is corrupted", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await runReplayDemo({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       moleculeId: "mol_replay_corrupt",
     });
@@ -75,7 +74,7 @@ describe("Datalox replay demo", () => {
   it("fails verification when the bundle summary disagrees with records", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await runReplayDemo({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       moleculeId: "mol_replay_summary",
     });
@@ -97,7 +96,7 @@ describe("Datalox replay demo", () => {
     const cli = await runCli([
       "replay-demo",
       "--input-path",
-      path.join(fixturesRoot, "fasta/single.fa"),
+      await stageFixture(workspaceDir, "fasta/single.fa"),
       "--workspace-dir",
       workspaceDir,
       "--molecule-id",
@@ -116,7 +115,7 @@ describe("Datalox replay demo", () => {
     const workspaceDir = await tempWorkspaceDir();
 
     await expect(runReplayDemo({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       moleculeId: "mol_replay_unsafe",
       bundleId: "../outside",

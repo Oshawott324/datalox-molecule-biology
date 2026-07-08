@@ -52,12 +52,16 @@ export type GuideCandidate = {
   rankingEvidence: GuideRankingEvidence;
 };
 
+export const MAX_DESIGN_GRNAS_CANDIDATES = 20;
+
 export type DesignGrnasResult = {
   moleculeId: string;
   targetRegion: { start: number; end: number };
   pamType: "SpCas9";
   offTargetScope: "workspace_molecules_only";
   candidates: GuideCandidate[];
+  candidatesTotalCount: number;
+  candidatesTruncated: boolean;
   nextAction: {
     tool: "upsert_grna";
     instruction: string;
@@ -110,12 +114,16 @@ export async function designGrnas(input: DesignGrnasInput): Promise<DesignGrnasR
     }),
   }));
 
+  const allCandidates = rankGuideCandidates(withOffTargets);
+  const candidatesTruncated = allCandidates.length > MAX_DESIGN_GRNAS_CANDIDATES;
   return {
     moleculeId: input.moleculeId,
     targetRegion: input.targetRegion,
     pamType: "SpCas9",
     offTargetScope: "workspace_molecules_only",
-    candidates: rankGuideCandidates(withOffTargets),
+    candidates: allCandidates.slice(0, MAX_DESIGN_GRNAS_CANDIDATES),
+    candidatesTotalCount: allCandidates.length,
+    candidatesTruncated,
     nextAction: {
       tool: "upsert_grna",
       instruction: "Select a candidate, then call upsert_grna with expectedRevision to persist it.",

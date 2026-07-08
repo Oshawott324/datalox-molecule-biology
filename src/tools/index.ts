@@ -62,6 +62,7 @@ export {
   toolFailureFromError,
   toolSuccess,
   moleculeAgentContract,
+  RESPONSE_ENVELOPE_BYTE_CEILING,
   type AgentContract,
   type ToolArtifact,
   type ToolNextAction,

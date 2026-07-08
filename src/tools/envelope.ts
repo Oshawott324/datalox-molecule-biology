@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { MoleculeError } from "../core/errors.js";
 import path from "node:path";
 
@@ -45,6 +46,8 @@ export type ToolSuccessEnvelope<T> = {
 
 export type ToolResultEnvelope<T = unknown> = ToolSuccessEnvelope<T> | ToolErrorEnvelope;
 
+export const RESPONSE_ENVELOPE_BYTE_CEILING = 512_000;
+
 export const moleculeAgentContract: AgentContract = {
   version: 1,
   intent: "structured_molecule_workspace_operation",
@@ -60,7 +63,19 @@ export function toolSuccess<T>(
   data: T,
   metadata: Pick<ToolSuccessEnvelope<T>, "workspacePath" | "revision" | "artifacts" | "nextAction"> = {},
 ): ToolSuccessEnvelope<T> {
-  return { ok: true, tool, agentContract: moleculeAgentContract, data, ...metadata };
+  const envelope: ToolSuccessEnvelope<T> = { ok: true, tool, agentContract: moleculeAgentContract, data, ...metadata };
+  const byteSize = Buffer.byteLength(JSON.stringify(envelope), "utf8");
+  if (byteSize > RESPONSE_ENVELOPE_BYTE_CEILING) {
+    return {
+      ...envelope,
+      data: {
+        RESPONSE_TRUNCATED: true,
+        reason: `Response envelope exceeded the ${RESPONSE_ENVELOPE_BYTE_CEILING}-byte ceiling. Use more targeted queries to retrieve this data.`,
+        byteSize,
+      } as unknown as T,
+    };
+  }
+  return envelope;
 }
 
 export function toolFailure(

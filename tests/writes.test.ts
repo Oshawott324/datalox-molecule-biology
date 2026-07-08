@@ -16,8 +16,7 @@ import {
   type GuideRecord,
   type Primer,
 } from "../src/index.js";
-
-const fixturesRoot = path.resolve("fixtures");
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-writes-"));
@@ -26,7 +25,7 @@ async function tempWorkspaceDir(): Promise<string> {
 async function importSingleFasta(): Promise<{ workspaceDir: string; workspacePath: string; moleculeId: string; revision: number }> {
   const workspaceDir = await tempWorkspaceDir();
   const result = await importSequenceFile({
-    inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+    inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
     workspaceDir,
     format: "fasta",
   });

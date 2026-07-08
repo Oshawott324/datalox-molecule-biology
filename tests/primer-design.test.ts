@@ -13,8 +13,8 @@ import {
   normalizePrimerDesignOptions,
   parsePrimer3Output,
 } from "../src/index.js";
+import { stageFixture } from "./support/fixtures.js";
 
-const fixturesRoot = path.resolve("fixtures");
 const hasPrimer3Core = spawnSync("primer3_core", ["--version"], { stdio: "ignore" }).error === undefined;
 
 async function tempWorkspaceDir(): Promise<string> {
@@ -199,7 +199,7 @@ describe("Primer3-backed primer design", () => {
   it.skipIf(hasPrimer3Core)("returns DEPENDENCY_MISSING when primer3_core is absent", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
-      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      inputPath: await stageFixture(workspaceDir, "genbank/puc19.gb"),
       workspaceDir,
       format: "genbank",
       moleculeId: "mol_puc19",
@@ -227,7 +227,7 @@ describe("Primer3-backed primer design", () => {
   it.skipIf(!hasPrimer3Core)("designs primers for a pUC19 target with primer3_core", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
-      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      inputPath: await stageFixture(workspaceDir, "genbank/puc19.gb"),
       workspaceDir,
       format: "genbank",
       moleculeId: "mol_puc19",

@@ -32,19 +32,77 @@ This is the demo. Everything else is deferred until this path is trustworthy.
 
 | # | Blocker | Owner | Status | Spec |
 |---|---|---|---|---|
-| MB1 | Restriction/PCR ambiguity policy | User | not started | see below |
-| MB2 | Reverse-strand default or explicit caveat | User | not started | see below |
-| MB3 | Bounded artifact output | User | not started | see below |
-| MB4 | No absolute path leaks in agent-visible errors | User | not started | audit needed |
+| MB1 | Restriction/PCR ambiguity policy | User | **done** (7620d30) | see below |
+| MB2 | Reverse-strand default or explicit caveat | User | **done** (c055fec) | see below |
+| MB3 | Bounded artifact output (+ stdio envelope ceiling) | User | in progress | see below |
+| MB4 | No absolute path leaks in agent-visible errors | User | **done** (adb4d2c) | see below |
+| MB5 | Confine import paths to workspace (arbitrary file read) | User | not started | see below |
+| MB6 | Workspace write transactionality (TOCTOU) | User | not started | see below |
 | HB1 | Contract/version handshake between hub and mol-bio | User (spec) | not started | to write |
-| HB2 | Provenance bundle with tool/schema versions | User (spec) | partial | to finalize |
-| HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | not started | to write |
+| HB2 | Provenance bundle with tool/schema versions | User (spec) | schema drafted | to wire |
+| HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | not started | see below |
 | HB4 | UI shows artifact + provenance + final review | Hub side | not started | to write |
 
-MB1-MB4 are mol-bio MCP changes. HB1-HB4 are integration/hub-side changes.
+MB1-MB6 are mol-bio MCP changes. HB1-HB4 are integration/hub-side changes.
+
+MB5 and MB6 were added by the 2026-07-07 blindspot audit (see Review
+Cross-Check below). MB1+MB2 are that audit's single top-ranked mol-bio finding
+("reverse-strand + IUPAC ignored → false '0 sites'", rated High/scientific), so
+they remain the highest-priority correctness blockers.
 
 Ziyu's M1 + X1 and Jinting's B1 + live fixture are in parallel and unchanged;
-they contribute to the demo spine once MB1-MB4 are resolved.
+they contribute to the demo spine once MB1-MB6 are resolved.
+
+---
+
+## Review Cross-Check (2026-07-07 Blindspot Audit)
+
+An external read-only cross-repo audit (`datalox-review-2026-07`, Fable 5) graded
+all five Datalox sub-projects against a fixed blindspot/correctness/security
+contract. It independently confirms this plan's thesis and its top blockers, and
+adds three items this plan did not previously track. Nothing in the review
+contradicts the existing plan; every change below is additive.
+
+### What the review confirms (no change needed)
+
+- **The V1 thesis is correct.** The audit's headline product risk is "scientific
+  results can be confidently wrong and nobody is told" and "determinism is being
+  sold as a substitute for correctness." That is exactly the framing of this
+  document. It also names mol-bio the reference integration to wire into the hub
+  *first* ("Ship at least one wired MCP" / "make one vertical trustworthy
+  end-to-end"), which is the demo spine here.
+- **MB1 + MB2 are the top mol-bio finding.** Reverse-strand-not-searched and
+  IUPAC-not-expanded are the audit's only High-severity mol-bio scientific
+  blindspot ("0 cut sites" can be a false negative). Keep them highest priority.
+- **MB4 (path leaks in errors)** is confirmed (rated Low-Med): ENOENT/parse
+  errors carry absolute paths in `details`.
+- **HB1/HB2 (contract + provenance)** map to the audit's Cluster D (contract
+  drift) and its "provenance is a slogan, not a system" finding.
+
+### What the review adds (new to this plan)
+
+| Review finding | Audit severity | Where it lands here |
+|---|---|---|
+| `open_sequence` imports any absolute path, no confinement (`import.ts:45`), while export is confined behind `MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE` — import/export asymmetry; prompt-injection can read `~/.ssh/id_rsa` | Med (security) | **MB5 (new)** |
+| TOCTOU in `writeWorkspaceTransaction` (`workspace.ts:397`): read→check-revision→mutate→rename with no lock; two calls at revision N both pass, second overwrites first → lost update | Med-High | **MB6 (new)** |
+| No stdio/envelope ceiling: every envelope serialized as pretty JSON *and* `structuredContent`; `read_workspace` returns whole workspace; large sequence can stall the stdio pipe | High (master list #10) | **MB3 extended** (stdio envelope, not just written files) |
+| Hand-rolled schema validator silently ignores unsupported keywords; `matchesType` returns `true` for unknown types; no `maxLength`/`pattern`/`maxItems` enforcement (`validate-args.ts:100`) | Med | **New Requirements section** |
+| Server version hard-coded `"0.1.0"` in two places, decoupled from `package.json` | (cross-repo) | **HB1 extended** |
+| Workspace pinned `version:1` with no migration path and re-stamped on write (silent coercion of a newer schema) | (Cluster D) | **HB1 extended** |
+| Alias-vs-`required` mismatch (`molecule`/`workspaceDir`): handlers accept aliases but the schema gate rejects them — a cross-repo footgun the hub will hit | (Cluster D) | **HB1 extended** |
+| Enzyme/genetic-code table versions are embedded strings with no cross-MCP registry; determinism claims break silently if a sibling ships a different table under the same name | Med | **New Requirements section** |
+| `translate_region` is frame-blind (no warning on non-canonical start); circular ORFs across the origin are never found; no alternative genetic-code tables | Low-Med / Med | **New Requirements section** (honesty caveats for V1; full fix deferred) |
+| Determinism ≠ correctness: snapshot/round-trip coverage is high, ground-truth biological assertions near-zero | (ground rule 2) | **New Requirements section** (testing) |
+| Windows MCP subprocess teardown leaks (SIGTERM/SIGKILL no-op; no process-group kill); stdio line-buffered with no max-line guard → deadlock | High | **HB3 (new body)** |
+
+### Out of scope for mol-bio V1 (context only)
+
+The review's roadmap docs (03/04/05) recommend, after this vertical is
+trustworthy: an "agent-native Prism" *skill* (not an MCP — commodity stats),
+then greenfield MCPs (Imaris/microscopy, mass-spec). It also flags a
+protein-mcp license problem and ui-v3 secret/RCE blockers. None are mol-bio
+work; they reinforce the Paused section's "do not widen" rule and are recorded
+there.
 
 ---
 
@@ -188,10 +246,43 @@ type Artifact = {
 };
 ```
 
+### Also Bound the MCP Response Envelope (added per review)
+
+The review found the risk is not only *written files* but the *tool result over
+stdio*. Two specific issues:
+
+- Every envelope is serialized as pretty JSON **and** duplicated into
+  `structuredContent` (`server.ts:82`) - double payload.
+- `read_workspace` returns the whole workspace; a megabase genome round-trips as
+  multi-MB JSON over one line-buffered stdio pipe with no ceiling, which can
+  stall/deadlock the transport.
+
+For V1:
+
+- Enforce a max response-envelope byte size. If exceeded, return a bounded
+  `RESPONSE_TRUNCATED` stub with `byteSize` and an agent-readable instruction
+  to use targeted queries instead of returning the full inline blob.
+- Source tools should cap high-cardinality results before they reach the generic
+  envelope guard. For V1 this includes `design_grnas`, `find_orfs`, and
+  `find_restriction_sites`.
+- `read_workspace` remains a whole-workspace reader for small workspaces. For
+  large workspaces, the generic envelope ceiling prevents unbounded stdio output;
+  agents and the hub should prefer `list_molecules`, `get_sequence_context`, and
+  domain-specific render/export tools. Pagination or summarized `read_workspace`
+  mode is a follow-up hardening item, not part of the generic ceiling shim.
+- Avoid emitting the same large payload twice (pretty text + `structuredContent`).
+
 ### Acceptance
 
 - Test: generate an artifact that would exceed limit; verify `truncated: true`
   and file is within size limit.
+- Test: `design_grnas` caps candidates and reports `candidatesTotalCount` plus
+  `candidatesTruncated`.
+- Test: normal `find_orfs` and `find_restriction_sites` results report
+  `*TotalCount` plus `*Truncated: false`.
+- Test: a tool result that would exceed the envelope ceiling returns a
+  `RESPONSE_TRUNCATED` stub instead of the inline blob; the emitted envelope is
+  within the cap.
 - No existing artifact test should fail (limits are generous for test-scale data).
 
 ---
@@ -223,6 +314,84 @@ Confirm no `error.message` or `error.details` value contains an absolute path.
 
 ---
 
+## MB5: Confine Import Paths to Workspace
+
+### Problem (from 2026-07-07 review, blindspot #4)
+
+`open_sequence` / `importSequenceFile` does `path.resolve(options.inputPath)`
+with **no confinement** (`import.ts:45`), while the export path *is* confined
+behind the `MOLECULE_MCP_UNSAFE_EXPORT_OUTSIDE_WORKSPACE` override
+(`export-genbank.ts:16`). This import/export asymmetry lets an agent - or a
+prompt-injection payload inside a file the agent opens - import an arbitrary
+host file (e.g. `~/.ssh/id_rsa`, `C:\Users\...\.env`). The file content is then
+copied into the workspace and echoed back to the model.
+
+This is distinct from MB4: MB4 stops us *leaking* paths in errors; MB5 stops us
+*reading* files outside the workspace at all.
+
+### Decision for V1
+
+Import must resolve inside the workspace root by default, symmetric with export.
+Reject out-of-root imports with a structured error. Do not add an unsafe import
+override for V1; importing arbitrary host files is the capability this blocker is
+removing.
+
+```ts
+{
+  code: "PATH_OUTSIDE_WORKSPACE",
+  message: "Input path must resolve inside the workspace root.",
+  details: { inputPath: "<redacted>", workspaceRoot: "<redacted>" }  // sanitized by MB4 at the MCP boundary
+}
+```
+
+Resolve symlinks (`fs.realpath`) before the containment check so a symlink inside
+the workspace cannot point out of it.
+
+### Acceptance
+
+- Test: import a path outside the workspace root -> `PATH_OUTSIDE_WORKSPACE`.
+- Test: import a path inside the workspace root -> succeeds.
+- Test: a symlink inside the workspace pointing outside is rejected.
+- Test: MCP `open_sequence` returns `PATH_OUTSIDE_WORKSPACE` without leaking the
+  input path or workspace root in the serialized envelope.
+
+---
+
+## MB6: Workspace Write Transactionality (TOCTOU)
+
+### Problem (from 2026-07-07 review, blindspot #3, Med-High)
+
+`writeWorkspaceTransaction` reads → checks `expectedRevision` → mutates →
+atomic-renames with **no lock** (`workspace.ts:397`). Two concurrent calls at
+revision N both pass the revision check; the second rename overwrites the first's
+committed write → a silently lost update. Atomic rename prevents *partial* files
+but not *lost* writes. This is reachable because agents parallelize tool calls,
+and it directly undermines the "revision-safe workspace" claim the provenance
+story depends on.
+
+### Decision for V1
+
+Serialize writes to a workspace so a check-then-write cannot interleave. Minimum
+bar, in preference order:
+
+1. An advisory file lock (e.g. `proper-lockfile`) held across the
+   read-check-mutate-rename critical section; or
+2. A single-writer in-process queue if all writes for a workspace go through one
+   server instance.
+
+If, for the V1 demo, we choose to rely on the single-agent single-writer
+assumption instead, that assumption must be **documented explicitly** in the
+provenance bundle / contract (not left implicit), because the workspace is
+otherwise advertised as concurrency-safe.
+
+### Acceptance
+
+- Test: two writes issued at the same `expectedRevision` — exactly one commits;
+  the other returns the existing stale-revision error. No lost update.
+- Test: N sequential writes each increment the revision by exactly 1 with no gaps.
+
+---
+
 ## HB1: Contract/Version Handshake
 
 The hub must know which mol-bio schema version it is talking to. Mol-bio must
@@ -243,6 +412,31 @@ Mol-bio MCP exposes a `get_version` tool (or startup message) returning:
 
 Hub validates `schemaVersion` on connect. Mismatch returns a hub-level error
 before any tool calls proceed.
+
+### Fixes Required for a Trustworthy Handshake (added per review)
+
+The 2026-07-07 audit found three defects that make the current version story
+unreliable. All three must be closed as part of HB1:
+
+1. **Single source of truth for version.** The server version is hard-coded
+   `"0.1.0"` in two places, decoupled from `package.json`. `get_version.version`
+   must read `package.json` at build/runtime so the reported version cannot drift
+   from the published one.
+2. **No silent schema coercion.** The workspace is pinned `version:1` with no
+   migration path and is **re-stamped on write**, silently coercing a
+   newer-schema workspace down to `version:1`. Instead, reject an unrecognized or
+   newer workspace schema with `CONTRACT_VERSION_MISMATCH` (per the provenance
+   replay contract) — never down-stamp.
+3. **Resolve the alias-vs-`required` mismatch.** Handlers accept aliases
+   (`molecule`/`moleculeId`, `workspaceDir`/`workspacePath`) but the schema gate
+   rejects the alias forms — a live cross-repo footgun the hub will hit (also in
+   memory `project-alias-required-mismatch`). Pick one: drop the aliases from the
+   descriptors, or implement real `oneOf` acceptance in the validator. Document
+   the decision in the contract doc.
+
+Also note the hub side pins MCP protocol `2024-11-05`; the contract doc should
+record the negotiated protocol version so a future protocol bump is a loud
+mismatch, not a silent mis-negotiation.
 
 Spec to write: `docs/hub-mol-bio-contract.md`
 
@@ -278,6 +472,91 @@ type ProvenanceBundle = {
 ```
 
 Spec to write: `docs/provenance-bundle-schema.md`
+Status: this schema is now drafted in `docs/provenance-bundle-schema.md` (hash-
+chained, redaction-mandatory, replay-contract with `CONTRACT_VERSION_MISMATCH`).
+HB2 remaining work is wiring the recorder/replayer to that schema, not designing it.
+
+---
+
+## HB3: Clean Launch and Teardown (added per review)
+
+This is a hub-side blocker, but it is mol-bio's problem when mol-bio is the
+subprocess left orphaned. The 2026-07-07 audit rates it High and cites the
+sibling `protein-mcp-stop-repro` folder as live evidence the failure class is
+already real.
+
+### Problems
+
+- On Windows, `disconnect()` via SIGTERM→SIGKILL is effectively a no-op; MCP
+  child processes (and their `npx`/`uvx` grandchildren) leak. `taskkill /T` does
+  not reliably reach grandchildren.
+- stdio is line-buffered with no max-line guard, so a large tool result can
+  deadlock the transport (this is the read side of MB3's envelope ceiling).
+
+### Requirements
+
+- Launch each MCP in a job object / process group; kill the whole group on
+  disconnect; add an orphan reaper that runs if the parent crashes.
+- Enforce a max line/frame size on MCP stdout; reject or stream payloads over the
+  cap rather than blocking the pipe (pairs with MB3).
+- Pin the launch command (no bare `npx`/`uvx`) so a replayed provenance bundle
+  resolves to the same MCP code on every machine.
+
+### Acceptance
+
+- E2e: hub launches mol-bio, drives one demo-spine session, tears down with zero
+  orphaned processes on Windows (regression-test the `protein-mcp-stop-repro`
+  scenario).
+- Test: an oversized tool result does not deadlock the transport.
+
+---
+
+## New Requirements From the Review (Correctness, Testing, Contract Hygiene)
+
+These are smaller than a numbered blocker but are release-relevant and were
+called out by the audit. Group them into the MB work.
+
+### R1: Ground-truth correctness tests, not just snapshots
+
+The audit's sharpest process finding: snapshot/round-trip coverage is high, but
+*ground-truth biological* assertions are near-zero, and "determinism is being
+sold as a substitute for correctness." Every deterministic tool on the demo
+spine needs at least one known-input → known-biologically-correct-output
+assertion (e.g. a published EcoRI digest of pUC19 with known fragment sizes; a
+known ORF; a known reverse complement), in addition to existing snapshot tests.
+
+### R2: Harden the argument-schema validator
+
+The hand-rolled validator (`validate-args.ts:100`) silently passes: `matchesType`
+returns `true` for unknown types, and `maxLength`/`pattern`/`maxItems` are not
+enforced. Any descriptor relying on those constraints gets no enforcement and no
+failure. Either implement these keywords or fail loudly when a descriptor uses a
+keyword the validator does not support. This underpins MB1/MB3/MB5 (bounds and
+rejection can't be trusted if the validator silently no-ops).
+
+### R3: Version the domain tables
+
+Enzyme and genetic-code tables carry embedded version *strings* with no registry.
+Determinism claims break silently if a sibling MCP ships a different table under
+the same name. Stamp each table with a semver + `producedBy` and surface the
+table versions in the provenance bundle so a replay can detect table drift.
+
+### R4: Honesty caveats for known scientific limits (deferred fixes, disclosed now)
+
+The audit flags three correctness gaps that are breadth items deferred past V1,
+but that must not fail *silently* in the meantime. For V1, each must emit an
+explicit `caveat`/`assumptions` field rather than returning a confident wrong or
+partial answer:
+
+- `translate_region` is frame-blind: warn when the requested span does not start
+  at a canonical start codon / is not a multiple of 3, and state the frame used.
+- ORF finding refuses circular molecules, so origin-spanning plasmid ORFs are
+  never found: state `circular: "origin_spanning_not_searched"` on circular input
+  rather than returning an implicitly complete list.
+- Only the standard genetic code is supported: state `geneticCode: "standard"`.
+
+Full fixes (six-frame, circular-aware ORF, alternative codon tables) stay in the
+Paused list; the caveat fields are the V1 requirement.
 
 ---
 
@@ -338,9 +617,20 @@ agent-only.
 | New MCPs (protein, flow, etc.) | Do not widen until one vertical is trustworthy |
 | Deep protein/PyMOL expert features | Downstream of hub vertical |
 | P5-style local alignment in hub | Post-V1 UI refinement |
+| Six-frame / circular-aware ORF, alternative genetic codes | Breadth; V1 discloses via R4 caveats instead (audit blindspots #5, #9) |
+| Assembly beyond restriction_ligation (Gibson/Golden Gate/Type-IIS) | Breadth (audit "Missing") |
+| Sequence-edit primitives (insert/delete/mutate) | Breadth; workspace stays import-only for V1 |
+| "Agent-native Prism" (assay/graphing) | Review says build as a *skill*, not an MCP; after this vertical ships |
+| New greenfield MCPs (Imaris/microscopy, mass-spec) | Review's next-vertical candidates; gated behind a trustworthy first vertical |
+
+The review's roadmap (03/04/05) reinforces this section: it explicitly says
+"finish/deepen before expanding" and names wiring one MCP (mol-bio) into the hub
+with a version-checked handshake as the reference integration to do *before* any
+new breadth. The protein-mcp license issue and ui-v3 secret/RCE/teardown
+blockers are their own repos' release-blockers and are not mol-bio work.
 
 Ziyu's M1 + X1 and Jinting's B1 + live fixture continue unchanged. They land on
-the demo spine once MB1-MB4 are resolved and the hub integration exists.
+the demo spine once MB1-MB6 are resolved and the hub integration exists.
 
 ---
 
@@ -351,6 +641,15 @@ In priority order:
 1. `docs/mb1-ambiguity-policy.md` — detailed implementation spec for MB1 + MB2
    (ambiguity rejection + strandScope field); reference this doc for the code change
 2. `docs/provenance-bundle-schema.md` — formal HB2 schema with TypeScript types
-3. `docs/hub-mol-bio-contract.md` — HB1 version handshake and minimum contract
+   (drafted; wire the recorder/replayer to it)
+3. `docs/hub-mol-bio-contract.md` — HB1 version handshake and minimum contract;
+   include the version-decoupling, no-silent-coercion, and alias-vs-required
+   decisions added per the review
 4. MB3 + MB4 — code audit and implementation (no separate spec needed; change is
-   self-contained)
+   self-contained). MB3 now also covers the stdio response-envelope ceiling.
+5. MB5 + MB6 — new blockers from the 2026-07-07 audit: import path confinement
+   (parity with export) and workspace write transactionality (advisory lock or
+   documented single-writer). Self-contained; no separate spec required.
+6. R1-R4 — ground-truth correctness tests, validator hardening, domain-table
+   versioning, and honesty caveats for deferred scientific limits. Fold into the
+   MB PRs above rather than a standalone spec.

@@ -793,8 +793,11 @@ describe("restriction ligation profiles", () => {
     expect(artifact).toContain("/regenerated_site=\"GGATCC\"");
 
     const reimportDir = await tempDir("mol-assembly-reimport-");
+    const stagedArtifactPath = path.join(reimportDir, "imports", path.basename(artifactPath));
+    await fs.mkdir(path.dirname(stagedArtifactPath), { recursive: true });
+    await fs.copyFile(artifactPath, stagedArtifactPath);
     const reimported = await importSequenceFile({
-      inputPath: artifactPath,
+      inputPath: stagedArtifactPath,
       workspaceDir: reimportDir,
       format: "genbank",
       moleculeId: "mol_reimported_product",

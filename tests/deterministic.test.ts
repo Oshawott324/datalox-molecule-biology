@@ -6,22 +6,28 @@ import { describe, expect, it } from "vitest";
 
 import {
   alignSequences,
+  designGrnas,
   exportGenBank,
   findOrfs,
   findRestrictionSites,
   handleAlignSequences,
+  handleFindOrfs,
   handleFindRestrictionSites,
   importSequenceFile,
+  MAX_DESIGN_GRNAS_CANDIDATES,
   readMoleculeSequence,
   readWorkspace,
+  RESPONSE_ENVELOPE_BYTE_CEILING,
   RESTRICTION_ENZYMES,
   RESTRICTION_ENZYME_TABLE_VERSION,
   reverseComplement,
   sequenceDigest,
   simulateDigest,
   simulatePcr,
+  toolSuccess,
   translateRegion,
 } from "../src/index.js";
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -46,7 +52,7 @@ async function importGenBank(content: string): Promise<{ workspaceDir: string; w
 async function importGenBankFixture(relativePath: string, moleculeId: string): Promise<{ workspaceDir: string; workspacePath: string; moleculeId: string }> {
   const workspaceDir = await tempDir("mol-det-gb-fixture-");
   const result = await importSequenceFile({
-    inputPath: path.resolve(relativePath),
+    inputPath: await stageFixture(workspaceDir, relativePath.replace(/^fixtures[\\/]/, "")),
     workspaceDir,
     format: "genbank",
     moleculeId,
@@ -422,7 +428,7 @@ ORIGIN
   it("pins datalox_insert_v1 fixture: 700 bp, XhoI-only among all 20 panel enzymes", async () => {
     const workspaceDir = await tempDir("mol-insert-");
     const result = await importSequenceFile({
-      inputPath: path.resolve("fixtures/fasta/datalox_insert_v1.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/datalox_insert_v1.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_insert",
@@ -669,5 +675,84 @@ ORIGIN
         },
       },
     });
+  });
+});
+
+describe("MB3 bounded artifact output", () => {
+  it("design_grnas caps candidates at MAX_DESIGN_GRNAS_CANDIDATES and reports total count", async () => {
+    // "A" * 20 gives valid upstream room; "ATCGG" * 30 produces one NGG PAM (CGG) per repeat = 30 forward-strand candidates
+    const sequence = "A".repeat(20) + "ATCGG".repeat(30);
+    const { workspacePath, moleculeId } = await importFasta(sequence, "many-pam-sites");
+    const result = await designGrnas({
+      workspacePath,
+      moleculeId,
+      targetRegion: { start: 1, end: sequence.length },
+    });
+    expect(result.candidatesTruncated).toBe(true);
+    expect(result.candidates.length).toBe(MAX_DESIGN_GRNAS_CANDIDATES);
+    expect(result.candidatesTotalCount).toBeGreaterThan(MAX_DESIGN_GRNAS_CANDIDATES);
+  });
+
+  it("design_grnas does not truncate when candidates are within the limit", async () => {
+    // A 50bp sequence with one NGG site yields 1 candidate, well under the cap
+    const sequence = "A".repeat(20) + "ATCGG" + "A".repeat(25);
+    const { workspacePath, moleculeId } = await importFasta(sequence, "one-pam-site");
+    const result = await designGrnas({
+      workspacePath,
+      moleculeId,
+      targetRegion: { start: 1, end: sequence.length },
+    });
+    expect(result.candidatesTruncated).toBe(false);
+    expect(result.candidates.length).toBe(result.candidatesTotalCount);
+  });
+
+  it("find_orfs reports orfsTotalCount and orfsTruncated=false for a normal result", async () => {
+    const sequence = "A".repeat(10) + "ATGAAATAA" + "A".repeat(10);
+    const { workspacePath, moleculeId } = await importFasta(sequence, "single-orf");
+    const envelope = await handleFindOrfs({ workspacePath, moleculeId, minAa: 1 });
+    expect(envelope).toMatchObject({
+      ok: true,
+      data: {
+        orfsTruncated: false,
+        orfsTotalCount: 1,
+      },
+    });
+  });
+
+  it("find_restriction_sites reports sitesTotalCount and sitesTruncated=false for a normal result", async () => {
+    const sequence = "A".repeat(10) + "GAATTC" + "A".repeat(10);
+    const { workspacePath, moleculeId } = await importFasta(sequence, "single-ecori-site");
+    const envelope = await handleFindRestrictionSites({ workspacePath, moleculeId, enzymes: ["EcoRI"] });
+    expect(envelope).toMatchObject({
+      ok: true,
+      data: {
+        sitesTruncated: false,
+        sitesTotalCount: 1,
+        sites: [{ enzyme: "EcoRI" }],
+      },
+    });
+  });
+
+  it("toolSuccess applies envelope byte ceiling and returns a truncation stub when exceeded", () => {
+    const hugeData = { payload: "X".repeat(RESPONSE_ENVELOPE_BYTE_CEILING) };
+    const envelope = toolSuccess("test_tool", hugeData);
+    expect(envelope.ok).toBe(true);
+    expect((envelope.data as Record<string, unknown>).RESPONSE_TRUNCATED).toBe(true);
+    expect((envelope.data as Record<string, unknown>).byteSize).toBeGreaterThan(RESPONSE_ENVELOPE_BYTE_CEILING);
+  });
+
+  it("toolSuccess measures the ceiling in UTF-8 bytes rather than string characters", () => {
+    const hugeData = { payload: "🧬".repeat(130_000) };
+    const envelope = toolSuccess("test_tool", hugeData);
+    expect(envelope.ok).toBe(true);
+    expect((envelope.data as Record<string, unknown>).RESPONSE_TRUNCATED).toBe(true);
+    expect((envelope.data as Record<string, unknown>).byteSize).toBeGreaterThan(RESPONSE_ENVELOPE_BYTE_CEILING);
+  });
+
+  it("toolSuccess does not truncate normal-sized envelopes", () => {
+    const normalData = { payload: "hello" };
+    const envelope = toolSuccess("test_tool", normalData);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data).toEqual(normalData);
   });
 });

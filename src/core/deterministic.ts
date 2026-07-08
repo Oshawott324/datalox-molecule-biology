@@ -51,7 +51,7 @@ export { alignSequences } from "./align.js";
 export type { AlignMode, AlignmentResult, AlignSequencesOptions } from "./align.js";
 export { designPrimers } from "./primer-design.js";
 export type { DesignedPrimer, DesignPrimersInput, DesignPrimersOptions, DesignPrimersResult, PrimerPairCandidate } from "./primer-design.js";
-export { designGrnas } from "./crispr.js";
+export { designGrnas, MAX_DESIGN_GRNAS_CANDIDATES } from "./crispr.js";
 export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCandidate, OffTargetHit } from "./crispr.js";
 export type { GuideRankingEvidence } from "./schema.js";
 export { exportGrnaReport, MAX_GRNA_REPORT_GUIDES } from "./grna-report.js";

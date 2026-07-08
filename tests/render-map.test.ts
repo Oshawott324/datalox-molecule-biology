@@ -15,6 +15,7 @@ import {
   upsertGuide,
   upsertPrimer,
 } from "../src/index.js";
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -23,7 +24,7 @@ async function tempDir(prefix: string): Promise<string> {
 async function importPuc19(): Promise<{ workspaceDir: string; workspacePath: string; moleculeId: string }> {
   const workspaceDir = await tempDir("mol-render-");
   const result = await importSequenceFile({
-    inputPath: path.resolve("fixtures/genbank/puc19.gb"),
+    inputPath: await stageFixture(workspaceDir, "genbank/puc19.gb"),
     workspaceDir,
     format: "genbank",
     moleculeId: "mol_puc19",

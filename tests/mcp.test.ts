@@ -244,6 +244,27 @@ describe("MCP server", () => {
     expect(JSON.stringify(result)).toContain("<redacted:absolute_path:definitely-missing-mol-input.fa>");
   });
 
+  it("rejects open_sequence imports outside the workspace root through the MCP boundary", async () => {
+    const outsidePath = path.resolve("fixtures/fasta/single.fa");
+    const workspaceDir = await tempDir("mol-path-boundary-");
+    const result = envelope(await callMoleculeMcpTool("open_sequence", {
+      inputPath: outsidePath,
+      workspaceDir,
+      format: "fasta",
+    }));
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "PATH_OUTSIDE_WORKSPACE",
+      },
+    });
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain(outsidePath);
+    expect(serialized).not.toContain(workspaceDir);
+    expect(serialized).toContain("<redacted:absolute_path:single.fa>");
+  });
+
   it("redacts absolute paths in error details without redacting URLs", () => {
     const envelope = toolFailure("blast_sequence", "BLAST_TIMEOUT", "NCBI BLAST timed out.", {
       ncbiUrl: "https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=ABC123&CMD=Get",

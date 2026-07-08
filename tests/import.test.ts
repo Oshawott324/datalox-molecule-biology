@@ -12,6 +12,14 @@ async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-import-"));
 }
 
+async function stagedFixture(workspaceDir: string, relativePath: string): Promise<string> {
+  const sourcePath = path.join(fixturesRoot, relativePath);
+  const stagedPath = path.join(workspaceDir, "imports", relativePath);
+  await fs.mkdir(path.dirname(stagedPath), { recursive: true });
+  await fs.copyFile(sourcePath, stagedPath);
+  return stagedPath;
+}
+
 describe("sequence import", () => {
   it("keeps FASTA sequence digests stable across line wrapping", () => {
     const [wrapped] = parseFasta(">same\nACGT\nACGT\n");
@@ -27,7 +35,7 @@ describe("sequence import", () => {
   it("imports a single FASTA record as one molecule", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
     });
@@ -45,10 +53,46 @@ describe("sequence import", () => {
     await expect(fs.stat(path.join(workspaceDir, workspace.molecules[0].path))).resolves.toBeTruthy();
   });
 
+  it("rejects an import path outside the workspace root", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    await expect(
+      importSequenceFile({
+        inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+        workspaceDir,
+        format: "fasta",
+      }),
+    ).rejects.toMatchObject({
+      code: "PATH_OUTSIDE_WORKSPACE",
+    });
+  });
+
+  it("rejects a symlink that resolves outside the workspace root", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const linkPath = path.join(workspaceDir, "imports", "linked-single.fa");
+    await fs.mkdir(path.dirname(linkPath), { recursive: true });
+    try {
+      await fs.symlink(path.join(fixturesRoot, "fasta/single.fa"), linkPath);
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === "EPERM" || nodeError.code === "EACCES" || nodeError.code === "ENOTSUP") return;
+      throw error;
+    }
+
+    await expect(
+      importSequenceFile({
+        inputPath: linkPath,
+        workspaceDir,
+        format: "fasta",
+      }),
+    ).rejects.toMatchObject({
+      code: "PATH_OUTSIDE_WORKSPACE",
+    });
+  });
+
   it("imports a multi-record FASTA as multiple molecules", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/multi.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/multi.fa"),
       workspaceDir,
     });
     const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
@@ -64,14 +108,14 @@ describe("sequence import", () => {
   it("requires expected revision when importing into an existing workspace", async () => {
     const workspaceDir = await tempWorkspaceDir();
     await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
     });
 
     await expect(
       importSequenceFile({
-        inputPath: path.join(fixturesRoot, "fasta/multi.fa"),
+        inputPath: await stagedFixture(workspaceDir, "fasta/multi.fa"),
         workspaceDir,
         format: "fasta",
       }),
@@ -81,14 +125,14 @@ describe("sequence import", () => {
   it("rejects stale expected revision on existing workspace import", async () => {
     const workspaceDir = await tempWorkspaceDir();
     await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
     });
 
     await expect(
       importSequenceFile({
-        inputPath: path.join(fixturesRoot, "fasta/multi.fa"),
+        inputPath: await stagedFixture(workspaceDir, "fasta/multi.fa"),
         workspaceDir,
         format: "fasta",
         expectedRevision: 1,
@@ -99,12 +143,12 @@ describe("sequence import", () => {
   it("increments revision when importing into an existing workspace with expected revision", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const first = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
     });
     const second = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/multi.fa"),
+      inputPath: await stagedFixture(workspaceDir, "fasta/multi.fa"),
       workspaceDir,
       format: "fasta",
       expectedRevision: first.revision,
@@ -121,7 +165,7 @@ describe("sequence import", () => {
 
     await expect(
       importSequenceFile({
-        inputPath: path.join(fixturesRoot, "fasta/invalid-symbol.fa"),
+        inputPath: await stagedFixture(workspaceDir, "fasta/invalid-symbol.fa"),
         workspaceDir,
       }),
     ).rejects.toMatchObject({ code: "ALPHABET_MISMATCH" });
@@ -130,7 +174,7 @@ describe("sequence import", () => {
   it("imports a linear GenBank record with features and qualifiers", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/linear.gb"),
+      inputPath: await stagedFixture(workspaceDir, "genbank/linear.gb"),
       workspaceDir,
     });
     const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
@@ -163,7 +207,7 @@ describe("sequence import", () => {
   it("imports a circular GenBank record as circular", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/circular.gb"),
+      inputPath: await stagedFixture(workspaceDir, "genbank/circular.gb"),
       workspaceDir,
     });
     const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
@@ -174,7 +218,7 @@ describe("sequence import", () => {
   it("imports the authentic pUC19 fixture with parser-safe core annotations", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      inputPath: await stagedFixture(workspaceDir, "genbank/puc19.gb"),
       workspaceDir,
       format: "genbank",
       moleculeId: "mol_puc19",
@@ -222,7 +266,7 @@ describe("sequence import", () => {
   it("imports GenBank join coordinates as multiple ordered segments", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/join.gb"),
+      inputPath: await stagedFixture(workspaceDir, "genbank/join.gb"),
       workspaceDir,
     });
     const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
@@ -239,7 +283,7 @@ describe("sequence import", () => {
   it("imports reverse-complement GenBank features with reverse strand segments", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const result = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/reverse-complement.gb"),
+      inputPath: await stagedFixture(workspaceDir, "genbank/reverse-complement.gb"),
       workspaceDir,
     });
     const workspace = await readWorkspace(result.workspacePath, { checkSequenceDigests: true });
@@ -266,13 +310,13 @@ describe("sequence import", () => {
 
     await expect(
       importSequenceFile({
-        inputPath: path.join(fixturesRoot, "genbank/fuzzy.gb"),
+        inputPath: await stagedFixture(workspaceDir, "genbank/fuzzy.gb"),
         workspaceDir,
       }),
     ).rejects.toBeInstanceOf(MoleculeError);
     await expect(
       importSequenceFile({
-        inputPath: path.join(fixturesRoot, "genbank/fuzzy.gb"),
+        inputPath: await stagedFixture(workspaceDir, "genbank/fuzzy.gb"),
         workspaceDir,
       }),
     ).rejects.toMatchObject({

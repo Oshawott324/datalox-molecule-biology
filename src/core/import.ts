@@ -42,8 +42,10 @@ type ImportRecord = {
 };
 
 export async function importSequenceFile(options: ImportSequenceFileOptions): Promise<ImportSequenceFileResult> {
-  const inputPath = path.resolve(options.inputPath);
   const workspaceDir = path.resolve(options.workspaceDir);
+  await fs.mkdir(workspaceDir, { recursive: true });
+  const workspaceRoot = await fs.realpath(workspaceDir);
+  const inputPath = await confinedInputPath(options.inputPath, workspaceRoot);
   const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
   const format = await detectFormat(inputPath, options.format ?? "auto");
   const content = await fs.readFile(inputPath, "utf8");
@@ -111,6 +113,19 @@ export async function importSequenceFile(options: ImportSequenceFileOptions): Pr
   workspace = await validateWorkspaceOrThrow(workspace, { workspacePath, checkSequenceDigests: true });
   await writeWorkspaceFile(workspacePath, workspace);
   return { ok: true, workspacePath, moleculeIds, previousRevision, revision: workspace.revision, copiedPaths };
+}
+
+async function confinedInputPath(inputPath: string, workspaceRoot: string): Promise<string> {
+  const resolvedInputPath = path.resolve(inputPath);
+  const realInputPath = await fs.realpath(resolvedInputPath);
+  const relative = path.relative(workspaceRoot, realInputPath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new MoleculeError("PATH_OUTSIDE_WORKSPACE", "Input path must resolve inside the workspace root.", {
+      inputPath: realInputPath,
+      workspaceRoot,
+    });
+  }
+  return realInputPath;
 }
 
 async function readOrCreateWorkspace(workspacePath: string): Promise<{ workspace: MoleculeWorkspace; existed: boolean }> {

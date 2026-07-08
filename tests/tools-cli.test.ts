@@ -12,8 +12,7 @@ import {
   handleValidateWorkspace,
   type ToolResultEnvelope,
 } from "../src/index.js";
-
-const fixturesRoot = path.resolve("fixtures");
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-tools-"));
@@ -56,7 +55,7 @@ describe("tool handlers and CLI parity", () => {
   it("matches direct handler output for a CLI command", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
     });
@@ -72,7 +71,7 @@ describe("tool handlers and CLI parity", () => {
   it("runs open-sequence -> validate -> list-molecules -> context through handlers", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",
@@ -137,7 +136,7 @@ describe("tool handlers and CLI parity", () => {
   it("runs revision-safe feature writes through the CLI", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",

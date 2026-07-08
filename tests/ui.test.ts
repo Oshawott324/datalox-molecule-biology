@@ -5,8 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { closeManagedSequenceEditors, importSequenceFile, openSequenceEditor, startSequenceEditorServer } from "../src/index.js";
-
-const fixturesRoot = path.resolve("fixtures");
+import { stageFixture } from "./support/fixtures.js";
 
 async function tempWorkspaceDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "mol-ui-"));
@@ -22,7 +21,7 @@ describe("compact sequence editor server", () => {
   it("serves the editor, reads workspace context, and writes features revision-safely", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",
@@ -85,7 +84,7 @@ describe("compact sequence editor server", () => {
   it("serves a plasmid map SVG for circular GenBank workspaces", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      inputPath: await stageFixture(workspaceDir, "genbank/puc19.gb"),
       workspaceDir,
       format: "genbank",
       moleculeId: "mol_puc19",
@@ -115,7 +114,7 @@ describe("compact sequence editor server", () => {
   it("serves restriction sites with sequence context for the static dual view", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "genbank/puc19.gb"),
+      inputPath: await stageFixture(workspaceDir, "genbank/puc19.gb"),
       workspaceDir,
       format: "genbank",
       moleculeId: "mol_puc19",
@@ -141,7 +140,7 @@ describe("compact sequence editor server", () => {
   it("rejects a stale expectedRevision on the /api/features endpoint", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",
@@ -181,7 +180,7 @@ describe("compact sequence editor server", () => {
   it("reuses one managed editor per workspace instead of leaking servers", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",
@@ -201,7 +200,7 @@ describe("compact sequence editor server", () => {
   it("refuses to bind the editor to a non-loopback host by default", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const imported = await importSequenceFile({
-      inputPath: path.join(fixturesRoot, "fasta/single.fa"),
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
       workspaceDir,
       format: "fasta",
       moleculeId: "mol_single",

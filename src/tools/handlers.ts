@@ -30,6 +30,9 @@ import { toolFailure, toolFailureFromError, toolSuccess, type ToolResultEnvelope
 
 const packageName = "@datalox/molecule-biology";
 
+const MAX_ORF_RESULTS = 200;
+const MAX_RESTRICTION_SITES = 200;
+
 export type ToolName =
   | "doctor"
   | "open_sequence"
@@ -595,13 +598,15 @@ export async function handleFindOrfs(input: FindOrfsInput): Promise<ToolResultEn
   try {
     const workspacePath = workspacePathFromInput(input);
     const moleculeId = moleculeIdFromInput(input);
-    const result = await findOrfs(workspacePath, moleculeId, {
+    const allOrfs = await findOrfs(workspacePath, moleculeId, {
       ...(input.minAa !== undefined ? { minAa: assertNonNegativeInteger(input.minAa, "minAa") } : {}),
       ...(input.startCodons ? { startCodons: input.startCodons } : {}),
       ...(input.stopCodons ? { stopCodons: input.stopCodons } : {}),
       ...(input.strands ? { strands: input.strands } : {}),
     });
-    return toolSuccess(tool, { workspacePath, moleculeId, orfs: result }, { workspacePath });
+    const orfsTruncated = allOrfs.length > MAX_ORF_RESULTS;
+    const orfs = orfsTruncated ? allOrfs.slice(0, MAX_ORF_RESULTS) : allOrfs;
+    return toolSuccess(tool, { workspacePath, moleculeId, orfs, orfsTotalCount: allOrfs.length, orfsTruncated }, { workspacePath });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }
@@ -613,8 +618,10 @@ export async function handleFindRestrictionSites(input: EnzymeInput): Promise<To
     const workspacePath = workspacePathFromInput(input);
     const moleculeId = moleculeIdFromInput(input);
     const enzymes = assertStringArray(input.enzymes, "enzymes");
-    const sites = await findRestrictionSites(workspacePath, moleculeId, enzymes);
-    return toolSuccess(tool, { workspacePath, moleculeId, strandScope: restrictionStrandScope(), sites }, { workspacePath });
+    const allSites = await findRestrictionSites(workspacePath, moleculeId, enzymes);
+    const sitesTruncated = allSites.length > MAX_RESTRICTION_SITES;
+    const sites = sitesTruncated ? allSites.slice(0, MAX_RESTRICTION_SITES) : allSites;
+    return toolSuccess(tool, { workspacePath, moleculeId, strandScope: restrictionStrandScope(), sites, sitesTotalCount: allSites.length, sitesTruncated }, { workspacePath });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }

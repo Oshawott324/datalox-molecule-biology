@@ -87,7 +87,6 @@ export function toolEnvelopeToMcpResult(envelope: ToolResultEnvelope): CallToolR
         text: `${JSON.stringify(envelope, null, 2)}\n`,
       },
     ],
-    structuredContent: envelope as unknown as Record<string, unknown>,
     isError: !envelope.ok,
   };
 }

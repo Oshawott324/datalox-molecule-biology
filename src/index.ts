@@ -57,6 +57,7 @@ export {
   extractAssemblyFragmentSequence,
   RESTRICTION_ENZYMES,
   RESTRICTION_ENZYME_TABLE_VERSION,
+  MAX_DESIGN_GRNAS_CANDIDATES,
   MAX_GEL_SAMPLE_BANDS,
   MAX_GRNA_REPORT_GUIDES,
   RESTRICTION_LIGATION_PROFILES,
@@ -168,6 +169,7 @@ export {
   toolFailureFromError,
   toolHandlers,
   moleculeAgentContract,
+  RESPONSE_ENVELOPE_BYTE_CEILING,
   toolSuccess,
   workspacePathFromInput,
 } from "./tools/index.js";
