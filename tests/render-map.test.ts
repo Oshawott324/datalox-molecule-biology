@@ -101,6 +101,23 @@ describe("plasmid map rendering", () => {
     await expect(fs.stat(result.artifacts?.[0]?.path ?? "")).resolves.toBeTruthy();
   });
 
+  it("redacts absolute workspace paths from render-map error envelopes", async () => {
+    const { workspaceDir, workspacePath, moleculeId } = await importPuc19();
+    const result = await handleRenderPlasmidMap({
+      workspacePath,
+      moleculeId,
+      outputPath: "../escape.svg",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      tool: "render_plasmid_map",
+      error: { code: "INVALID_ARGUMENT" },
+    });
+    expect(JSON.stringify(result)).not.toContain(workspaceDir);
+    expect(JSON.stringify(result)).toContain("<redacted:absolute_path:");
+  });
+
   it("renders caller-supplied cut sites and bound primer arrows", async () => {
     const { workspacePath, moleculeId } = await importPuc19();
     const { sequence } = await readMoleculeSequence(workspacePath, moleculeId);

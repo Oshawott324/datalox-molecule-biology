@@ -243,6 +243,6 @@ describe("Primer3-backed primer design", () => {
     expect(result.candidates.length).toBeGreaterThan(0);
     expect(result.candidates[0].productSize).toBeGreaterThanOrEqual(200);
     expect(result.candidates[0].productSize).toBeLessThanOrEqual(1000);
-    expect(result.nextAction).toMatchObject({ tool: "upsert_primer" });
+    expect(result.nextAction).toMatchObject({ tool: "simulate_pcr" });
   });
 });

@@ -1,4 +1,5 @@
 import { MoleculeError } from "../core/errors.js";
+import path from "node:path";
 
 export type ToolErrorEnvelope = {
   ok: false;
@@ -67,10 +68,12 @@ export function toolFailure(
   details?: Record<string, unknown>,
   agentActionable = true,
 ): ToolErrorEnvelope {
+  const sanitizedMessage = sanitizeErrorValue(message) as string;
+  const sanitizedDetails = details === undefined ? undefined : sanitizeErrorValue(details) as Record<string, unknown>;
   return {
     ok: false,
     tool,
-    error: details === undefined ? { code, message, agentActionable } : { code, message, agentActionable, details },
+    error: sanitizedDetails === undefined ? { code, message: sanitizedMessage, agentActionable } : { code, message: sanitizedMessage, agentActionable, details: sanitizedDetails },
   };
 }
 
@@ -92,6 +95,27 @@ export function toolFailureFromError(tool: string, error: unknown): ToolErrorEnv
   }
 
   return toolFailure(tool, "INTERNAL_ERROR", "Unknown error.", { value: String(error) }, false);
+}
+
+function sanitizeErrorValue(value: unknown): unknown {
+  if (typeof value === "string") return redactAbsolutePaths(value);
+  if (Array.isArray(value)) return value.map((entry) => sanitizeErrorValue(entry));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, sanitizeErrorValue(entry)]));
+  }
+  return value;
+}
+
+function redactAbsolutePaths(value: string): string {
+  if (path.isAbsolute(value)) return redactedPath(value);
+  return value
+    .replace(/[A-Za-z]:\\(?:[^\\\r\n]+\\)*[^\\\r\n]*/g, (match) => redactedPath(match))
+    .replace(/(?<![:\w])\/(?:[^/\s]+\/)*[^/\s]*/g, (match) => redactedPath(match));
+}
+
+function redactedPath(value: string): string {
+  const base = path.basename(value.replace(/[\\/]$/, ""));
+  return base ? `<redacted:absolute_path:${base}>` : "<redacted:absolute_path>";
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

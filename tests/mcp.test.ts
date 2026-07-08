@@ -231,13 +231,16 @@ describe("MCP server", () => {
 
   it("separates schema-invalid from domain-invalid requests", async () => {
     // Schema-valid but the file does not exist -> domain layer, not the schema gate.
+    const missingPath = path.join(os.tmpdir(), "definitely-missing-mol-input.fa");
     const result = envelope(await callMoleculeMcpTool("open_sequence", {
-      inputPath: path.join(os.tmpdir(), "definitely-missing-mol-input.fa"),
+      inputPath: missingPath,
       workspaceDir: await tempDir("mol-domain-"),
       format: "fasta",
     }));
     expect(result.ok).toBe(false);
     expect((result.error as { code?: string }).code).not.toBe("SCHEMA_VALIDATION_ERROR");
+    expect(JSON.stringify(result)).not.toContain(missingPath);
+    expect(JSON.stringify(result)).toContain("<redacted:absolute_path:definitely-missing-mol-input.fa>");
   });
 
   it("advertises only JSON Schema keywords the boundary validator enforces", () => {
