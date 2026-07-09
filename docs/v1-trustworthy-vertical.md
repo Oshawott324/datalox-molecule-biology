@@ -37,7 +37,7 @@ This is the demo. Everything else is deferred until this path is trustworthy.
 | MB3 | Bounded artifact output (+ stdio envelope ceiling) | User | **done** (a24e28e + 4351df0) | see below |
 | MB4 | No absolute path leaks in agent-visible errors | User | **done** (adb4d2c) | see below |
 | MB5 | Confine import paths to workspace (arbitrary file read) | User | **done** (4351df0) | see below |
-| MB6 | Workspace write transactionality (TOCTOU) | User | **done** | see below |
+| MB6 | Workspace write transactionality (TOCTOU) | User | **done** (7b27f5f) | see below |
 | HB1 | Contract/version handshake between hub and mol-bio | User (spec) | **specified** | `docs/hub-mol-bio-contract.md` |
 | HB2 | Provenance bundle with tool/schema versions | User (spec) | **specified** | `docs/provenance-bundle-schema.md`, `docs/hub-mol-bio-contract.md` |
 | HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | **specified** | `docs/hub-mol-bio-contract.md` |

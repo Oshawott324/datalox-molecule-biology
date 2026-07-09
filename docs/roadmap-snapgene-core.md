@@ -4,7 +4,7 @@
 
 This roadmap is intentionally narrow. Current implementation priority remains `docs/v1-trustworthy-vertical.md`: close the trustworthy demo spine before adding breadth. This document lists the post-V1 SnapGene-core work only.
 
-For commercial-tool connectors and cross-product strategy, see `C:\Users\fangxf\Research Tools\datalox-review-2026-07\06-COMMERCIAL-MOLBIO-MCP-PLAN.md`.
+For commercial-tool connectors and cross-product strategy, see `06-COMMERCIAL-MOLBIO-MCP-PLAN.md` in the `datalox-review-2026-07` research folder (not in this repo).
 
 ## Post-V1 Tool Scope
 
