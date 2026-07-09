@@ -162,8 +162,11 @@ must be in this order:
 t7/sp6_promoter? < five_utr < kozak? < cds < three_utr < polya_signal? < polya_tail? < ivt_site?
 ```
 
-Fail if any resolved element starts after a later-expected element. This check
-treats partial element sets gracefully: only resolved elements are compared.
+Fail if any resolved element starts after a later-expected element. Adjacent
+resolved elements must also be non-overlapping (`previous.end < current.start`),
+except for `kozak`, which may overlap the 5'UTR/CDS boundary by design. This
+check treats partial element sets gracefully: only resolved elements are
+compared.
 
 **CDS_STARTS_WITH_ATG**
 
@@ -212,7 +215,10 @@ Distinguishes polyA signal from polyA tail:
 - polyA tail: an encoded A-run (e.g., A80) at the 3' end of the transcript;
   present in synthetic mRNA constructs. Annotated as `polya_tail` element type.
 
-Scan for `AATAAA` or `ATTAAA` within the resolved `three_utr` region +/-30 bases.
+Scan for `AATAAA` or `ATTAAA` from the resolved `three_utr` start through 30
+bases downstream of the resolved `three_utr` end. Do not scan upstream of the
+3'UTR start; upstream AATAAA/ATTAAA motifs in 5'UTR or CDS sequence are not
+polyadenylation signals for this check.
 
 - If a `polya_tail` element is resolved: the encoded tail substitutes for
   signal-directed cleavage. Report `warning` if the hexamer is absent (absence
@@ -317,7 +323,8 @@ validate_mrna_construct (CDS verified)
 ```
 
 `export_protein_fasta` takes a workspace molecule ID and a CDS coordinate
-range, calls `translate_region` internally, and writes a FASTA artifact:
+range in transcript/plus-strand coordinates, calls `translate_region`
+internally with `strand: "+"`, and writes a FASTA artifact:
 
 ```ts
 type ExportProteinFastaInput = {
@@ -337,7 +344,10 @@ reports/proteins/<proteinId>.fa
 ```
 
 This is a read-only tool. It does not add the protein to the workspace. The
-agent passes the artifact path to an external structure tool.
+agent passes the artifact path to an external structure tool. CDS ranges whose
+length is not divisible by 3 are rejected with `INVALID_ARGUMENT`; exporting a
+protein FASTA from a partial terminal codon would silently produce truncated
+protein sequence.
 
 ## Scope Boundaries
 

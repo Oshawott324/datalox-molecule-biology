@@ -36,8 +36,10 @@ const FASTA_WRAP = 60;
  *
  * The translated CDS ends in a stop codon, which `translateRegion` renders as `*`.
  * Structure tools reject `*` as a residue, so a single trailing stop is stripped from
- * the FASTA body. Internal `*` characters are left untouched: judging CDS integrity is
- * `validate_mrna_construct`'s job, not this tool's.
+ * the FASTA body. Internal `*` characters are left untouched — judging premature stops
+ * is `validate_mrna_construct`'s job, not this tool's. However, a CDS whose length is
+ * not divisible by 3 is rejected here with INVALID_ARGUMENT, because the resulting
+ * truncated protein is silently wrong data regardless of downstream validation.
  */
 export async function exportProteinFasta(
   workspacePath: string,
@@ -50,6 +52,15 @@ export async function exportProteinFasta(
     end: cdsEnd,
     strand: "+",
   });
+
+  if (translation.partialTerminalCodon !== undefined) {
+    throw new MoleculeError("INVALID_ARGUMENT", "CDS region length is not divisible by 3: cannot export a complete protein sequence.", {
+      cdsStart,
+      cdsEnd,
+      cdsLength: cdsEnd - cdsStart + 1,
+      partialTerminalCodon: translation.partialTerminalCodon,
+    });
+  }
 
   const aminoAcids = translation.aminoAcids;
   const stopTrimmed = aminoAcids.endsWith("*");

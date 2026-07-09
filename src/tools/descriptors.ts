@@ -481,7 +481,7 @@ export const moleculeToolDescriptors = [
   },
   {
     name: "export_protein_fasta",
-    description: "Translate a CDS region and write the protein sequence to a FASTA artifact for external structure tools.",
+    description: "Translate a plus-strand transcript-coordinate CDS region and write the protein sequence to a FASTA artifact for external structure tools.",
     inputSchema: {
       type: "object",
       required: ["workspacePath", "moleculeId", "cdsStart", "cdsEnd"],
@@ -491,8 +491,8 @@ export const moleculeToolDescriptors = [
         workspaceDir: workspaceProperties.workspaceDir,
         moleculeId: { type: "string" },
         molecule: { type: "string", description: "Alias for moleculeId." },
-        cdsStart: { type: "integer", minimum: 1, description: "1-based inclusive CDS start coordinate." },
-        cdsEnd: { type: "integer", minimum: 1, description: "1-based inclusive CDS end coordinate." },
+        cdsStart: { type: "integer", minimum: 1, description: "1-based inclusive CDS start coordinate in transcript/plus-strand orientation." },
+        cdsEnd: { type: "integer", minimum: 1, description: "1-based inclusive CDS end coordinate in transcript/plus-strand orientation." },
         proteinId: { type: "string", description: "FASTA header id; defaults to moleculeId." },
         outputPath: { type: "string", description: "Optional workspace-relative output path." },
       },

@@ -262,6 +262,17 @@ function elementOrderCheck(resolved: Map<MrnaElementType, ResolvedElement>): Mrn
         detail: `${previous.type} starts at ${previous.start}, after the later-expected ${current.type} at ${current.start}. Elements must be in 5'->3' order.`,
       };
     }
+    // Kozak is permitted to overlap the UTR/CDS boundary; all other adjacent resolved
+    // elements must be non-overlapping.
+    const isKozakAdjacent = previous.type === "kozak" || current.type === "kozak";
+    if (!isKozakAdjacent && previous.end >= current.start) {
+      return {
+        checkId: "ELEMENT_ORDER",
+        element: `${previous.type},${current.type}`,
+        status: "fail",
+        detail: `${previous.type} (1..${previous.end}) overlaps ${current.type} (${current.start}..${current.end}). Adjacent mRNA elements must not overlap.`,
+      };
+    }
   }
   return {
     checkId: "ELEMENT_ORDER",
@@ -361,7 +372,7 @@ function polyaSignalCheck(
   normalized: string,
   length: number,
 ): MrnaCheck {
-  const windowStart = Math.max(1, threeUtr.start - 30);
+  const windowStart = threeUtr.start;
   const windowEnd = Math.min(length, threeUtr.end + 30);
   const region = normalized.slice(windowStart - 1, windowEnd);
   const found = /AATAAA|ATTAAA/.test(region);
@@ -371,8 +382,8 @@ function polyaSignalCheck(
     element: "three_utr",
     status: found ? "pass" : "warning",
     detail: found
-      ? `PolyA signal hexamer (AATAAA/ATTAAA) found within the 3'UTR region +/-30 bases.${tailNote}`
-      : `No polyA signal hexamer (AATAAA/ATTAAA) within the 3'UTR region +/-30 bases.${tailNote}`,
+      ? `PolyA signal hexamer (AATAAA/ATTAAA) found within the 3'UTR and up to 30 bases downstream.${tailNote}`
+      : `No polyA signal hexamer (AATAAA/ATTAAA) within the 3'UTR and up to 30 bases downstream.${tailNote}`,
     coordinates: { start: windowStart, end: windowEnd },
   };
 }

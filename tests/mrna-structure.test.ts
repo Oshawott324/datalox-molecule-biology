@@ -85,6 +85,17 @@ describe("X1 export_protein_fasta", () => {
     expect(result.stopTrimmed).toBe(false);
     expect(result.proteinLength).toBe(3);
   });
+
+  it("rejects a CDS region whose length is not divisible by 3", async () => {
+    // 11 bases: ATG GCC TGC TA — partial terminal codon "TA"
+    const { workspacePath, moleculeId } = await importMolecule("ATGGCCTGCTA", "mol_x1d");
+    await expect(
+      exportProteinFasta(workspacePath, moleculeId, { cdsStart: 1, cdsEnd: 11 }),
+    ).rejects.toMatchObject({
+      code: "INVALID_ARGUMENT",
+      details: expect.objectContaining({ cdsLength: 11, partialTerminalCodon: "TA" }),
+    });
+  });
 });
 
 describe("M1 validate_mrna_construct", () => {
@@ -134,6 +145,36 @@ describe("M1 validate_mrna_construct", () => {
     expect(check(result.checks, "POLYA_SIGNAL_PRESENT")?.status).toBe("warning");
   });
 
+  it("finds a polyA signal within 30 bases downstream of the 3'UTR end", async () => {
+    // 5'UTR(1..10) CDS(11..25) 3'UTR(26..35) then AATAAA at 36..41 (6 bases downstream)
+    const seq = "TTTTTTTACCATGGCCGCCGCCTAAGGGGGGGGGAATAAA";
+    const { workspacePath, moleculeId } = await importMolecule(seq, "mol_downstream_polya");
+    const result = await validateMrnaConstruct(workspacePath, {
+      moleculeId,
+      templateType: "mrna",
+      elements: [
+        { type: "five_utr", coordinates: { start: 1, end: 10 } },
+        { type: "cds", coordinates: { start: 11, end: 25 } },
+        { type: "three_utr", coordinates: { start: 26, end: 35 } },
+      ],
+    });
+    expect(check(result.checks, "POLYA_SIGNAL_PRESENT")?.status).toBe("pass");
+  });
+
+  it("does not count an upstream AATAAA outside the 3'UTR as a polyA signal", async () => {
+    const seq = "AATAAATACCATGGCCGCCGCCTAAGCGCGCGCGCGCGCG";
+    const { workspacePath, moleculeId } = await importMolecule(seq, "mol_upstream_polya");
+    const result = await validateMrnaConstruct(workspacePath, {
+      moleculeId,
+      templateType: "mrna",
+      elements: VALID_ELEMENTS,
+    });
+    expect(result.summary).toBe("valid_with_warnings");
+    const polya = check(result.checks, "POLYA_SIGNAL_PRESENT");
+    expect(polya?.status).toBe("warning");
+    expect(polya?.coordinates).toEqual({ start: 26, end: 40 });
+  });
+
   it("fails when the CDS does not start with ATG", async () => {
     const seq = "TTTTTTTACCTTGGCCGCCGCCTAAGGAATAAAGGGGGGG";
     const { workspacePath, moleculeId } = await importMolecule(seq, "mol_noatg");
@@ -173,6 +214,23 @@ describe("M1 validate_mrna_construct", () => {
     });
     expect(result.summary).toBe("invalid");
     expect(check(result.checks, "CDS_IN_FRAME")?.status).toBe("fail");
+  });
+
+  it("fails when adjacent elements overlap (5'UTR end extends past CDS start)", async () => {
+    const { workspacePath, moleculeId } = await importMolecule(VALID_MRNA, "mol_overlap");
+    const result = await validateMrnaConstruct(workspacePath, {
+      moleculeId,
+      templateType: "mrna",
+      elements: [
+        { type: "five_utr", coordinates: { start: 1, end: 20 } },  // overlaps CDS start at 11
+        { type: "cds", coordinates: { start: 11, end: 25 } },
+        { type: "three_utr", coordinates: { start: 26, end: 40 } },
+      ],
+    });
+    expect(result.summary).toBe("invalid");
+    const order = check(result.checks, "ELEMENT_ORDER");
+    expect(order?.status).toBe("fail");
+    expect(order?.detail).toContain("overlap");
   });
 
   it("fails when elements are out of 5'->3' order", async () => {
