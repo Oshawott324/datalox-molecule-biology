@@ -37,11 +37,11 @@ This is the demo. Everything else is deferred until this path is trustworthy.
 | MB3 | Bounded artifact output (+ stdio envelope ceiling) | User | **done** (a24e28e + 4351df0) | see below |
 | MB4 | No absolute path leaks in agent-visible errors | User | **done** (adb4d2c) | see below |
 | MB5 | Confine import paths to workspace (arbitrary file read) | User | **done** (4351df0) | see below |
-| MB6 | Workspace write transactionality (TOCTOU) | User | not started | see below |
-| HB1 | Contract/version handshake between hub and mol-bio | User (spec) | not started | to write |
-| HB2 | Provenance bundle with tool/schema versions | User (spec) | schema drafted | to wire |
-| HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | not started | see below |
-| HB4 | UI shows artifact + provenance + final review | Hub side | not started | to write |
+| MB6 | Workspace write transactionality (TOCTOU) | User | **done** | see below |
+| HB1 | Contract/version handshake between hub and mol-bio | User (spec) | **specified** | `docs/hub-mol-bio-contract.md` |
+| HB2 | Provenance bundle with tool/schema versions | User (spec) | **specified** | `docs/provenance-bundle-schema.md`, `docs/hub-mol-bio-contract.md` |
+| HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | **specified** | `docs/hub-mol-bio-contract.md` |
+| HB4 | UI shows artifact + provenance + final review | Hub side | **minimal path implemented** | `npm run demo:v1-review` |
 
 MB1-MB6 are mol-bio MCP changes. HB1-HB4 are integration/hub-side changes.
 
@@ -371,18 +371,13 @@ story depends on.
 
 ### Decision for V1
 
-Serialize writes to a workspace so a check-then-write cannot interleave. Minimum
-bar, in preference order:
+Serialize writes to a workspace so a check-then-write cannot interleave.
 
-1. An advisory file lock (e.g. `proper-lockfile`) held across the
-   read-check-mutate-rename critical section; or
-2. A single-writer in-process queue if all writes for a workspace go through one
-   server instance.
-
-If, for the V1 demo, we choose to rely on the single-agent single-writer
-assumption instead, that assumption must be **documented explicitly** in the
-provenance bundle / contract (not left implicit), because the workspace is
-otherwise advertised as concurrency-safe.
+Chosen V1 implementation: an atomic directory lock at
+`<workspacePath>.lock`, held across the full read-check-mutate-validate-write
+critical section. A same-revision concurrent writer waits for the lock, then
+re-reads the workspace and returns the existing `STALE_REVISION` error instead
+of overwriting the committed write.
 
 ### Acceptance
 

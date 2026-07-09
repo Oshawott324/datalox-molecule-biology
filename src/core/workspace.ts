@@ -394,30 +394,64 @@ export async function writeWorkspaceTransaction<T>(
     throw new MoleculeError("INVALID_ARGUMENT", "expectedRevision must be a non-negative integer.", { expectedRevision });
   }
 
-  const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: true });
-  if (workspace.revision !== expectedRevision) {
-    throw new WorkspaceRevisionError(expectedRevision, workspace.revision);
+  return withWorkspaceLock(workspacePath, async () => {
+    const workspace = await readWorkspace(workspacePath, { checkSequenceDigests: true });
+    if (workspace.revision !== expectedRevision) {
+      throw new WorkspaceRevisionError(expectedRevision, workspace.revision);
+    }
+
+    const before = JSON.stringify(workspace);
+    const payload = await transform(workspace);
+    const afterTransform = JSON.stringify(workspace);
+    if (afterTransform === before) {
+      throw new MoleculeError("NO_CHANGE", "Workspace transaction produced no changes.", { revision: workspace.revision });
+    }
+
+    const previousRevision = workspace.revision;
+    workspace.revision = previousRevision + 1;
+    workspace.updatedAt = new Date().toISOString();
+    const validated = await validateWorkspaceOrThrow(workspace, { workspacePath, checkSequenceDigests: true });
+    await writeWorkspaceFile(workspacePath, validated, { alreadyValidated: true });
+
+    return {
+      workspace: validated,
+      payload,
+      previousRevision,
+      revision: validated.revision,
+    };
+  });
+}
+
+async function withWorkspaceLock<T>(workspacePath: string, operation: () => Promise<T>): Promise<T> {
+  await fs.mkdir(path.dirname(workspacePath), { recursive: true });
+  const lockPath = `${workspacePath}.lock`;
+  await acquireDirectoryLock(lockPath);
+  try {
+    return await operation();
+  } finally {
+    await fs.rm(lockPath, { recursive: true, force: true });
   }
+}
 
-  const before = JSON.stringify(workspace);
-  const payload = await transform(workspace);
-  const afterTransform = JSON.stringify(workspace);
-  if (afterTransform === before) {
-    throw new MoleculeError("NO_CHANGE", "Workspace transaction produced no changes.", { revision: workspace.revision });
+async function acquireDirectoryLock(lockPath: string): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  while (true) {
+    try {
+      await fs.mkdir(lockPath);
+      return;
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code !== "EEXIST") throw error;
+      if (Date.now() > deadline) {
+        throw new MoleculeError("INTERNAL_ERROR", "Timed out waiting for workspace write lock.", { lockName: path.basename(lockPath) }, false);
+      }
+      await delay(10);
+    }
   }
+}
 
-  const previousRevision = workspace.revision;
-  workspace.revision = previousRevision + 1;
-  workspace.updatedAt = new Date().toISOString();
-  const validated = await validateWorkspaceOrThrow(workspace, { workspacePath, checkSequenceDigests: true });
-  await writeWorkspaceFile(workspacePath, validated, { alreadyValidated: true });
-
-  return {
-    workspace: validated,
-    payload,
-    previousRevision,
-    revision: validated.revision,
-  };
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function writeWorkspaceFile(workspacePath: string, workspace: MoleculeWorkspace): Promise<void>;

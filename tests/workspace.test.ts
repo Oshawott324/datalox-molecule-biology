@@ -225,6 +225,44 @@ describe("workspace validation", () => {
     })).rejects.toBeInstanceOf(WorkspaceRevisionError);
   });
 
+  it("serializes concurrent same-revision workspace transactions so only one commits", async () => {
+    const { workspacePath, workspace } = await createValidWorkspace();
+    await writeWorkspaceFile(workspacePath, workspace);
+
+    const first = writeWorkspaceTransaction(workspacePath, 0, async (draft) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      draft.features.push({
+        id: "feat_first",
+        moleculeId: "mol_example",
+        name: "first",
+        type: "misc_feature",
+        segments: [{ start: 1, end: 4, strand: "+" }],
+      });
+      return { featureId: "feat_first" };
+    });
+    const second = writeWorkspaceTransaction(workspacePath, 0, (draft) => {
+      draft.features.push({
+        id: "feat_second",
+        moleculeId: "mol_example",
+        name: "second",
+        type: "misc_feature",
+        segments: [{ start: 5, end: 8, strand: "+" }],
+      });
+      return { featureId: "feat_second" };
+    });
+
+    const results = await Promise.allSettled([first, second]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    expect(rejected?.reason).toBeInstanceOf(WorkspaceRevisionError);
+
+    const persisted = await readWorkspace(workspacePath, { checkSequenceDigests: true });
+    expect(persisted.revision).toBe(1);
+    const racedFeatureIds = persisted.features.map((feature) => feature.id).filter((id) => id === "feat_first" || id === "feat_second");
+    expect(racedFeatureIds).toHaveLength(1);
+  });
+
   it("rejects no-op workspace transactions", async () => {
     const { workspacePath, workspace } = await createValidWorkspace();
     await writeWorkspaceFile(workspacePath, workspace);

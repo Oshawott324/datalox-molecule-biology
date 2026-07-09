@@ -18,6 +18,7 @@ const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "mol-diagnostic-dig
 const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
 const pUC19Path = path.join(repoRoot, "fixtures/genbank/puc19.gb");
 const insertPath = path.join(repoRoot, "fixtures/fasta/datalox_insert_v1.fa");
+const stagedPuc19Path = await stageInputFile(pUC19Path, path.join(workspaceDir, "imports", "puc19.gb"));
 
 const expectedSelectedPair = ["HindIII", "XhoI"];
 const candidatePairs = [
@@ -43,7 +44,7 @@ try {
   await client.connect(transport);
 
   const emptyOpen = await recordMcpTool("open_sequence", {
-    inputPath: pUC19Path,
+    inputPath: stagedPuc19Path,
     workspaceDir,
     format: "genbank",
     moleculeId: "mol_empty",
@@ -200,6 +201,12 @@ function resultEnvelope(result) {
     : undefined;
   if (text === undefined) throw new Error("MCP result did not include a structured or text envelope");
   return JSON.parse(text);
+}
+
+async function stageInputFile(sourcePath, stagedPath) {
+  await fs.mkdir(path.dirname(stagedPath), { recursive: true });
+  await fs.copyFile(sourcePath, stagedPath);
+  return stagedPath;
 }
 
 async function readFastaSequence(filePath) {
