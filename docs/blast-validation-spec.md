@@ -26,8 +26,8 @@ the workspace.
 BLAST via NCBI is asynchronous:
 
 ```text
-Step 1: PUT request to blast.ncbi.nlm.nih.gov/blast/Blast.cgi
-        -> returns Request ID (RID) and estimated wait time
+Step 1: PUT request to https://blast.ncbi.nlm.nih.gov/Blast.cgi
+        -> returns Request ID (RID) and estimated wait time (RTOE)
 Step 2: Poll GET with RID until STATUS=READY or FAILED or UNKNOWN
 Step 3: GET results in JSON or XML format
 ```
@@ -36,18 +36,22 @@ The agent-facing tool hides this. `blast_sequence` submits, polls with
 backoff, and returns structured results synchronously from the agent's
 perspective.
 
-Implementation constraints:
-- Require `NCBI_BLAST_API_KEY` environment variable for production use.
-  Without it, NCBI rate-limits to 3 requests/second. With it, 10/second.
-- Polling interval: start at 5 seconds, increase to 15 seconds after 30
-  seconds of waiting.
-- Max wait: 120 seconds. Return `BLAST_TIMEOUT` structured error if exceeded.
-- RID is always returned even on timeout so the user can check NCBI manually.
+Implementation constraints (per the NCBI BLAST URL API usage policy):
+- **No API key.** The BLAST URL API does not use NCBI API keys; API keys apply
+  to E-utilities and the Datasets API, not to `Blast.cgi`. Do not gate the tool
+  on an `NCBI_BLAST_API_KEY` or assume a key raises the rate limit.
+- Identify the client with the `tool` and `email` URL parameters so NCBI can
+  make contact before throttling.
+- Do not contact the server more often than once every 10 seconds, and do not
+  poll any single RID more often than once per minute. Seed the first wait from
+  the `RTOE` estimate in the Put response, then poll on a `>= 60 s` interval.
+- Keep submissions modest: NCBI moves users past ~100 searches in 24 hours to a
+  slower queue. Run large batches on weekends or 9 pm-5 am Eastern.
+- Max wait is a configurable budget (default a few minutes, well above one poll
+  interval). On expiry return a `BLAST_TIMEOUT` structured error.
+- The RID is always returned even on timeout so the agent or user can retrieve
+  results later at the NCBI results URL.
 - Do not retry automatically on timeout. Let the agent decide.
-
-If `NCBI_BLAST_API_KEY` is not set, `blast_sequence` should still work but
-include a `rateLimit: "unauthenticated"` field in the result to make the
-constraint visible.
 
 ## B1: `blast_sequence`
 
@@ -119,7 +123,6 @@ type BlastSequenceResult = {
   rid: string;                // NCBI Request ID — always present
   submittedAt: string;        // ISO 8601
   completedAt: string;        // ISO 8601
-  rateLimit: "authenticated" | "unauthenticated";
   hits: BlastHit[];
   hitsTruncated: boolean;     // true if database has more hits than hitlistSize
   ncbiUrl: string;            // https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=<rid>&CMD=Get
@@ -154,7 +157,7 @@ artifacts: [{
 |---|---|
 | `INVALID_ARGUMENT` | Incompatible program+database, missing sequence+moleculeId, invalid hitlistSize |
 | `DEPENDENCY_MISSING` | No network access or NCBI endpoint unreachable |
-| `BLAST_TIMEOUT` | NCBI did not return results within 120 seconds; RID included in error details |
+| `BLAST_TIMEOUT` | NCBI did not return results within the configured max-wait budget; RID included in error details so the search can be retrieved later |
 | `BLAST_FAILED` | NCBI returned STATUS=FAILED; RID and reason in error details |
 
 ### CLI
@@ -312,8 +315,10 @@ Do not start B1 implementation until:
    skipped or use a recorded fixture.
 2. Provenance schema above is confirmed final. The `queryDigest` + `rid` +
    `submittedAt` triple must be stable before the first real workspace writes it.
-3. Rate-limit handling is agreed: unauthenticated fallback vs. hard require API
-   key.
+3. Usage-policy handling is agreed: identify with `tool`/`email`, poll no more
+   than once per minute per RID, contact the server no more than once per 10 s,
+   and keep submissions within NCBI's fair-use limits. The BLAST URL API has no
+   API key, so there is no authenticated fast path to design for.
 4. One live blastn query against `nt` or `refseq_select` has been executed and
    the raw RID, status-poll response, and result response saved as a test
    fixture. Without this, the async pattern is coded blindly against NCBI's

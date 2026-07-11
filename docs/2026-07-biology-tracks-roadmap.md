@@ -95,11 +95,13 @@ provenance.
 | Primer pair off-target amplicon prediction | no | yes | no |
 | Genome-scale CRISPR off-target (cas-offinder) | no | no | CR-series |
 | Local FASTA database search | no | no | later |
-| Rate-limit / API key management | yes | via B1 | no |
+| Rate-limit / usage-policy compliance | yes | via B1 | no |
 
 ### B-Series Gating Rule
 
-Do not implement B1 until:
+`docs/blast-validation-spec.md` holds the authoritative gate (endpoint, usage
+policy, provenance schema, error taxonomy, and fixture requirement); the two
+points below are the roadmap-level summary. Do not implement B1 until:
 
 1. The NCBI BLAST URL API async pattern (submit RID, poll, parse XML/JSON) is
    specced and the provenance schema is pinned. See
