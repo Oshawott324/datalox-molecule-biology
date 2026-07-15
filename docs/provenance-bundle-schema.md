@@ -1,7 +1,7 @@
 # Provenance Bundle Schema
 
-Status: V1 draft. This document formalizes the provenance bundle used by the
-mol-bio -> hub trustworthy vertical.
+Status: V1 local implementation. This document formalizes the provenance bundle
+used by the mol-bio -> hub trustworthy vertical.
 
 The goal is not a pretty log. The goal is a machine-verifiable lab record:
 every tool call, input, output envelope, artifact, and contract version needed
@@ -109,15 +109,12 @@ Hashing uses canonical JSON:
 
 `recordHash = sha256(canonicalJson(recordWithoutRecordHash))`.
 
-`bundleHash = sha256(canonicalJson({
-  bundleVersion,
-  bundleId,
-  producer,
-  workspace,
-  toolCatalog,
-  finalRecordHash,
-  redaction
-}))`.
+`bundleHash = sha256(canonicalJson(fullManifest - bundleHash))`.
+
+The hash covers all manifest fields except `bundleHash` itself (full manifest
+minus the `bundleHash` key). This is stronger than hashing a named subset:
+any additional manifest field (summary, workspaceSummary, records list) is
+also covered. Verifiers must omit only `bundleHash` before comparing.
 
 ## Redaction
 
@@ -195,6 +192,26 @@ type ProvenanceReview = {
 The V1 hub UI should make this explicit with an Approve / Finalize Record
 action. Tool execution can be agent-driven; record finalization is a human
 boundary.
+
+## Local Implementation Notes
+
+The current replay bundle keeps the existing `.datalox/replay-bundles/<id>`
+layout and adds the V1 contract fields to `manifest.json` and each record:
+
+- `bundleVersion: "1.0"`
+- producer metadata (`datalox-local-review`, molecule-biology package version,
+  and MCP schema version)
+- workspace digest
+- tool-catalog digest
+- per-record `previousRecordHash`, `recordHash`, `hashAlgorithm`, `calledAt`,
+  and `durationMs`
+- `finalRecordHash`
+- `bundleHash`
+- redaction policy metadata
+
+`verifyReplayBundle` checks record digests, the hash chain, the final record
+hash, bundle hash, and live tool-catalog digest. A future hub can replace the
+static review page without changing the bundle verification contract.
 
 ## Acceptance Criteria
 

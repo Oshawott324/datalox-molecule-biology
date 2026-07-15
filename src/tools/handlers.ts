@@ -28,15 +28,16 @@ import { renderPlasmidMap, type PlasmidMapCutSite } from "../core/render-map.js"
 import type { Feature, GuideRecord, Primer, Strand } from "../core/schema.js";
 import { readWorkspace, validateWorkspace } from "../core/workspace.js";
 import { deleteFeature, deletePrimer, upsertFeature, upsertGuide, upsertPrimer } from "../core/writes.js";
+import { buildVersionHandshake, PACKAGE_NAME } from "../core/version.js";
 import { openSequenceEditor } from "../ui/index.js";
 import { toolFailure, toolFailureFromError, toolSuccess, type ToolResultEnvelope } from "./envelope.js";
-
-const packageName = "@datalox/molecule-biology";
+import { moleculeToolDescriptors } from "./descriptors.js";
 
 const MAX_ORF_RESULTS = 200;
 const MAX_RESTRICTION_SITES = 200;
 
 export type ToolName =
+  | "get_version"
   | "doctor"
   | "open_sequence"
   | "open_workspace"
@@ -296,6 +297,7 @@ export type DoctorResult = {
 };
 
 export type ToolInputByName = {
+  get_version: Record<string, never>;
   doctor: Record<string, never>;
   open_sequence: OpenSequenceInput;
   open_workspace: WorkspaceInput;
@@ -330,6 +332,7 @@ export type ToolInputByName = {
 export type ToolHandler<TInput> = (input: TInput) => Promise<ToolResultEnvelope>;
 
 export const toolHandlers = {
+  get_version: handleGetVersion,
   doctor: handleDoctor,
   open_sequence: handleOpenSequence,
   open_workspace: handleOpenWorkspace,
@@ -368,9 +371,14 @@ export async function runToolHandler<TName extends ToolName>(
   return toolHandlers[tool](input as never);
 }
 
+export async function handleGetVersion(): Promise<ToolResultEnvelope> {
+  const availableTools = moleculeToolDescriptors.map((descriptor) => descriptor.name);
+  return toolSuccess("get_version", buildVersionHandshake(availableTools));
+}
+
 export async function handleDoctor(): Promise<ToolResultEnvelope> {
   const result: DoctorResult = {
-    package: packageName,
+    package: PACKAGE_NAME,
     runtime: {
       nodeVersion: process.version,
       platform: process.platform,

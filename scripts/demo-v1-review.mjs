@@ -3,6 +3,8 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const DEMO_TIMEOUT_MS = 120_000;
+const MAX_CHILD_OUTPUT_BYTES = 512_000;
 
 const demo = await runDiagnosticDigestDemo();
 const reviewDir = path.join(demo.workspaceDir, "reports", "review");
@@ -32,15 +34,40 @@ async function runDiagnosticDigestDemo() {
   });
   let stdout = "";
   let stderr = "";
+  let settled = false;
+  let outputLimitError;
   child.stdout.setEncoding("utf8");
   child.stderr.setEncoding("utf8");
+  const timeout = setTimeout(() => {
+    if (!settled) child.kill("SIGTERM");
+  }, DEMO_TIMEOUT_MS);
+  const appendBounded = (label, current, chunk) => {
+    const next = current + chunk;
+    if (Buffer.byteLength(next, "utf8") > MAX_CHILD_OUTPUT_BYTES) {
+      outputLimitError = new Error(`Diagnostic digest demo exceeded ${MAX_CHILD_OUTPUT_BYTES} byte ${label} limit.`);
+      child.kill("SIGTERM");
+      return current;
+    }
+    return next;
+  };
   child.stdout.on("data", (chunk) => {
-    stdout += chunk;
+    stdout = appendBounded("stdout", stdout, chunk);
   });
   child.stderr.on("data", (chunk) => {
-    stderr += chunk;
+    stderr = appendBounded("stderr", stderr, chunk);
   });
-  const exitCode = await new Promise((resolve) => child.on("close", resolve));
+  const exitCode = await new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", resolve);
+  }).finally(() => {
+    settled = true;
+    clearTimeout(timeout);
+  });
+  if (exitCode === null) {
+    if (outputLimitError) throw outputLimitError;
+    throw new Error(`Diagnostic digest demo was terminated after exceeding lifecycle limits: timeoutMs=${DEMO_TIMEOUT_MS}, maxOutputBytes=${MAX_CHILD_OUTPUT_BYTES}`);
+  }
+  if (outputLimitError) throw outputLimitError;
   if (exitCode !== 0) {
     throw new Error(`Diagnostic digest demo failed with exit code ${exitCode}: ${stderr || stdout}`);
   }

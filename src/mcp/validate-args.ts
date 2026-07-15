@@ -5,12 +5,11 @@
  * inputSchema before dispatch, so handlers only ever see structurally valid
  * input and can focus on domain validation.
  *
- * Supported keywords (the only ones the descriptors use): type
+ * Supported keywords (the only ones the descriptors may advertise): type
  * (object/array/string/integer/number/boolean), properties, required,
- * additionalProperties:false, enum, minimum, and array items. Anything the
- * descriptors do not use is intentionally not implemented; adding a new schema
- * shape to a descriptor that relies on an unsupported keyword should come with
- * matching support here and a test.
+ * additionalProperties:false, enum, minimum, array items, and description.
+ * Descriptor schemas are audited before the MCP server starts so unsupported
+ * keywords or unknown types fail loudly instead of being silently unenforced.
  */
 
 export type SchemaViolation = {
@@ -26,12 +25,59 @@ type JsonSchema = {
   enum?: unknown[];
   minimum?: number;
   items?: JsonSchema;
+  description?: string;
 };
+
+const supportedSchemaKeywords = new Set([
+  "type",
+  "properties",
+  "required",
+  "additionalProperties",
+  "enum",
+  "minimum",
+  "items",
+  "description",
+]);
+
+const supportedSchemaTypes = new Set(["object", "array", "string", "integer", "number", "boolean"]);
 
 export function validateAgainstSchema(value: unknown, schema: unknown, basePath = "arguments"): SchemaViolation[] {
   const violations: SchemaViolation[] = [];
   validateNode(value, schema as JsonSchema, basePath, violations);
   return violations;
+}
+
+export function assertSupportedInputSchema(schema: unknown, where = "inputSchema"): void {
+  assertSupportedSchemaNode(schema, where);
+}
+
+export function assertSupportedInputSchemas(descriptors: Array<{ name: string; inputSchema: unknown }>): void {
+  for (const descriptor of descriptors) {
+    assertSupportedInputSchema(descriptor.inputSchema, descriptor.name);
+  }
+}
+
+function assertSupportedSchemaNode(schema: unknown, where: string): void {
+  if (!isRecord(schema)) {
+    throw new Error(`${where}: input schema must be a JSON object`);
+  }
+  for (const key of Object.keys(schema)) {
+    if (!supportedSchemaKeywords.has(key)) {
+      throw new Error(`${where}: unsupported JSON Schema keyword '${key}'`);
+    }
+  }
+  if (schema.type !== undefined && (typeof schema.type !== "string" || !supportedSchemaTypes.has(schema.type))) {
+    throw new Error(`${where}: unsupported JSON Schema type '${String(schema.type)}'`);
+  }
+  if (schema.properties !== undefined) {
+    if (!isRecord(schema.properties)) throw new Error(`${where}: properties must be an object`);
+    for (const [property, childSchema] of Object.entries(schema.properties)) {
+      assertSupportedSchemaNode(childSchema, `${where}.${property}`);
+    }
+  }
+  if (schema.items !== undefined) {
+    assertSupportedSchemaNode(schema.items, `${where}[]`);
+  }
 }
 
 function validateNode(value: unknown, schema: JsonSchema, path: string, violations: SchemaViolation[]): void {
@@ -97,7 +143,7 @@ function matchesType(value: unknown, type: string): boolean {
     case "integer":
       return typeof value === "number" && Number.isInteger(value);
     default:
-      return true; // Unknown type keyword: do not block (descriptors never use one).
+      return false;
   }
 }
 

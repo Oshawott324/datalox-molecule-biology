@@ -48,11 +48,16 @@ Minimum V1 contract:
 ```ts
 type MolBioVersionHandshake = {
   packageName: "@datalox/molecule-biology";
-  packageVersion: string;
+  packageVersion: string;       // from package.json; drift caught by CI test
   protocol: "mcp-stdio";
   agentContractVersion: 1;
+  workspaceSchema: string;      // e.g. "datalox.molecule.workspace"
+  workspaceVersion: number;     // e.g. 1
+  provenanceBundleVersion: string; // e.g. "1.0"
   toolCount: number;
-  requiredTools: string[];
+  requiredTools: string[];      // D1 path tools the hub must verify before calling
+  availableTools: string[];     // all advertised tool names
+  caveats: string[];            // deferred scientific limits disclosed at connect time
 };
 ```
 
@@ -81,7 +86,11 @@ Current local demo status:
 
 - `scripts/demo-diagnostic-digest-mcp.mjs` uses real MCP stdio.
 - `npm run smoke:mcp` verifies the stdio boundary and tool count.
-- Full explicit hub handshake remains hub-side work.
+- `get_version` returns the V1 handshake (`packageVersion`, protocol,
+  agentContractVersion, workspace schema/version, provenance bundle version,
+  required tools, available tools, and scientific caveats).
+- `npm run smoke:mcp` calls `get_version` over a real stdio subprocess before
+  biology calls.
 
 ## HB2: Provenance Bundle Schema
 
@@ -116,6 +125,9 @@ Current local demo status:
 
 - `npm run demo:v1-review` renders replay status, record count, bundle path, and
   tool chain.
+- Replay manifests now include `bundleVersion`, producer metadata, workspace
+  digest, tool-catalog digest, hash-chain final record hash, bundle hash, and
+  redaction policy metadata from `docs/provenance-bundle-schema.md`.
 
 ## HB3: Hub Lifecycle and Transport Safety
 
@@ -147,7 +159,11 @@ Current local demo status:
 
 - `scripts/demo-diagnostic-digest-mcp.mjs` starts and closes a stdio MCP child.
 - MB3 removed `structuredContent` duplication and added a response ceiling.
-- Windows process-group cleanup remains final hub-side hardening.
+- `scripts/demo-v1-review.mjs` enforces a 120s child-process timeout and a
+  512000-byte stdout/stderr capture ceiling while running the local D1 review
+  path.
+- Windows process-group cleanup remains final hub-side hardening for the real
+  hub process manager.
 
 ## HB4: Review UI
 

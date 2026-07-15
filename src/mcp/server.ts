@@ -8,19 +8,20 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 
+import { PACKAGE_NAME, PACKAGE_VERSION } from "../core/version.js";
 import { moleculeToolDescriptors } from "../tools/descriptors.js";
 import { runToolHandler, toolFailure, type ToolName, type ToolResultEnvelope } from "../tools/index.js";
-import { validateAgainstSchema } from "./validate-args.js";
+import { assertSupportedInputSchemas, validateAgainstSchema } from "./validate-args.js";
 
-const packageName = "@datalox/molecule-biology";
 const toolNames = new Set<string>(moleculeToolDescriptors.map((tool) => tool.name));
 const toolSchemas = new Map(moleculeToolDescriptors.map((tool) => [tool.name, tool.inputSchema]));
 
 export function createMoleculeMcpServer(): Server {
+  assertSupportedInputSchemas(moleculeToolDescriptors);
   const server = new Server(
     {
-      name: packageName,
-      version: "0.1.0",
+      name: PACKAGE_NAME,
+      version: PACKAGE_VERSION,
     },
     {
       capabilities: {

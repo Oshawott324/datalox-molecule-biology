@@ -3,7 +3,14 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { MoleculeWorkspace } from "../core/schema.js";
+import {
+  MCP_SCHEMA_VERSION,
+  PACKAGE_VERSION,
+  PROVENANCE_BUNDLE_VERSION,
+  PROVENANCE_REDACTION_POLICY_VERSION,
+} from "../core/version.js";
 import { readWorkspace } from "../core/workspace.js";
+import { moleculeToolDescriptors } from "../tools/descriptors.js";
 import type { ToolInputByName, ToolName, ToolResultEnvelope } from "../tools/index.js";
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -13,6 +20,11 @@ export type ReplayToolRecord<TTool extends ToolName = ToolName> = {
   id: string;
   index: number;
   toolName: TTool;
+  previousRecordHash: string | null;
+  recordHash: string;
+  hashAlgorithm: "sha256";
+  calledAt: string;
+  durationMs: number;
   request: JsonValue;
   observation: JsonValue;
   requestDigest: string;
@@ -34,6 +46,7 @@ export type ReplayManifestRecord = {
 
 export type ReplayWorkspaceSummary = {
   workspacePath: string;
+  workspaceDigest: string;
   workspaceId: string;
   revision: number;
   moleculeCount: number;
@@ -47,10 +60,29 @@ export type ReplayWorkspaceSummary = {
 export type ReplayBundleManifest = {
   schema: "datalox.molecule.replay_bundle";
   version: 1;
+  bundleVersion: typeof PROVENANCE_BUNDLE_VERSION;
   bundleId: string;
   workspaceDir: string;
   workspaceSummary: ReplayWorkspaceSummary;
+  producer: {
+    hubName: "datalox-local-review";
+    hubVersion: typeof PACKAGE_VERSION;
+    mcpServerName: "molecule-biology";
+    mcpServerVersion: typeof PACKAGE_VERSION;
+    mcpSchemaVersion: typeof MCP_SCHEMA_VERSION;
+  };
+  toolCatalog: {
+    catalogDigest: string;
+    toolNames: string[];
+  };
   records: ReplayManifestRecord[];
+  finalRecordHash?: string;
+  bundleHash?: string;
+  redaction: {
+    policyVersion: typeof PROVENANCE_REDACTION_POLICY_VERSION;
+    redactedPatterns: string[];
+    redactionApplied: boolean;
+  };
   summary: {
     toolCount: number;
     tools: ToolName[];
@@ -91,16 +123,28 @@ export async function recordToolCall<TTool extends ToolName>(
   run: () => Promise<ToolResultEnvelope>,
 ): Promise<ToolResultEnvelope> {
   const request = toJsonValue(input, "request");
+  const calledAt = new Date().toISOString();
+  const startedAt = Date.now();
   const observation = toJsonValue(await run(), "observation");
+  const durationMs = Date.now() - startedAt;
   const index = recorder.records.length + 1;
-  const record: ReplayToolRecord<TTool> = {
+  const previousRecordHash = recorder.records[recorder.records.length - 1]?.recordHash ?? null;
+  const recordWithoutHash = {
     id: recordId(index, toolName),
     index,
     toolName,
+    previousRecordHash,
+    hashAlgorithm: "sha256" as const,
+    calledAt,
+    durationMs,
     request,
     observation,
     requestDigest: sha256Json(request),
     observationDigest: sha256Json(observation),
+  };
+  const record: ReplayToolRecord<TTool> = {
+    ...recordWithoutHash,
+    recordHash: sha256Json(toJsonValue(recordWithoutHash, "record")),
   };
   recorder.records.push(record);
   return observation as ToolResultEnvelope;
@@ -137,18 +181,49 @@ export async function packReplayBundle(
   }
 
   const workspaceSummary = summarizeWorkspace(workspacePath, workspace);
-  const manifest: ReplayBundleManifest = {
+  const finalRecordHash = manifestRecords.length > 0
+    ? recorder.records[recorder.records.length - 1]?.recordHash
+    : undefined;
+  const manifestWithoutBundleHash: ReplayBundleManifest = {
     schema: "datalox.molecule.replay_bundle",
     version: 1,
+    bundleVersion: PROVENANCE_BUNDLE_VERSION,
     bundleId,
     workspaceDir,
     workspaceSummary,
+    producer: {
+      hubName: "datalox-local-review",
+      hubVersion: PACKAGE_VERSION,
+      mcpServerName: "molecule-biology",
+      mcpServerVersion: PACKAGE_VERSION,
+      mcpSchemaVersion: MCP_SCHEMA_VERSION,
+    },
+    toolCatalog: currentToolCatalog(),
     records: manifestRecords,
+    ...(finalRecordHash ? { finalRecordHash } : {}),
+    redaction: {
+      policyVersion: PROVENANCE_REDACTION_POLICY_VERSION,
+      redactedPatterns: [
+        "apiKey",
+        "api_key",
+        "token",
+        "secret",
+        "password",
+        "bearer",
+        "absolute_host_paths",
+        "workspacePath",
+      ],
+      redactionApplied: true,
+    },
     summary: {
       toolCount: manifestRecords.length,
       tools: manifestRecords.map((record) => record.toolName),
       finalRevision: workspaceSummary.revision,
     },
+  };
+  const manifest: ReplayBundleManifest = {
+    ...manifestWithoutBundleHash,
+    bundleHash: bundleHashForManifest(manifestWithoutBundleHash),
   };
   await writeJsonFile(manifestPath, manifest);
 
@@ -175,19 +250,38 @@ export async function verifyReplayBundle(bundlePath: string): Promise<VerifyRepl
 
   if (manifest.schema !== "datalox.molecule.replay_bundle") issues.push("manifest schema is invalid");
   if (manifest.version !== 1) issues.push("manifest version is invalid");
+  if (manifest.bundleVersion !== PROVENANCE_BUNDLE_VERSION) issues.push("manifest bundleVersion is invalid");
+  if (manifest.producer?.mcpServerName !== "molecule-biology") issues.push("manifest producer mcpServerName is invalid");
+  if (manifest.producer?.mcpServerVersion !== PACKAGE_VERSION) issues.push("manifest producer mcpServerVersion does not match this package");
+  if (manifest.toolCatalog?.catalogDigest !== currentToolCatalog().catalogDigest) {
+    issues.push("manifest toolCatalog digest does not match live descriptors");
+  }
+  if (manifest.bundleHash !== bundleHashForManifest({ ...manifest, bundleHash: undefined })) {
+    issues.push("manifest bundleHash does not match manifest metadata");
+  }
   if (!Array.isArray(manifest.records)) issues.push("manifest records must be an array");
 
   const records = Array.isArray(manifest.records) ? manifest.records : [];
   verifyManifestSummary(manifest, records, issues);
+  let previousRecordHash: string | null = null;
+  let finalRecordHash: string | undefined;
   for (const manifestRecord of records) {
     const recordPath = resolveBundleRecordPath(resolvedBundlePath, manifestRecord, issues);
     if (recordPath === undefined) continue;
     try {
       const record = JSON.parse(await fs.readFile(recordPath, "utf8")) as ReplayToolRecord;
       verifyRecordAgainstManifest(record, manifestRecord, issues);
+      if (record.previousRecordHash !== previousRecordHash) {
+        issues.push(`${manifestRecord.id}: previousRecordHash does not match prior record`);
+      }
+      previousRecordHash = record.recordHash;
+      finalRecordHash = record.recordHash;
     } catch (error) {
       issues.push(`${manifestRecord.id}: record could not be read: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+  if (records.length > 0 && manifest.finalRecordHash !== finalRecordHash) {
+    issues.push("manifest finalRecordHash does not match the last record");
   }
 
   return {
@@ -246,6 +340,9 @@ function verifyRecordAgainstManifest(record: ReplayToolRecord, manifestRecord: R
   if (record.observationDigest !== observationDigest) issues.push(`${manifestRecord.id}: observation digest does not match record observation`);
   if (manifestRecord.requestDigest !== requestDigest) issues.push(`${manifestRecord.id}: request digest does not match manifest`);
   if (manifestRecord.observationDigest !== observationDigest) issues.push(`${manifestRecord.id}: observation digest does not match manifest`);
+
+  const recordHash = sha256Json(toJsonValue({ ...record, recordHash: undefined }, `${manifestRecord.id}.record`));
+  if (record.recordHash !== recordHash) issues.push(`${manifestRecord.id}: record hash does not match record contents`);
 }
 
 function verifyManifestSummary(
@@ -280,6 +377,8 @@ function verifyManifestSummary(
   if (manifest.summary.finalRevision !== manifest.workspaceSummary.revision) {
     issues.push("manifest summary finalRevision does not match workspace summary revision");
   }
+  if (records.length === 0 && manifest.finalRecordHash !== undefined) issues.push("manifest finalRecordHash must be absent when there are no records");
+  if (records.length > 0 && manifest.finalRecordHash === undefined) issues.push("manifest finalRecordHash is missing");
 }
 
 function resolveBundleRecordPath(
@@ -309,6 +408,7 @@ function resolveBundleRecordPath(
 function summarizeWorkspace(workspacePath: string, workspace: MoleculeWorkspace): ReplayWorkspaceSummary {
   return {
     workspacePath,
+    workspaceDigest: sha256Json(toJsonValue(workspace, "workspace")),
     workspaceId: workspace.workspaceId,
     revision: workspace.revision,
     moleculeCount: workspace.molecules.length,
@@ -318,6 +418,19 @@ function summarizeWorkspace(workspacePath: string, workspace: MoleculeWorkspace)
     featureIds: workspace.features.map((feature) => feature.id),
     primerIds: workspace.primers.map((primer) => primer.id),
   };
+}
+
+function currentToolCatalog(): { catalogDigest: string; toolNames: string[] } {
+  const toolNames = moleculeToolDescriptors.map((descriptor) => descriptor.name);
+  return {
+    catalogDigest: sha256Json(toJsonValue(moleculeToolDescriptors, "toolCatalog")),
+    toolNames,
+  };
+}
+
+function bundleHashForManifest(manifest: ReplayBundleManifest): string {
+  const { bundleHash: _bundleHash, ...hashable } = manifest;
+  return sha256Json(toJsonValue(hashable, "manifest"));
 }
 
 function defaultBundleId(recorder: ReplayRecorder, workspace: MoleculeWorkspace): string {

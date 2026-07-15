@@ -9,6 +9,7 @@ export {
   handleExportGrnaReport,
   handleFindOrfs,
   handleFindRestrictionSites,
+  handleGetVersion,
   handleRenderDigestGel,
   handleRenderPlasmidMap,
   handleSimulateAssembly,

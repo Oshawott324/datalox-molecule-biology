@@ -7,6 +7,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors } from "../src/index.js";
+import { PACKAGE_VERSION, REQUIRED_V1_TOOLS } from "../src/core/version.js";
+import { assertSupportedInputSchema } from "../src/mcp/validate-args.js";
 import { toolFailure } from "../src/tools/envelope.js";
 
 async function tempDir(prefix: string): Promise<string> {
@@ -27,6 +29,7 @@ describe("MCP server", () => {
     const tools = await client.listTools();
 
     expect(tools.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
+      "get_version",
       "open_sequence",
       "get_sequence_context",
       "upsert_feature",
@@ -35,6 +38,35 @@ describe("MCP server", () => {
       "export_grna_report",
       "validate_workspace",
     ]));
+  });
+
+  it("returns a real version handshake for hub startup checks", async () => {
+    const { client } = await connectedClient();
+    const version = envelope(await client.callTool({ name: "get_version", arguments: {} }));
+
+    expect(version).toMatchObject({
+      ok: true,
+      tool: "get_version",
+      data: {
+        packageName: "@datalox/molecule-biology",
+        packageVersion: "0.1.0",
+        protocol: "mcp-stdio",
+        agentContractVersion: 1,
+        workspaceSchema: "datalox.molecule.workspace",
+        workspaceVersion: 1,
+        provenanceBundleVersion: "1.0",
+      },
+    });
+    const data = version.data as { requiredTools?: string[]; availableTools?: string[]; toolCount?: number; caveats?: string[] };
+    expect(data.requiredTools).toEqual([...REQUIRED_V1_TOOLS]);
+    expect(data.availableTools).toEqual(moleculeToolDescriptors.map((descriptor) => descriptor.name));
+    expect(data.toolCount).toBe(moleculeToolDescriptors.length);
+    expect(data.caveats?.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the handshake package version synchronized with package.json", async () => {
+    const packageJson = JSON.parse(await fs.readFile(path.resolve("package.json"), "utf8")) as { version?: string };
+    expect(PACKAGE_VERSION).toBe(packageJson.version);
   });
 
   it("runs the core open, context, write, validate loop through MCP", async () => {
@@ -299,6 +331,24 @@ describe("MCP server", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("fails loudly when a descriptor schema uses an unsupported type or keyword", () => {
+    expect(() => assertSupportedInputSchema({
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        sequence: { type: "string", pattern: "^[ACGT]+$" },
+      },
+    }, "bad_tool")).toThrow("unsupported JSON Schema keyword 'pattern'");
+
+    expect(() => assertSupportedInputSchema({
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        sequence: { type: "text" },
+      },
+    }, "bad_tool")).toThrow("unsupported JSON Schema type 'text'");
+  });
+
   it("enforces every advertised required field at the schema gate, not the handler", async () => {
     // For each tool that advertises required fields, empty arguments must be rejected
     // by the schema gate (SCHEMA_VALIDATION_ERROR) before any handler runs. This locks
@@ -345,9 +395,6 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 function envelope(result: unknown): Record<string, unknown> {
   if (!isRecord(result)) throw new Error("MCP result was not an object");
-  if (isRecord(result.structuredContent)) {
-    return result.structuredContent;
-  }
   const content = Array.isArray(result.content) ? result.content : [];
   const text = content.find((entry): entry is { type: "text"; text: string } => (
     isRecord(entry) && entry.type === "text" && typeof entry.text === "string"

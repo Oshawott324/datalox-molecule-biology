@@ -38,12 +38,15 @@ This is the demo. Everything else is deferred until this path is trustworthy.
 | MB4 | No absolute path leaks in agent-visible errors | User | **done** (adb4d2c) | see below |
 | MB5 | Confine import paths to workspace (arbitrary file read) | User | **done** (4351df0) | see below |
 | MB6 | Workspace write transactionality (TOCTOU) | User | **done** (7b27f5f) | see below |
-| HB1 | Contract/version handshake between hub and mol-bio | User (spec) | **specified** | `docs/hub-mol-bio-contract.md` |
-| HB2 | Provenance bundle with tool/schema versions | User (spec) | **specified** | `docs/provenance-bundle-schema.md`, `docs/hub-mol-bio-contract.md` |
-| HB3 | Hub launches mol-bio and tears it down cleanly | Hub side | **specified** | `docs/hub-mol-bio-contract.md` |
+| HB1 | Contract/version handshake between hub and mol-bio | User | **implemented locally** | `get_version`, `docs/hub-mol-bio-contract.md` |
+| HB2 | Provenance bundle with tool/schema versions | User | **implemented locally** | `docs/provenance-bundle-schema.md`, `docs/hub-mol-bio-contract.md` |
+| HB3 | Hub launches mol-bio and tears it down cleanly | User / Hub side | **minimal path hardened** | `docs/hub-mol-bio-contract.md`, `npm run demo:v1-review` |
 | HB4 | UI shows artifact + provenance + final review | Hub side | **minimal path implemented** | `npm run demo:v1-review` |
 
 MB1-MB6 are mol-bio MCP changes. HB1-HB4 are integration/hub-side changes.
+HB1-HB3 now have local enforcement in this repo for the V1 demo path; a future
+hub can replace the static review page while preserving the same handshake,
+provenance, lifecycle, and review contracts.
 
 MB5 and MB6 were added by the 2026-07-07 blindspot audit (see Review
 Cross-Check below). MB1+MB2 are that audit's single top-ranked mol-bio finding

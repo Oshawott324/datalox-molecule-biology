@@ -17,6 +17,17 @@ export type {
 
 export { WORKSPACE_SCHEMA, WORKSPACE_VERSION } from "./core/schema.js";
 export {
+  AGENT_CONTRACT_VERSION,
+  DEFERRED_SCIENTIFIC_CAVEATS,
+  MCP_PROTOCOL,
+  PACKAGE_NAME,
+  PACKAGE_VERSION,
+  PROVENANCE_BUNDLE_VERSION,
+  REQUIRED_V1_TOOLS,
+  buildVersionHandshake,
+} from "./core/version.js";
+export type { MolBioVersionHandshake } from "./core/version.js";
+export {
   validateWorkspace,
   validateWorkspaceOrThrow,
   readWorkspace,
@@ -156,6 +167,7 @@ export {
   handleExportGrnaReport,
   handleFindOrfs,
   handleFindRestrictionSites,
+  handleGetVersion,
   handleRenderDigestGel,
   handleRenderPlasmidMap,
   handleSimulateAssembly,

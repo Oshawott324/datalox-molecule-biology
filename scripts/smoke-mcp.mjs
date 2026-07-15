@@ -23,6 +23,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
+  assertTool(tools, "get_version");
   assertTool(tools, "open_sequence");
   assertTool(tools, "get_sequence_context");
   assertTool(tools, "reverse_complement");
@@ -33,6 +34,16 @@ try {
   assertTool(tools, "design_grnas");
   assertTool(tools, "upsert_grna");
   assertTool(tools, "export_grna_report");
+
+  const version = envelope(await client.callTool({
+    name: "get_version",
+    arguments: {},
+  }));
+  assertEqual(version.ok, true, "get_version ok");
+  assertEqual(version.data?.protocol, "mcp-stdio", "get_version protocol");
+  assertEqual(version.data?.toolCount, tools.tools.length, "get_version toolCount");
+  for (const requiredTool of version.data?.requiredTools ?? []) assertTool(tools, requiredTool);
+  assertAgentContract(version, "get_version");
 
   const reverse = envelope(await client.callTool({
     name: "reverse_complement",
@@ -86,6 +97,7 @@ try {
     workspacePath: open.workspacePath,
     checks: [
       "tools/list",
+      "get_version",
       "reverse_complement",
       "open_sequence",
       "get_sequence_context",
@@ -99,11 +111,10 @@ try {
 }
 
 function envelope(result) {
-  if (isRecord(result.structuredContent)) return result.structuredContent;
   const text = Array.isArray(result.content)
     ? result.content.find((entry) => isRecord(entry) && entry.type === "text" && typeof entry.text === "string")?.text
     : undefined;
-  if (text === undefined) throw new Error("MCP result did not include a structured or text envelope");
+  if (text === undefined) throw new Error("MCP result did not include a text envelope");
   return JSON.parse(text);
 }
 

@@ -27,6 +27,15 @@ const moleculeProperties = {
 
 export const moleculeToolDescriptors = [
   {
+    name: "get_version",
+    description: "Return the MCP package, protocol, tool-surface, workspace-schema, provenance-schema, and caveat contract for hub handshakes.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+    },
+  },
+  {
     name: "open_sequence",
     description: "Import a FASTA or GenBank sequence file into a molecule workspace.",
     inputSchema: {
@@ -321,7 +330,7 @@ export const moleculeToolDescriptors = [
       properties: {
         workspacePath: workspaceProperties.workspacePath,
         workspaceDir: workspaceProperties.workspaceDir,
-      guideIds: { type: "array", items: { type: "string" } },
+        guideIds: { type: "array", items: { type: "string" } },
         outputPath: { type: "string" },
       },
     },
