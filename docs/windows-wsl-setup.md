@@ -205,8 +205,9 @@ cd ~/datalox-molecule-biology
 codex
 ```
 
-Type `/mcp` inside Codex to verify the server is connected and lists the 24
-tools. Look for `design_primers` and `design_grnas` in the tool list.
+Type `/mcp` inside Codex to verify the server is connected and lists its tools.
+Look for `design_primers` and `design_grnas` in the tool list. Do not rely on a
+fixed tool count; the set changes as tracks land.
 
 ### Step 4 — Test with an example prompt
 

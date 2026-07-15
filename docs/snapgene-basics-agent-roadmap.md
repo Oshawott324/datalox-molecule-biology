@@ -563,7 +563,7 @@ Gate: proposed feature list and evidence shown before workspace write
 
 - Mid-session GUI wizard confirmation dialogs
 - Per-tool approval clicks (SnapGene-style)
-- Multi-user approval and co-authorship (Benchling registry) — W-series
+- Multi-user approval and collaborative registry workflows - W-series
 - Synthesis ordering approval gate — W5; pre-design `await_human_review` as a
   `nextAction` type now so it slots cleanly into the envelope contract when
   ordering lands

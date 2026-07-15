@@ -397,20 +397,22 @@ off-target and should not appear in the result.
 
 ## CR1.1-CR1.4: Guide Persistence, Visualization, And Reports
 
-Status: planned.
+Status: **shipped** (except PAM expansion, still gated). The full CR1 agent loop
+is complete: guide candidates persist to the workspace and render on artifacts.
 
-CR1 is currently read-only: it returns guide candidates but does not persist a
-chosen guide into the workspace. The next CR1 work should make the agent loop
-complete while keeping guide efficacy scoring out of scope.
+Delivered:
 
-Implementation order:
+1. `rankingEvidence` on each `GuideCandidate`. — done
+2. `design_grnas.nextAction`. — done
+3. `upsert_grna`. — done (registered tool)
+4. Persisted guides render on map and sequence-region artifacts. — done
+   (guide rendering present in `src/core/render-map.ts`)
+5. `export_grna_report`. — done (registered tool)
+6. PAM expansion beyond SpCas9 NGG. — **still gated** as a later scoped task;
+   this is the CR-series equivalent of the CR2 scoring gate.
 
-1. Add `rankingEvidence` to each `GuideCandidate`.
-2. Add `design_grnas.nextAction`.
-3. Add `upsert_grna`.
-4. Render persisted guides on map and sequence-region artifacts.
-5. Add `export_grna_report`.
-6. Gate PAM expansion as a later scoped task.
+Efficacy scoring (Azimuth/Doench, CR2) remains out of scope here — see
+`docs/crispr-scoring-validation.md`.
 
 ### CR1.1 Ranking Evidence
 

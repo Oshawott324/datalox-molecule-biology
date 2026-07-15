@@ -1,5 +1,11 @@
 # Biology Tracks Roadmap (2026-07)
 
+> **Status note (2026-07-15):** M1 `validate_mrna_construct` and X1
+> `export_protein_fasta` have shipped since this document was written; their
+> per-section statuses below are updated to reflect that. B1/B2 remain planned,
+> M2/CR2 remain gated. Cross-track current status and sequencing are owned by
+> `docs/roadmap-index-2026-07.md`.
+
 This document adds three tracks to the existing W/CR roadmap in
 `docs/snapgene-basics-agent-roadmap.md`. The motivation is feedback from a
 traditional wet-lab mRNA engineer whose workflow is:
@@ -118,7 +124,7 @@ rules.
 
 ### M1: `validate_mrna_construct`
 
-Status: **planned**.
+Status: **shipped** (`b83e71d`, edge cases hardened in `5cd13dd`).
 
 Validates that a molecule's workspace features contain the required mRNA
 elements in the correct 5'->3' order and that each element passes biological
@@ -171,18 +177,20 @@ MCP to external structure tools.
 
 ### X1: `translate_region` -> `export_protein_fasta`
 
-The near-term bridge is already half-built:
+Status: **shipped** (`b83e71d`, edge cases hardened in `5cd13dd`). The bridge is
+complete on the molecule-biology side:
 
 ```text
-translate_region (exists)
--> export_protein_fasta (add M1 cycle or separately)
+translate_region (shipped)
+-> export_protein_fasta (shipped)
 -> AlphaFold3 / ESMFold (external, agent submits sequence)
 -> PyMOL (external, agent loads structure file)
 ```
 
 `export_protein_fasta` writes the protein sequence to an artifact file that the
 agent can pass to an external structure prediction service. It is a thin wrapper
-over `translate_region` output.
+over `translate_region` output. The remaining X-series work is entirely external
+(AlphaFold/PyMOL) and lives in the protein MCP, not this repository.
 
 The protein MCP (separate repository in the Research Tools folder) is the
 integration point for structured PyMOL annotations, domain labeling, and pocket
@@ -213,18 +221,19 @@ artifacts exist.
 
 ## Priority Order
 
-Given current state and the wet-lab feedback:
+Done since this list was written: M1 `validate_mrna_construct` and X1
+`export_protein_fasta` are shipped. The remaining B/M/CR order is:
 
 ```text
-1. B1 blast_sequence — spec first, then implement
-2. M1 validate_mrna_construct — spec first, no schema changes needed beyond features
-3. B2 validate_primer_specificity — depends on B1
-4. X1 export_protein_fasta — thin add, low effort
-5. UI: mRNA element colors and BLAST hit table rendering
-6. M2 codon optimization — gated, wait for customer pull
-7. CR2 Azimuth scoring — gated, wait for coefficient/license/fixture validation
+1. B1 blast_sequence — spec first (blast-validation-spec.md), then implement
+2. B2 validate_primer_specificity — depends on B1
+3. UI: mRNA element colors and BLAST hit table rendering
+4. M2 codon optimization — gated, wait for customer pull
+5. CR2 Azimuth scoring — gated, wait for coefficient/license/fixture validation
 ```
 
+For where these sit against the non-B/M tracks (`edit_sequence`, eval corpus,
+cloning), see the cross-track sequencing in `docs/roadmap-index-2026-07.md`.
 CR2 does not move up unless a CRISPR-focused customer explicitly asks for
 validated efficacy scoring.
 
@@ -233,14 +242,14 @@ validated efficacy scoring.
 Extending `docs/snapgene-basics-agent-roadmap.md` Roadmap Not For This Demo
 table:
 
-| ID | Feature | Trigger |
+| ID | Feature | Status / Trigger |
 |---|---|---|
+| M1 | `validate_mrna_construct` construct integrity | **Shipped** (`b83e71d`) |
+| X1 | `export_protein_fasta` for structure handoff | **Shipped** (`b83e71d`) |
 | W4 | Sanger alignment with AB1/chromatogram | Sequencing confirmation workflow |
 | W5 | IDT/Twist synthesis export | Design-to-order pipeline |
 | W6 | Full Gibson / Golden Gate / Gateway workflows | Specific customer demo |
-| CR2 | Validated CRISPR on-target scoring | Coefficient, license, fixture pins all done |
-| B1 | `blast_sequence` general homology search | NCBI BLAST spec complete and API async pattern pinned |
-| B2 | `validate_primer_specificity` primer off-target | B1 complete |
-| M1 | `validate_mrna_construct` construct integrity | mRNA customer or demo need |
-| M2 | `optimize_codon_usage` | Customer pull, codon table source confirmed |
-| X1 | `export_protein_fasta` for structure handoff | M1 or B-series cycle |
+| CR2 | Validated CRISPR on-target scoring | Gated: coefficient, license, fixture pins all done |
+| B1 | `blast_sequence` general homology search | Planned: NCBI BLAST spec complete and API async pattern pinned |
+| B2 | `validate_primer_specificity` primer off-target | Planned: B1 complete |
+| M2 | `optimize_codon_usage` | Gated: customer pull, codon table source confirmed |

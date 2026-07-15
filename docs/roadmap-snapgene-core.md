@@ -1,8 +1,12 @@
 # SnapGene-Core Roadmap
 
-**Begins after V1 trustworthy vertical ships (MB6 + HB1-HB4).**
+**Status (2026-07-15): V1 hardening is committed on the feature branch but not
+yet merged to `main`. Treat this post-V1 scope as staged, not shipped, until the
+HB1/V1 changes land on `main`.** Current status and cross-track sequencing live
+in `docs/roadmap-index-2026-07.md` (single source of truth). This document
+remains the detailed scope for the SnapGene-core items below.
 
-This roadmap is intentionally narrow. Current implementation priority remains `docs/v1-trustworthy-vertical.md`: close the trustworthy demo spine before adding breadth. This document lists the post-V1 SnapGene-core work only.
+This roadmap is intentionally narrow. It lists the post-V1 SnapGene-core work only.
 
 For commercial-tool connectors and cross-product strategy, see `06-COMMERCIAL-MOLBIO-MCP-PLAN.md` in the `datalox-review-2026-07` research folder (not in this repo).
 
@@ -13,10 +17,13 @@ For commercial-tool connectors and cross-product strategy, see `06-COMMERCIAL-MO
    - Requires `expectedRevision`.
    - Returns new revision, diff summary, and affected features.
 
-2. `simulate_restriction_ligation`
-   - Use enzyme cut models and compatible-end rules from `simulate_assembly`.
-   - Produce candidate product sequence, junction report, and regenerated-site evidence.
-   - This is the Phase 1 demo revision path with `edit_sequence`: open pUC19 -> simulate EcoRI/BamHI digest -> insert payload -> verify diagnostic sites -> render gel/map artifacts.
+2. `simulate_assembly` (restriction-ligation) — **shipped**.
+   - Enzyme cut models and compatible-end rules are implemented.
+   - Produces candidate product sequence and junction report.
+   - Remaining gap: pairing with `edit_sequence` for the full Phase 1 demo
+     revision path: open pUC19 -> simulate EcoRI/BamHI digest -> insert payload
+     -> verify diagnostic sites -> render gel/map artifacts. That loop is blocked
+     only on `edit_sequence` (section 1), not on the assembly simulation itself.
 
 3. `simulate_gibson`
    - Homology overlap validation.
