@@ -1,8 +1,7 @@
 # SnapGene-Core Roadmap
 
-**Status (2026-07-15): V1 hardening is committed on the feature branch but not
-yet merged to `main`. Treat this post-V1 scope as staged, not shipped, until the
-HB1/V1 changes land on `main`.** Current status and cross-track sequencing live
+**Status (2026-07-15): V1 hardening is shipped on `main` (`e3f6050`,
+`6b1225d`).** Current status and cross-track sequencing live
 in `docs/roadmap-index-2026-07.md` (single source of truth). This document
 remains the detailed scope for the SnapGene-core items below.
 

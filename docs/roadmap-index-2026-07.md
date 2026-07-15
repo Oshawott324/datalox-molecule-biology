@@ -5,20 +5,17 @@ This supersedes the status fields in `2026-07-biology-tracks-roadmap.md` and
 `roadmap-snapgene-core.md`, which are stale. Those two documents remain the
 detailed track specs; this document owns current status and sequencing.
 
-Verification basis: `src/tools/descriptors.ts` on this feature branch after
-commit `e3f6050`, which has 29 registered tools including the HB1 `get_version`
-handshake. `origin/main` currently has 28 tools and does not contain
-`get_version` until this branch is pushed and merged.
+Verification basis: `src/tools/descriptors.ts` on `main` after commit
+`e3f6050`, which has 29 registered tools including the HB1 `get_version`
+handshake.
 
 ## 1. Shipped
 
-Two readiness levels are tracked separately because they differ right now:
+V1 hardening and roadmap status are shipped on `main`:
 
-- On `origin/main` (pushed): 28 tools, listed below minus `get_version`.
-- On this feature branch (committed locally, not yet merged to main): 29 tools
-  including `get_version`, plus the V1 transaction-lock and review-path changes.
-
-Do not describe the working-tree state as "shipped" until it is pushed to main.
+- `e3f6050` implements the MCP handshake, schema-gate hardening, provenance
+  bundle metadata, and V1 review-runner lifecycle limits.
+- `6b1225d` updates roadmap status and sequencing.
 
 29 MCP tools are registered and dispatched generically. Grouped by track:
 
