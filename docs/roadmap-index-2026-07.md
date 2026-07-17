@@ -50,7 +50,7 @@ against safely. Do not start coding an item that only has a track doc.
 |---|---|---|---|
 | BLAST | B1 `blast_sequence` | Impl spec (`blast-validation-spec.md`) | Live NCBI RID/poll/result saved as fixture first |
 | BLAST | B2 `validate_primer_specificity` | Impl spec (`blast-validation-spec.md`) | B1 shipped |
-| Edit loop | `edit_sequence` | Impl spec in this index (section 5) | Ready after V1 push |
+| Edit loop | `edit_sequence` | Impl spec in this index (section 5) | Ready to build (V1 shipped on `main`) |
 | Cloning | `simulate_gibson` | Track doc only (`roadmap-snapgene-core.md` s3) -- impl spec needed | Customer/demo pull |
 | Cloning | `simulate_golden_gate` (Type IIS) | Track doc only (`roadmap-snapgene-core.md` s4) -- impl spec needed | Customer/demo pull |
 | Annotation | `find_known_features` + curated library | No doc | Needs curated feature-library source decision |
@@ -141,6 +141,12 @@ This is the missing contract for the recommended next build. It elevates the
 Mutate a molecule's nucleotide sequence in one revision-safe transaction and
 report the exact effect on the sequence and on every annotated feature.
 
+The sequence is stored in a separate file at `molecule.path`, not inside the
+workspace JSON. `edit_sequence` therefore touches two artifacts: the stored
+sequence file and the workspace record. Because there is no cross-file atomic
+commit available, it must NOT overwrite the existing sequence file in place. See
+"Two-artifact write model" below.
+
 ### Input
 
 ```text
@@ -156,7 +162,9 @@ sequence:          string  (required for insert/replace/mutate; the new bases; u
 Semantics per operation:
 
 - insert: splice `sequence` immediately before `start`. Length grows by
-  `sequence.length`.
+  `sequence.length`. `start` may equal `length + 1` to append bases at the 3'
+  end of a linear molecule; this is the only clean append path, so it is
+  explicitly allowed.
 - delete: remove bases `start..end` inclusive. Length shrinks.
 - replace: remove `start..end`, splice `sequence` in its place. Length delta =
   `sequence.length - (end - start + 1)`.
@@ -177,31 +185,54 @@ diffSummary:       string  (human-free, agent-facing: e.g. "replace 396..401 (6 
 featureImpact:     FeatureImpact[]
 ```
 
-`FeatureImpact` per affected feature:
+`featureImpact` contains one entry for EVERY feature on the molecule, including
+those with `impact: "unaffected"`. Omitting unaffected features would leave the
+agent unable to tell "unaffected" from "not evaluated", so the report is always
+complete.
+
+Features can be multi-segment (e.g. pUC19 `lacZalpha` is
+`join(238..395,455..682)`). A single `{start,end,strand}` before/after would lose
+segment structure, so the authoritative fields are segment lists:
 
 ```text
-featureId:   string
-name:        string
-impact:      "unaffected" | "shifted" | "resized" | "truncated" | "split" | "deleted" | "frame_shifted"
-before:      { start, end, strand }
-after:       { start, end, strand } | null   (null when deleted)
-notes:       string   (e.g. "CDS length no longer divisible by 3")
+featureId:      string
+name:           string
+impact:         "unaffected" | "shifted" | "resized" | "truncated" | "split" | "deleted"
+frameShifted?:  boolean  (optional; additive -- a CDS can be shifted/resized/truncated AND frame-shifted)
+beforeSegments: CoordinateSegment[]                 (CoordinateSegment = { start, end, strand })
+afterSegments:  CoordinateSegment[] | null          (null when the whole feature is deleted)
+boundingSpan:   { start, end } | null               (optional convenience: min start / max end of afterSegments)
+notes:          string[]                            (e.g. ["CDS length no longer divisible by 3"])
 ```
 
-Coordinate remap rules (deterministic, no heuristics):
+`impact` and `frameShifted` are two independent dimensions: `impact` describes
+what happened to the feature's span, `frameShifted` describes reading-frame
+integrity for CDS features. Do not collapse them into one enum. `beforeSegments`
+/ `afterSegments` are the source of truth; `boundingSpan` is a convenience for
+quick agent reading only, never used for coordinate math.
 
-- A feature entirely downstream of the edit is `shifted` by `delta`.
-- A feature entirely upstream is `unaffected`.
-- An edit strictly inside a feature span resizes it by `delta` (`resized`); if
-  the edit deletes the feature's start or end boundary it is `truncated`.
-- A delete/replace that removes the whole feature span marks it `deleted`
-  (after = null).
-- An insert inside a feature that would break it into two disjoint spans is NOT
-  auto-split; return `impact: "split"` with `after` = the merged enclosing span
-  and a note. Do not fabricate two features silently.
-- For CDS features, additionally compute `frame_shifted` when `delta % 3 != 0`
-  and the edit is at or upstream of the CDS -- surface it in `notes`, do not
-  correct it.
+Coordinate remap rules (deterministic, no heuristics; applied per segment, then
+aggregated to one `impact` per feature):
+
+- A segment entirely downstream of the edit is `shifted` by `delta`.
+- A segment entirely upstream is `unaffected`.
+- An edit strictly inside a segment resizes it by `delta` (`resized`); if the
+  edit deletes the segment's start or end boundary it is `truncated`.
+- A delete/replace that removes a whole segment drops it; if all of a feature's
+  segments are removed the feature is `deleted`: the report shows
+  `afterSegments: null`, and the feature record is REMOVED from
+  `workspace.features`. It cannot remain with an empty segment array, because
+  `validate_workspace` requires every feature to have a non-empty segment array
+  (`workspace.ts`: "Feature segments must be a non-empty array"). Reporting
+  `deleted` and dropping the record are the same event described two ways.
+- An insert inside a single segment that would break it into two disjoint spans
+  is NOT auto-split; return `impact: "split"` with `afterSegments` = the merged
+  enclosing span and a note. Do not fabricate two segments or two features
+  silently.
+- For CDS features, additionally set `frameShifted: true` when `delta % 3 != 0`
+  and the edit is at or upstream of the CDS. This is independent of the primary
+  `impact` (a CDS can be e.g. `shifted` and frame-shifted at once). Add a note;
+  do not correct it.
 
 ### Errors (structured, agent-facing)
 
@@ -212,10 +243,60 @@ Coordinate remap rules (deterministic, no heuristics):
   bases.
 - `MOLECULE_NOT_FOUND`.
 
+### Two-artifact write model (write-new, never in-place)
+
+There is no cross-file atomic commit spanning the sequence file and the
+workspace JSON. In-place overwrite is unsafe in both orders: overwrite-file-first
+leaves the old workspace pointing at changed bytes if the JSON write fails;
+write-JSON-first fails digest validation because the file has not changed yet.
+
+Therefore, inside the `writeWorkspaceTransaction` transform:
+
+1. Serialize the edited sequence to a NEW stored file under the workspace data
+   directory `data/sequences/` (the same directory `import.ts` writes to). Note
+   `import.ts`'s `dataDir` const and `uniqueFileName` are currently private to
+   that module, so extract a shared storage helper (e.g. `sequence-storage.ts`)
+   rather than duplicating the path logic, and have both `import.ts` and
+   `edit_sequence` call it. A content-addressed name such as
+   `<moleculeId>.<digest>.fa` / `.gb` is fine.
+2. Point `molecule.path` at that new workspace-relative file.
+3. Update `molecule.length` and `molecule.sequenceDigest` (via `sequenceDigest`
+   from `sequence.ts`).
+4. Replace the molecule's features with the remapped draft features. Features
+   whose segments were all removed are dropped entirely (not kept with empty
+   segments).
+5. Commit the workspace JSON transaction.
+6. Leave the OLD sequence file untouched.
+
+If the JSON write fails, the old workspace stays valid and still references the
+old file. The only cost is an orphaned generated sequence file, which is
+harmless and can be garbage-collected later. Do not delete the old file as part
+of this transaction.
+
+### Stored-file serialization (pure formatter)
+
+The stored file must be re-serialized in the molecule's `sourceFormat` from the
+DRAFT (in-memory, not-yet-persisted) sequence and features:
+
+- FASTA-backed molecule: write the edited sequence as FASTA.
+- GenBank-backed molecule: re-serialize, do NOT patch only the ORIGIN block (a
+  patched ORIGIN would leave the inline feature table stale relative to the
+  remapped features).
+
+Do NOT call `exportGenBank(workspacePath, ...)` for this: it reads the workspace
+from disk (`readWorkspace` with `checkSequenceDigests: true`), so it would
+serialize stale state and fail the digest check against the not-yet-updated file.
+Extract a pure `formatGenBank(molecule, features, sequence)` helper from
+`export-genbank.ts` (or add `stored-sequence-writer.ts`) that formats from
+passed-in draft state with no disk reads. `exportGenBank` can then be refactored
+to call the same pure helper.
+
 ### Guardrails
 
-- One write per call through the existing `writeWorkspaceTransaction` path.
-  No direct workspace patching.
+- One workspace-JSON write per call through the existing
+  `writeWorkspaceTransaction` path. No direct workspace patching. The new
+  sequence file is written inside the same transform, before the JSON commit.
+- Never overwrite the existing `molecule.path` file in place (see above).
 - No fallback that "fixes" a broken CDS or re-anneals a split feature. Report,
   do not repair.
 - `nextAction` should point at `validate_workspace` so the agent verifies
@@ -227,11 +308,24 @@ Coordinate remap rules (deterministic, no heuristics):
 ### Tests to pin
 
 - insert/delete/replace/mutate each produce correct `lengthAfter` and `delta`.
-- downstream feature shift equals `delta`; upstream feature unchanged.
-- delete covering a feature marks it `deleted` with `after: null`.
-- CDS edit with `delta % 3 != 0` reports `frame_shifted` in notes.
-- `expectedRevision` mismatch returns `STALE_REVISION` and does not write.
+- insert with `start == length + 1` appends bases at the 3' end.
+- downstream segment shift equals `delta`; upstream segment unchanged.
+- multi-segment feature (join) remaps each segment independently and returns
+  correct `beforeSegments` / `afterSegments`.
+- delete covering a whole feature marks it `deleted` with `afterSegments: null`
+  in the report AND removes the feature record from `workspace.features` (proven
+  by a follow-up `validate_workspace` returning no issues).
+- CDS edit with `delta % 3 != 0` sets `frameShifted: true` while keeping its
+  primary `impact` (e.g. `shifted`).
+- `expectedRevision` mismatch returns `STALE_REVISION` and does not write (no new
+  sequence file left behind, or if written, workspace still references old file).
 - origin-spanning edit on a circular molecule returns `INVALID_ARGUMENT`.
+- `featureImpact` has one entry per feature on the molecule (including
+  unaffected).
+- after an edit, `validate_workspace` returns no issues (proves file,
+  `length`, `sequenceDigest`, and features stayed mutually consistent).
+- round-trip on a GenBank-backed molecule: reopen and `get_sequence_context`
+  returns the edited sequence.
 
 ## 6. Guardrails Carried Forward
 
