@@ -5,6 +5,7 @@ import path from "node:path";
 import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from "../core/context.js";
 import {
   alignSequences,
+  editSequence,
   exportGenBank,
   exportGrnaReport,
   exportProteinFasta,
@@ -47,6 +48,7 @@ export type ToolName =
   | "list_molecules"
   | "get_sequence_context"
   | "upsert_feature"
+  | "edit_sequence"
   | "delete_feature"
   | "upsert_primer"
   | "delete_primer"
@@ -103,6 +105,14 @@ export type ExpectedRevisionInput = WorkspaceInput & {
 
 export type UpsertFeatureInput = ExpectedRevisionInput & {
   feature: Feature;
+};
+
+export type EditSequenceToolInput = MoleculeToolInput & {
+  expectedRevision: number;
+  operation: "insert" | "delete" | "replace" | "mutate";
+  start: number;
+  end?: number;
+  sequence?: string;
 };
 
 export type DeleteFeatureInput = ExpectedRevisionInput & {
@@ -307,6 +317,7 @@ export type ToolInputByName = {
   list_molecules: WorkspaceInput;
   get_sequence_context: SequenceContextInput;
   upsert_feature: UpsertFeatureInput;
+  edit_sequence: EditSequenceToolInput;
   delete_feature: DeleteFeatureInput;
   upsert_primer: UpsertPrimerInput;
   delete_primer: DeletePrimerInput;
@@ -342,6 +353,7 @@ export const toolHandlers = {
   list_molecules: handleListMolecules,
   get_sequence_context: handleGetSequenceContext,
   upsert_feature: handleUpsertFeature,
+  edit_sequence: handleEditSequence,
   delete_feature: handleDeleteFeature,
   upsert_primer: handleUpsertPrimer,
   delete_primer: handleDeletePrimer,
@@ -543,6 +555,38 @@ export async function handleUpsertFeature(input: UpsertFeatureInput): Promise<To
     assertRecord(input.feature, "feature");
     const result = await upsertFeature(workspacePath, expectedRevision, input.feature);
     return toolSuccess(tool, result.payload, writeMetadata(workspacePath, result.revision));
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleEditSequence(input: EditSequenceToolInput): Promise<ToolResultEnvelope> {
+  const tool = "edit_sequence";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const moleculeId = moleculeIdFromInput(input);
+    const expectedRevision = assertNonNegativeInteger(input.expectedRevision, "expectedRevision");
+    const operation = input.operation;
+    if (operation !== "insert" && operation !== "delete" && operation !== "replace" && operation !== "mutate") {
+      throw new MoleculeError("INVALID_ARGUMENT", "operation must be insert, delete, replace, or mutate.", { operation });
+    }
+    const result = await editSequence({
+      workspacePath,
+      moleculeId,
+      expectedRevision,
+      operation,
+      start: assertPositiveInteger(input.start, "start"),
+      ...(input.end !== undefined ? { end: assertPositiveInteger(input.end, "end") } : {}),
+      ...(input.sequence !== undefined ? { sequence: input.sequence } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      revision: result.revision,
+      nextAction: {
+        tool: result.nextAction.tool,
+        arguments: { workspacePath, checkSequenceDigests: true },
+      },
+    });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }

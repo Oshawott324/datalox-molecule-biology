@@ -68,6 +68,47 @@ describe("tool handlers and CLI parity", () => {
     expect(JSON.parse(cli.stdout) as ToolResultEnvelope).toEqual(direct);
   });
 
+  it("runs edit-sequence through the CLI", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const open = await handleOpenSequence({
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_single",
+    });
+    expect(open.ok).toBe(true);
+
+    const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+    const cli = await runCli([
+      "edit-sequence",
+      "--workspace-path",
+      workspacePath,
+      "--molecule-id",
+      "mol_single",
+      "--expected-revision",
+      "0",
+      "--operation",
+      "insert",
+      "--start",
+      "5",
+      "--sequence",
+      "TT",
+    ]);
+
+    expect(cli.exitCode).toBe(0);
+    expect(JSON.parse(cli.stdout) as ToolResultEnvelope).toMatchObject({
+      ok: true,
+      tool: "edit_sequence",
+      data: {
+        moleculeId: "mol_single",
+        delta: 2,
+      },
+      nextAction: {
+        tool: "validate_workspace",
+      },
+    });
+  });
+
   it("runs open-sequence -> validate -> list-molecules -> context through handlers", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const open = await handleOpenSequence({

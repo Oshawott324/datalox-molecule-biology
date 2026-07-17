@@ -136,6 +136,23 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "edit_sequence",
+    description: "Mutate a molecule sequence through a revision-safe write and report deterministic feature-coordinate impacts.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath", "moleculeId", "expectedRevision", "operation", "start"],
+      additionalProperties: false,
+      properties: {
+        ...moleculeProperties,
+        expectedRevision: expectedRevisionProperty,
+        operation: { type: "string", enum: ["insert", "delete", "replace", "mutate"] },
+        start: { type: "integer", minimum: 1 },
+        end: { type: "integer", minimum: 1 },
+        sequence: { type: "string" },
+      },
+    },
+  },
+  {
     name: "delete_feature",
     description: "Delete a feature through a revision-safe workspace write.",
     inputSchema: {

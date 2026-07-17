@@ -45,6 +45,8 @@ export { simulatePcr } from "./pcr.js";
 export type { PcrProduct, SimulatePcrResult } from "./pcr.js";
 export { exportGenBank } from "./export-genbank.js";
 export type { ExportGenBankResult } from "./export-genbank.js";
+export { editSequence, applyEdit, normalizeEdit, remapFeature } from "./edit-sequence.js";
+export type { EditSequenceInput, EditSequenceOperation, EditSequenceResult, FeatureImpact, FeatureImpactKind } from "./edit-sequence.js";
 export { renderDigestGel, MAX_GEL_SAMPLE_BANDS } from "./render-gel.js";
 export type { GelBand, GelFragment, GelLane, RenderDigestGelOptions, RenderDigestGelResult } from "./render-gel.js";
 export { alignSequences } from "./align.js";

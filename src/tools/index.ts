@@ -1,6 +1,7 @@
 export { moleculeToolDescriptors, type ToolDescriptor } from "./descriptors.js";
 export {
   handleDoctor,
+  handleEditSequence,
   handleDeleteFeature,
   handleDeletePrimer,
   handleDesignGrnas,
@@ -38,6 +39,7 @@ export {
   type ValidateMrnaConstructToolInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
+  type EditSequenceToolInput,
   type DesignGrnasToolInput,
   type DesignPrimersToolInput,
   type EnzymeInput,
