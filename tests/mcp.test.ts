@@ -33,6 +33,7 @@ describe("MCP server", () => {
       "open_sequence",
       "get_sequence_context",
       "upsert_feature",
+      "edit_sequence",
       "upsert_grna",
       "design_grnas",
       "export_grna_report",
@@ -139,6 +140,60 @@ describe("MCP server", () => {
       data: {
         valid: true,
         issues: [],
+      },
+    });
+  });
+
+  it("runs edit_sequence through MCP and returns validate_workspace as next action", async () => {
+    const workspaceDir = await tempDir("mol-mcp-edit-");
+    const inputPath = path.join(workspaceDir, "input.fa");
+    await fs.writeFile(inputPath, ">mcp edit\nACGTACGT\n", "utf8");
+    const { client } = await connectedClient();
+
+    const open = envelope(await client.callTool({
+      name: "open_sequence",
+      arguments: { inputPath, workspaceDir, format: "fasta", moleculeId: "mol_edit" },
+    }));
+    expect(open.ok).toBe(true);
+
+    const edit = envelope(await client.callTool({
+      name: "edit_sequence",
+      arguments: {
+        workspacePath: open.workspacePath,
+        moleculeId: "mol_edit",
+        expectedRevision: open.revision,
+        operation: "replace",
+        start: 2,
+        end: 3,
+        sequence: "TT",
+      },
+    }));
+
+    expect(edit).toMatchObject({
+      ok: true,
+      tool: "edit_sequence",
+      revision: 1,
+      data: {
+        moleculeId: "mol_edit",
+        lengthBefore: 8,
+        lengthAfter: 8,
+        delta: 0,
+        diffSummary: "replace 2..3 (2 bases) with 2 bases",
+      },
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: expect.objectContaining({ workspacePath: open.workspacePath, checkSequenceDigests: true }),
+      },
+    });
+
+    const context = envelope(await client.callTool({
+      name: "get_sequence_context",
+      arguments: { workspacePath: open.workspacePath, moleculeId: "mol_edit", includeSequence: true },
+    }));
+    expect(context).toMatchObject({
+      ok: true,
+      data: {
+        sequence: "ATTTACGT",
       },
     });
   });

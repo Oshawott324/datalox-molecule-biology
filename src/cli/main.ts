@@ -61,6 +61,7 @@ const commandToTool: Record<string, ToolName> = {
   "list-molecules": "list_molecules",
   context: "get_sequence_context",
   "upsert-feature": "upsert_feature",
+  "edit-sequence": "edit_sequence",
   "delete-feature": "delete_feature",
   "upsert-primer": "upsert_primer",
   "delete-primer": "delete_primer",
@@ -180,6 +181,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "open_sequence_editor") return openSequenceEditorInput(parsed);
   if (tool === "get_sequence_context") return sequenceContextInput(parsed);
   if (tool === "upsert_feature") return upsertFeatureInput(parsed);
+  if (tool === "edit_sequence") return editSequenceInput(parsed);
   if (tool === "delete_feature") return deleteFeatureInput(parsed);
   if (tool === "upsert_primer") return upsertPrimerInput(parsed);
   if (tool === "delete_primer") return deletePrimerInput(parsed);
@@ -258,6 +260,19 @@ async function upsertFeatureInput(parsed: ParsedArgs): Promise<UpsertFeatureInpu
     expectedRevision: numberFlag(parsed, "expected-revision"),
     feature: await jsonFileFlag(parsed, "feature"),
   } as UpsertFeatureInput;
+}
+
+function editSequenceInput(parsed: ParsedArgs): ToolInputByName["edit_sequence"] {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    expectedRevision: numberFlag(parsed, "expected-revision"),
+    operation: stringFlag(parsed, "operation") as ToolInputByName["edit_sequence"]["operation"],
+    start: numberFlag(parsed, "start"),
+    ...(stringFlag(parsed, "end") !== undefined ? { end: numberFlag(parsed, "end") } : {}),
+    ...(stringFlag(parsed, "sequence") !== undefined ? { sequence: stringFlag(parsed, "sequence") } : {}),
+  };
 }
 
 function deleteFeatureInput(parsed: ParsedArgs): DeleteFeatureInput {

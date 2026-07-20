@@ -46,6 +46,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `list_molecules` | List molecules in a validated workspace. |
 | `get_sequence_context` | Read molecule context, features, primers, and optional sequence for a region. |
 | `upsert_feature` | Create or update a feature through a revision-safe workspace write. |
+| `edit_sequence` | Mutate a molecule sequence through a revision-safe write and report feature-coordinate impacts. |
 | `delete_feature` | Delete a feature through a revision-safe workspace write. |
 | `upsert_primer` | Create or update a primer through a revision-safe workspace write. |
 | `delete_primer` | Delete a primer through a revision-safe workspace write. |
@@ -65,7 +66,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `design_primers` | Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates. |
 | `design_grnas` | Design SpCas9 NGG guide RNA candidates with deterministic PAM scanning and workspace-scale off-target reporting. |
 | `export_protein_fasta` | Translate a CDS region and write the protein sequence to a FASTA artifact for external structure tools. |
-| `validate_mrna_construct` | Validate that a molecule's features contain the required mRNA elements in 5'→3' order and pass CDS/Kozak/polyA integrity checks. |
+| `validate_mrna_construct` | Validate that a molecule's features contain the required mRNA elements in 5'->3' order and pass CDS/Kozak/polyA integrity checks. |
 
 Every MCP tool has a matching `molecule-biology <command>` CLI subcommand for scripting and testing.
 

@@ -184,6 +184,38 @@ If the write returns `STALE_REVISION`, do not guess. Read the workspace,
 compare the current state, and retry with the new revision only if the edit is
 still correct.
 
+## Structured Sequence Edits
+
+Use `edit_sequence` to change molecule bases. Do not patch
+`molecule.workspace.json`, do not overwrite `molecule.path`, and do not hand-edit
+stored FASTA/GenBank files. `edit_sequence` writes a new stored sequence file,
+updates the molecule digest, remaps features, and returns a complete
+`featureImpact` list for the agent to inspect.
+
+```json
+{
+  "tool": "edit_sequence",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_example",
+    "expectedRevision": 2,
+    "operation": "replace",
+    "start": 396,
+    "end": 401,
+    "sequence": "GAATTC"
+  }
+}
+```
+
+After the call, inspect `featureImpact`. If a CDS has `frameShifted: true`, do
+not silently repair it. Use the returned `nextAction` and call
+`validate_workspace` before continuing.
+
+If an edit lands inside a CDS but does not set `frameShifted`, the protein may
+still change through a missense mutation or in-frame indel. Call
+`translate_region` on the CDS to confirm the amino-acid consequence;
+`edit_sequence` reports coordinates and reading-frame integrity only.
+
 ## Structured Primer Edits
 
 Use `upsert_primer`. If exact binding should be computed, set
@@ -293,7 +325,7 @@ digest test):
 ```
 
 Use `customLadder` when expected fragments fall below the default ladder
-minimum (250 bp). The default ladder is 250–10000 bp; a 51 bp fragment
+minimum (250 bp). The default ladder is 250-10000 bp; a 51 bp fragment
 requires a ladder starting at 50 bp or lower to be calibrated normally.
 `render_digest_gel` uses the ladder as the calibrated range, adds ladder size
 labels to the SVG, and marks fragments outside the ladder range with

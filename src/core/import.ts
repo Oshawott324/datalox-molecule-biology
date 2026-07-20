@@ -1,5 +1,4 @@
 import { promises as fs } from "node:fs";
-import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { parseFasta, type ParsedFastaRecord, formatSingleRecordFasta } from "./fasta.js";
@@ -7,6 +6,7 @@ import { parseGenBank, type ParsedGenBankRecord } from "./genbank.js";
 import { validateWorkspaceOrThrow, writeWorkspaceFile } from "./workspace.js";
 import type { Feature, Molecule, MoleculeWorkspace, SourceFormat } from "./schema.js";
 import { sequenceDigest } from "./sequence.js";
+import { ensureSequenceDataDir, uniqueSequenceFileName } from "./sequence-storage.js";
 import { MoleculeError, WorkspaceRevisionError } from "./errors.js";
 
 export type ImportFormat = "auto" | SourceFormat;
@@ -50,8 +50,7 @@ export async function importSequenceFile(options: ImportSequenceFileOptions): Pr
   const format = await detectFormat(inputPath, options.format ?? "auto");
   const content = await fs.readFile(inputPath, "utf8");
   const records = format === "fasta" ? fastaImportRecords(content) : genBankImportRecords(content);
-  const dataDir = path.join(workspaceDir, "data/sequences");
-  await fs.mkdir(dataDir, { recursive: true });
+  const dataDir = await ensureSequenceDataDir(workspaceDir);
 
   let { workspace, existed } = await readOrCreateWorkspace(workspacePath);
   const previousRevision = workspace.revision;
@@ -75,7 +74,7 @@ export async function importSequenceFile(options: ImportSequenceFileOptions): Pr
       usedMoleculeIds,
       options.moleculeId && records.length === 1 ? options.moleculeId : `mol_${slug(record.name)}${records.length > 1 ? `_${index + 1}` : ""}`,
     );
-    const fileName = uniqueFileName(dataDir, `${slug(record.name)}${record.fileExtension}`);
+    const fileName = uniqueSequenceFileName(dataDir, `${slug(record.name)}${record.fileExtension}`);
     const absoluteCopiedPath = path.join(dataDir, fileName);
     await fs.writeFile(absoluteCopiedPath, record.fileContent, "utf8");
     const relativePath = path.relative(workspaceDir, absoluteCopiedPath);
@@ -230,18 +229,4 @@ function uniqueId(used: Set<string>, preferred: string): string {
   }
   used.add(candidate);
   return candidate;
-}
-
-function uniqueFileName(dataDir: string, preferred: string): string {
-  const extension = path.extname(preferred);
-  const base = path.basename(preferred, extension);
-  let candidate = preferred;
-  for (let index = 2; fileExistsSync(path.join(dataDir, candidate)); index += 1) {
-    candidate = `${base}_${index}${extension}`;
-  }
-  return candidate;
-}
-
-function fileExistsSync(filePath: string): boolean {
-  return existsSync(filePath);
 }

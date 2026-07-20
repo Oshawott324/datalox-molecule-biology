@@ -61,7 +61,7 @@ export async function exportGenBank(workspacePath: string, moleculeId: string, o
   };
 }
 
-function formatGenBank(record: {
+export function formatGenBank(record: {
   name: string;
   length: number;
   topology: string;
