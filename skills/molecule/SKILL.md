@@ -211,6 +211,11 @@ After the call, inspect `featureImpact`. If a CDS has `frameShifted: true`, do
 not silently repair it. Use the returned `nextAction` and call
 `validate_workspace` before continuing.
 
+If an edit lands inside a CDS but does not set `frameShifted`, the protein may
+still change through a missense mutation or in-frame indel. Call
+`translate_region` on the CDS to confirm the amino-acid consequence;
+`edit_sequence` reports coordinates and reading-frame integrity only.
+
 ## Structured Primer Edits
 
 Use `upsert_primer`. If exact binding should be computed, set
