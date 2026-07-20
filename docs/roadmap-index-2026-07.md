@@ -116,6 +116,8 @@ Highest-strategic-value cheap item given CEO interest in a benchmark study.
 Already scoped in `roadmap-snapgene-core.md` s9. Promote it from "incidental
 fixture folder" to a real deliverable:
 
+Implementation spec: `eval-corpus-v0-spec.md`.
+
 - Fixed corpus: 5 public plasmids, 3 origin-spanning circular constructs,
   3 degenerate motif/enzyme cases, 3 Golden Gate, 3 Gibson.
 - Each task ships expected JSON output + artifact hash/snapshot.

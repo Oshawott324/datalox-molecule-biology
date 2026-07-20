@@ -6,7 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors } from "../src/index.js";
+import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors, toolHandlers } from "../src/index.js";
 import { PACKAGE_VERSION, REQUIRED_V1_TOOLS } from "../src/core/version.js";
 import { assertSupportedInputSchema } from "../src/mcp/validate-args.js";
 import { toolFailure } from "../src/tools/envelope.js";
@@ -414,6 +414,22 @@ describe("MCP server", () => {
       expect(result.ok).toBe(false);
       expect((result.error as { code?: string }).code).toBe("SCHEMA_VALIDATION_ERROR");
     }
+  });
+
+  it("keeps descriptors and handlers in parity", () => {
+    // Every advertised tool must resolve to a handler, and every handler must be
+    // advertised, so a new tool cannot be half-wired (descriptor without handler,
+    // or handler without descriptor). `doctor` is intentionally CLI-only and never
+    // advertised over MCP, so it is the sole allowed handler without a descriptor.
+    const cliOnlyHandlers = new Set(["doctor"]);
+    const descriptorNames = new Set(moleculeToolDescriptors.map((descriptor) => descriptor.name));
+    const handlerNames = Object.keys(toolHandlers);
+
+    const descriptorsWithoutHandler = [...descriptorNames].filter((name) => !handlerNames.includes(name));
+    const handlersWithoutDescriptor = handlerNames.filter((name) => !descriptorNames.has(name as never) && !cliOnlyHandlers.has(name));
+
+    expect(descriptorsWithoutHandler).toEqual([]);
+    expect(handlersWithoutDescriptor).toEqual([]);
   });
 
   async function connectedClient(): Promise<{ client: Client }> {
