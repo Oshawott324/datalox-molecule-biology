@@ -202,6 +202,114 @@ describe("edit_sequence", () => {
     ]);
   });
 
+  it("does not report frameShifted for an indel entirely upstream of a CDS", async () => {
+    const source = await importFasta("AAATGAAACCCGGGTTT");
+    const revision = await addFeatures(source.workspacePath, source.moleculeId, [
+      {
+        id: "feat_cds",
+        name: "coding",
+        type: "CDS",
+        segments: [{ start: 4, end: 15, strand: "+" }],
+      },
+    ]);
+
+    const result = await editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: revision,
+      operation: "insert",
+      start: 3,
+      sequence: "A",
+    });
+
+    expect(result.featureImpact).toEqual([
+      {
+        featureId: "feat_cds",
+        name: "coding",
+        impact: "shifted",
+        beforeSegments: [{ start: 4, end: 15, strand: "+" }],
+        afterSegments: [{ start: 5, end: 16, strand: "+" }],
+        boundingSpan: { start: 5, end: 16 },
+        notes: [],
+      },
+    ]);
+  });
+
+  it("does not report frameShifted for an in-frame CDS deletion", async () => {
+    const source = await importFasta("ATGAAACCCGGGTTT");
+    const revision = await addFeatures(source.workspacePath, source.moleculeId, [
+      {
+        id: "feat_cds",
+        name: "coding",
+        type: "CDS",
+        segments: [{ start: 1, end: 15, strand: "+" }],
+      },
+    ]);
+
+    const result = await editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: revision,
+      operation: "delete",
+      start: 4,
+      end: 6,
+    });
+
+    expect(result.featureImpact).toEqual([
+      {
+        featureId: "feat_cds",
+        name: "coding",
+        impact: "resized",
+        beforeSegments: [{ start: 1, end: 15, strand: "+" }],
+        afterSegments: [{ start: 1, end: 12, strand: "+" }],
+        boundingSpan: { start: 1, end: 12 },
+        notes: [],
+      },
+    ]);
+  });
+
+  it("does not report frameShifted for an inter-segment edit in a joined CDS", async () => {
+    const source = await importFasta("AAACCCGGGTTTAAA");
+    const revision = await addFeatures(source.workspacePath, source.moleculeId, [
+      {
+        id: "feat_joined_cds",
+        name: "joined_cds",
+        type: "CDS",
+        segments: [
+          { start: 1, end: 3, strand: "+" },
+          { start: 10, end: 12, strand: "+" },
+        ],
+      },
+    ]);
+
+    const result = await editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: revision,
+      operation: "insert",
+      start: 6,
+      sequence: "A",
+    });
+
+    expect(result.featureImpact).toEqual([
+      {
+        featureId: "feat_joined_cds",
+        name: "joined_cds",
+        impact: "shifted",
+        beforeSegments: [
+          { start: 1, end: 3, strand: "+" },
+          { start: 10, end: 12, strand: "+" },
+        ],
+        afterSegments: [
+          { start: 1, end: 3, strand: "+" },
+          { start: 11, end: 13, strand: "+" },
+        ],
+        boundingSpan: { start: 1, end: 13 },
+        notes: [],
+      },
+    ]);
+  });
+
   it("rejects stale expectedRevision before writing a new sequence file", async () => {
     const source = await importFasta("ACGTACGT");
     const before = await readWorkspace(source.workspacePath, { checkSequenceDigests: true });

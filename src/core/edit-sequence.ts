@@ -231,7 +231,9 @@ export function remapFeature(feature: Feature, edit: NormalizedEdit): FeatureImp
   const afterSegments = remapped.map((entry) => entry.segment).filter((segment): segment is CoordinateSegment => segment !== null);
   const impact = aggregateImpact(remapped);
   const notes: string[] = [];
-  const frameShifted = isCdsFeature(feature) && edit.delta % 3 !== 0 && edit.start <= maxSegmentEnd(beforeSegments);
+  const beforeFeatureLength = segmentsLength(beforeSegments);
+  const afterFeatureLength = segmentsLength(afterSegments);
+  const frameShifted = isCdsFeature(feature) && afterSegments.length > 0 && (afterFeatureLength - beforeFeatureLength) % 3 !== 0;
   if (frameShifted) notes.push("CDS length may no longer preserve the original reading frame.");
   if (impact === "split") notes.push("Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations.");
 
@@ -305,8 +307,8 @@ function boundingSpan(segments: CoordinateSegment[]): { start: number; end: numb
   };
 }
 
-function maxSegmentEnd(segments: CoordinateSegment[]): number {
-  return Math.max(...segments.map((segment) => segment.end));
+function segmentsLength(segments: CoordinateSegment[]): number {
+  return segments.reduce((total, segment) => total + segment.end - segment.start + 1, 0);
 }
 
 function isCdsFeature(feature: Feature): boolean {
