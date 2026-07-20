@@ -5,9 +5,9 @@ This supersedes the status fields in `2026-07-biology-tracks-roadmap.md` and
 `roadmap-snapgene-core.md`, which are stale. Those two documents remain the
 detailed track specs; this document owns current status and sequencing.
 
-Verification basis: `src/tools/descriptors.ts` on `main` after commit
-`e3f6050`, which has 29 registered tools including the HB1 `get_version`
-handshake.
+Verification basis: `src/tools/descriptors.ts` on `main` after merge commit
+`135aedf`, which has 30 registered tools including the HB1 `get_version`
+handshake and `edit_sequence`.
 
 ## 1. Shipped
 
@@ -16,14 +16,15 @@ V1 hardening and roadmap status are shipped on `main`:
 - `e3f6050` implements the MCP handshake, schema-gate hardening, provenance
   bundle metadata, and V1 review-runner lifecycle limits.
 - `6b1225d` updates roadmap status and sequencing.
+- `135aedf` ships `edit_sequence`.
 
-29 MCP tools are registered and dispatched generically. Grouped by track:
+30 MCP tools are registered and dispatched generically. Grouped by track:
 
 | Track | Tools |
 |---|---|
 | Workspace | `open_workspace`, `read_workspace`, `list_molecules`, `open_sequence`, `get_sequence_context`, `validate_workspace`, `get_version` |
 | Sequence biology | `find_restriction_sites`, `simulate_digest`, `simulate_pcr`, `find_orfs`, `translate_region`, `reverse_complement`, `align_sequences` |
-| Editing entities | `upsert_feature`, `delete_feature`, `upsert_primer`, `delete_primer`, `upsert_grna` |
+| Editing entities | `upsert_feature`, `delete_feature`, `edit_sequence`, `upsert_primer`, `delete_primer`, `upsert_grna` |
 | Cloning | `simulate_assembly` (restriction-ligation) |
 | Design | `design_primers` (Primer3), `design_grnas` (CR1 SpCas9 scan), `export_grna_report` |
 | mRNA / protein | `validate_mrna_construct` (M1), `export_protein_fasta` (X1) |
@@ -37,7 +38,7 @@ replay/provenance path, V1 review demo, source-verified pUC19 fixture,
 Status corrections (marked "planned" in older docs but actually built):
 M1 `validate_mrna_construct`, X1 `export_protein_fasta`, CR1 `design_grnas`,
 CR1.1-CR1.4 guide persistence/rendering/report, `simulate_assembly`,
-`design_primers`.
+`design_primers`, `edit_sequence`.
 
 ## 2. Not Built -- Mapped To Existing Specs
 
@@ -50,7 +51,6 @@ against safely. Do not start coding an item that only has a track doc.
 |---|---|---|---|
 | BLAST | B1 `blast_sequence` | Impl spec (`blast-validation-spec.md`) | Live NCBI RID/poll/result saved as fixture first |
 | BLAST | B2 `validate_primer_specificity` | Impl spec (`blast-validation-spec.md`) | B1 shipped |
-| Edit loop | `edit_sequence` | Impl spec in this index (section 5) | Ready to build (V1 shipped on `main`) |
 | Cloning | `simulate_gibson` | Track doc only (`roadmap-snapgene-core.md` s3) -- impl spec needed | Customer/demo pull |
 | Cloning | `simulate_golden_gate` (Type IIS) | Track doc only (`roadmap-snapgene-core.md` s4) -- impl spec needed | Customer/demo pull |
 | Annotation | `find_known_features` + curated library | No doc | Needs curated feature-library source decision |
@@ -78,36 +78,33 @@ time. The four goals and their first move:
 
 | Goal | First build | Why |
 |---|---|---|
-| Marketing / demo | Finish + push V1 review path, then `edit_sequence` | Demo near-ready; edit unlocks the live cloning revision loop |
+| Marketing / demo | Eval corpus v0, then demo revision using `edit_sequence` | Demo spine is ready; eval pins expected tool behavior |
 | Lab usefulness | B1/B2 BLAST | Wet-lab feedback names Primer-BLAST as the missing layer |
 | Benchmark credibility | Eval corpus (section 4) | Nothing is claimable as parity without it |
-| SnapGene surface | `edit_sequence` -> auto-annotation -> Sanger -> Gibson/Golden Gate | Largest product-surface blocks |
+| SnapGene surface | Auto-annotation -> Sanger -> Gibson/Golden Gate | Largest remaining product-surface blocks |
 
 ### Recommended sequence
 
-`edit_sequence` first, because it is the only item that serves three of the four
-goals at once:
+`edit_sequence` has shipped. Build eval corpus v0 next because it is the cheapest
+way to turn the shipped tool surface into regression-tested benchmark material:
 
-- Marketing: turns the digest demo into a full open -> cut -> insert -> verify
-  -> render loop (the SnapGene-parity story on camera).
-- SnapGene surface: it is the number-one named gap in `roadmap-snapgene-core.md`.
-- Benchmark: construct-editing tasks are impossible to pose without it.
+- Marketing: validates the demo spine with expected JSON and artifact hashes.
+- SnapGene surface: protects `edit_sequence`, digest, gel, map, and assembly
+  behavior before adding broader editor-like features.
+- Benchmark: creates the first reusable task set for model/tool evaluation.
 
-It also needs no external dependency, no compliance surface, and no live
-fixture -- unlike BLAST, which is gated on NCBI async behavior and usage-policy
-compliance and should not be coded blind. The one prerequisite is that it has no
-implementation spec yet; section 5 is that spec.
+It needs no external dependency, no compliance surface, and no live fixture --
+unlike BLAST, which is gated on NCBI async behavior and usage-policy compliance
+and should not be coded blind.
 
 Proposed order:
 
 ```text
-0. Commit + push HB1/V1 hardening so "shipped" claims are true on main
-1. edit_sequence          (impl spec in section 5) -- highest cross-goal leverage
-2. eval corpus v0         (section 4) -- cheap, unlocks benchmark + regression safety
-3. B1 blast_sequence      (after one live NCBI fixture is captured)
-4. find_known_features    (needs a curated-library source decision first)
-5. B2 validate_primer_specificity
-6. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
+1. eval corpus v0         (section 4) -- cheap, unlocks benchmark + regression safety
+2. B1 blast_sequence      (after one live NCBI fixture is captured)
+3. find_known_features    (needs a curated-library source decision first)
+4. B2 validate_primer_specificity
+5. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
 ```
 
 CR2 and M2 stay gated on explicit customer pull plus their validation fixtures
@@ -127,14 +124,14 @@ fixture folder" to a real deliverable:
   the differentiated benchmark angle no existing benchmark (GeneBench-Pro,
   MCP-Bench) covers.
 
-A v0 corpus can be built now from existing fixtures and shipped tools; it does
-not need `edit_sequence` or BLAST. Building it early also gives every subsequent
-tool a regression harness.
+A v0 corpus can be built now from existing fixtures and shipped tools, including
+`edit_sequence`; it does not need BLAST. Building it early also gives every
+subsequent tool a regression harness.
 
 ## 5. edit_sequence Implementation Spec
 
-This is the missing contract for the recommended next build. It elevates the
-`roadmap-snapgene-core.md` s1 bullet into something codeable.
+This was the implementation contract for shipped `edit_sequence`. It remains as
+the reference for future review and regression-corpus task design.
 
 ### Tool: `edit_sequence`
 
