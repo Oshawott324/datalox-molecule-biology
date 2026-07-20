@@ -49,6 +49,16 @@ eval-corpus/
         provenance/
           replay.manifest.json
           records/
+      mb-edit-puc19-laczalpha-frameshift/
+        task.json
+        inputs/
+          puc19-laczalpha-cds.gb
+        expected/
+          summary.json
+          tool-observations.json
+          artifacts.json
+        artifacts/
+          plasmid-map.svg
 ```
 
 Notes:
@@ -180,13 +190,21 @@ Start with tasks that use only shipped, local tools:
 | ID | Category | Purpose | Required tools |
 |---|---|---|---|
 | `mb-edit-puc19-mcs-insert` | `sequence_edit` | Edit pUC19 in the MCS, verify workspace consistency, render map | `open_sequence`, `edit_sequence`, `validate_workspace`, `get_sequence_context`, `find_restriction_sites`, `render_plasmid_map` |
+| `mb-edit-puc19-laczalpha-frameshift` | `sequence_edit` | Edit a pUC19 variant with a benchmark-only lacZalpha CDS proxy and verify the frameshift is reported | `open_sequence`, `edit_sequence`, `validate_workspace`, `get_sequence_context`, `translate_region`, `render_plasmid_map` |
 | `mb-digest-puc19-hindiii-xhoi` | `digest` | Reproduce the diagnostic digest table and gel from D1 | `open_sequence`, `simulate_digest`, `render_digest_gel` |
 | `mb-assembly-restriction-ligation` | `assembly` | Simulate EcoRI/BamHI restriction ligation artifact generation | `open_sequence`, `simulate_assembly`, `validate_workspace` |
 | `mb-crispr-puc19-ngg` | `crispr` | Scan local SpCas9 guides and persist one selected guide | `open_sequence`, `design_grnas`, `upsert_grna`, `export_grna_report` |
 | `mb-mrna-il27-validation` | `mrna` | Validate an mRNA element layout and export translated protein FASTA | `open_sequence`, `validate_mrna_construct`, `export_protein_fasta` |
 
-Only the first task is specified below. The remaining v0 tasks should get their
-own task manifests after this spec is accepted.
+The first two sequence-edit tasks are specified below because together they pin
+the most important v0 biology distinction:
+
+- a coordinate edit that does not affect the `bla` CDS reading frame;
+- a pUC19 MCS edit that frameshifts lacZalpha when lacZalpha is explicitly
+  annotated as a CDS.
+
+The remaining v0 tasks should get their own task manifests after this spec is
+accepted.
 
 ## First Task: `mb-edit-puc19-mcs-insert`
 
@@ -224,7 +242,7 @@ directory and record its SHA-256 hash in `task.json`.
   {
     "step": 1,
     "tool": "open_sequence",
-    "purpose": "Import pUC19 into a fresh task workspace.",
+    "purpose": "Import pUC19 into a fresh task workspace as moleculeId mol_puc19.",
     "required": true
   },
   {
@@ -262,7 +280,7 @@ directory and record its SHA-256 hash in `task.json`.
 
 ### Edit Parameters
 
-Use a payload that is biologically inert for this v0 task and easy to verify:
+Use a payload that does not affect the `bla` CDS and is easy to verify:
 
 ```json
 {
@@ -279,6 +297,9 @@ Rationale:
 - `GCGGCCGC` is a NotI recognition sequence, giving a clear map/digest landmark.
 - The insert is outside the `bla` CDS, so `bla` should be shifted if downstream
   in coordinate space but should not be marked `frameShifted`.
+- The authentic fixture annotates lacZalpha as a non-CDS feature. Therefore this
+  task MUST NOT claim lacZalpha protein consequences; that is tested separately
+  in `mb-edit-puc19-laczalpha-frameshift`.
 
 ### Expected Invariants
 
@@ -336,13 +357,172 @@ The expected summary should pin:
 }
 ```
 
+## Second Task: `mb-edit-puc19-laczalpha-frameshift`
+
+### Objective
+
+Use a pUC19 fixture variant with a benchmark-only lacZalpha CDS proxy that
+includes the MCS, perform the same 8 bp MCS insertion, and verify that
+`edit_sequence` reports a CDS frameshift for that proxy while leaving `bla`
+reading-frame integrity intact.
+
+This task turns the pUC19 blue/white-screening biology into a falsifiable corpus
+check. An 8 bp insert in the MCS is expected to disrupt the lacZalpha alpha
+peptide reading frame when the MCS is included in the CDS annotation.
+
+### Input
+
+```json
+{
+  "id": "puc19_laczalpha_cds",
+  "path": "inputs/puc19-laczalpha-cds.gb",
+  "kind": "genbank",
+  "source": "Derived from fixtures/genbank/puc19.gb by adding a benchmark-only lacZalpha CDS proxy; sequence must be byte-identical after parsing"
+}
+```
+
+The fixture variant must preserve the authentic pUC19 sequence. The current
+source fixture annotates lacZalpha as `gene complement(join(238..395,455..682))`,
+which excludes the MCS. Simply changing that joined feature's type to `CDS` would
+NOT test MCS insertional frameshift. For this benchmark task, add a separate
+feature named `lacZalpha_frame_proxy` with type `CDS`, strand `-`, and one
+continuous segment spanning `238..681`. This proxy is a benchmark annotation used
+only to test frame-impact reporting over an MCS-containing CDS interval.
+
+The generator/checker must verify:
+
+- original sequence digest matches the authentic pUC19 fixture digest;
+- the source `lacZalpha` gene feature remains unchanged from the source fixture;
+- the added `lacZalpha_frame_proxy` feature is type `CDS`, strand `-`, one
+  segment `238..681`, and length `444` bp before editing.
+
+### Tool Plan
+
+```json
+[
+  {
+    "step": 1,
+    "tool": "open_sequence",
+    "purpose": "Import the lacZalpha-CDS pUC19 variant into a fresh task workspace as moleculeId mol_puc19_laczalpha_cds.",
+    "required": true
+  },
+  {
+    "step": 2,
+    "tool": "translate_region",
+    "purpose": "Translate the lacZalpha_frame_proxy CDS before editing to capture the pre-edit amino-acid consequence boundary.",
+    "required": true
+  },
+  {
+    "step": 3,
+    "tool": "edit_sequence",
+    "purpose": "Insert the same 8 bp NotI payload immediately after the EcoRI site in the MCS.",
+    "required": true
+  },
+  {
+    "step": 4,
+    "tool": "validate_workspace",
+    "purpose": "Verify molecule length, digest, and feature coordinates after edit.",
+    "required": true
+  },
+  {
+    "step": 5,
+    "tool": "get_sequence_context",
+    "purpose": "Read feature impacts and edited sequence context.",
+    "required": true
+  },
+  {
+    "step": 6,
+    "tool": "translate_region",
+    "purpose": "Translate the remapped lacZalpha_frame_proxy CDS after editing so amino-acid consequence is checked outside edit_sequence.",
+    "required": true
+  },
+  {
+    "step": 7,
+    "tool": "render_plasmid_map",
+    "purpose": "Render a deterministic visual artifact for the edited plasmid.",
+    "required": true
+  }
+]
+```
+
+### Edit Parameters
+
+Use the same edit as `mb-edit-puc19-mcs-insert`:
+
+```json
+{
+  "operation": "insert",
+  "start": 402,
+  "sequence": "GCGGCCGC"
+}
+```
+
+### Expected Invariants
+
+The expected summary should pin:
+
+- final molecule length is `2694` bp (`2686 + 8`);
+- final workspace validates with `checkSequenceDigests: true`;
+- edited sequence region around 396..409 contains `GAATTCGCGGCCGC`;
+- `lacZalpha_frame_proxy` appears in `featureImpact` with `impact: "split"`,
+  `beforeSegments: [{ "start": 238, "end": 681, "strand": "-" }]`,
+  `afterSegments: [{ "start": 238, "end": 689, "strand": "-" }]`, and
+  `frameShifted: true`;
+- `bla` appears in `featureImpact` without `frameShifted: true`;
+- the task does not infer protein consequence from `edit_sequence` alone; any
+  amino-acid claim must be checked by `translate_region`;
+- plasmid map artifact exists, has kind `plasmid_map`, MIME type `image/svg+xml`,
+  and a stable SHA-256 hash.
+
+### Expected Summary Skeleton
+
+```json
+{
+  "taskId": "mb-edit-puc19-laczalpha-frameshift",
+  "ok": true,
+  "workspace": {
+    "finalRevision": 1,
+    "moleculeIds": ["mol_puc19_laczalpha_cds"]
+  },
+  "checks": [
+    {
+      "id": "length_after_insert",
+      "status": "pass",
+      "observed": 2694,
+      "expected": 2694
+    },
+    {
+      "id": "laczalpha_frame_proxy_frameshift_reported",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "bla_no_frameshift",
+      "status": "pass",
+      "observed": false,
+      "expected": false
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "edited_laczalpha_plasmid_map",
+      "kind": "plasmid_map",
+      "path": "artifacts/plasmid-map.svg",
+      "sha256": "<filled-by-generation-step>",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}
+```
+
 ## Implementation Order After Spec Approval
 
 1. Commit the descriptor/handler parity test.
 2. Add `docs/eval-corpus-v0-spec.md` and link it from
    `docs/roadmap-index-2026-07.md`.
-3. Create the `eval-corpus/v0/` folders and task manifest for
-   `mb-edit-puc19-mcs-insert`.
+3. Create the `eval-corpus/v0/` folders and task manifests for
+   `mb-edit-puc19-mcs-insert` and `mb-edit-puc19-laczalpha-frameshift`.
 4. Add a generator/check script that runs the tool plan and writes expected
    summaries/artifact hashes.
 5. Add an npm script that verifies the corpus without regenerating it.
