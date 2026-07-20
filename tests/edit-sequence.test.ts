@@ -299,4 +299,116 @@ ORIGIN
       sequence: "A",
     })).rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
   });
+
+  it("mutate substitutes in place with zero delta and reports an untouched upstream feature as unaffected", async () => {
+    const source = await importFasta("ACGTACGTACGT");
+    const revision = await addFeatures(source.workspacePath, source.moleculeId, [
+      {
+        id: "feat_upstream",
+        name: "upstream",
+        type: "misc_feature",
+        segments: [{ start: 1, end: 3, strand: "+" }],
+      },
+    ]);
+
+    const result = await editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: revision,
+      operation: "mutate",
+      start: 6,
+      end: 7,
+      sequence: "TT",
+    });
+
+    const edited = await readMoleculeSequence(source.workspacePath, source.moleculeId);
+    expect(edited.sequence).toBe("ACGTATTTACGT");
+    expect(result).toMatchObject({ operation: "mutate", lengthBefore: 12, lengthAfter: 12, delta: 0 });
+
+    // The "all features including unaffected" guarantee: the upstream feature is reported, not omitted.
+    expect(result.featureImpact).toEqual([
+      {
+        featureId: "feat_upstream",
+        name: "upstream",
+        impact: "unaffected",
+        beforeSegments: [{ start: 1, end: 3, strand: "+" }],
+        afterSegments: [{ start: 1, end: 3, strand: "+" }],
+        boundingSpan: { start: 1, end: 3 },
+        notes: [],
+      },
+    ]);
+  });
+
+  it("rejects a mutate whose sequence length does not match the edited span", async () => {
+    const source = await importFasta("ACGTACGT");
+
+    await expect(editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: 0,
+      operation: "mutate",
+      start: 6,
+      end: 7,
+      sequence: "T",
+    })).rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+  });
+
+  it("replace applies the correct length delta for an unequal-length substitution", async () => {
+    const source = await importFasta("ACGTACGT");
+
+    const result = await editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: 0,
+      operation: "replace",
+      start: 3,
+      end: 4,
+      sequence: "AAAA",
+    });
+
+    const edited = await readMoleculeSequence(source.workspacePath, source.moleculeId);
+    expect(edited.sequence).toBe("ACAAAAACGT");
+    expect(result).toMatchObject({ operation: "replace", lengthBefore: 8, lengthAfter: 10, delta: 2 });
+  });
+
+  // Structured agent-facing error contract: an agent recovers from these codes, so pin them.
+  it("returns MOLECULE_NOT_FOUND for an unknown molecule id", async () => {
+    const source = await importFasta("ACGTACGT");
+
+    await expect(editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: "mol_does_not_exist",
+      expectedRevision: 0,
+      operation: "insert",
+      start: 1,
+      sequence: "A",
+    })).rejects.toMatchObject({ code: "MOLECULE_NOT_FOUND" });
+  });
+
+  it("returns COORDINATE_OUT_OF_RANGE when the edited span exceeds the molecule length", async () => {
+    const source = await importFasta("ACGTACGT");
+
+    await expect(editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: 0,
+      operation: "delete",
+      start: 6,
+      end: 99,
+    })).rejects.toMatchObject({ code: "COORDINATE_OUT_OF_RANGE" });
+  });
+
+  it("returns NO_CHANGE when a replace reproduces the identical bases", async () => {
+    const source = await importFasta("ACGTACGT");
+
+    await expect(editSequence({
+      workspacePath: source.workspacePath,
+      moleculeId: source.moleculeId,
+      expectedRevision: 0,
+      operation: "replace",
+      start: 1,
+      end: 1,
+      sequence: "A",
+    })).rejects.toMatchObject({ code: "NO_CHANGE" });
+  });
 });
