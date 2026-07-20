@@ -23,6 +23,8 @@
     "demo:diagnostic-digest:mcp": "npm run build --silent && node scripts/demo-diagnostic-digest-mcp.mjs",
     "demo:v1-review": "npm run build --silent && node scripts/demo-v1-review.mjs",
     "demo:puc19:mcp": "npm run build --silent && node scripts/demo-puc19-mcp.mjs",
+    "eval:corpus:v0:check": "npm run build --silent && node scripts/eval-corpus-v0.mjs check",
+    "eval:corpus:v0:generate": "npm run build --silent && node scripts/eval-corpus-v0.mjs generate",
     "replay:demo": "npm run build --silent && node dist/src/cli/main.js replay-demo --input-path fixtures/fasta/single.fa --molecule-id mol_replay_demo",
     "smoke:mcp": "npm run build --silent && node scripts/smoke-mcp.mjs",
     "smoke:mcp:cwd": "npm run build --silent && node scripts/smoke-mcp-cwd.mjs",

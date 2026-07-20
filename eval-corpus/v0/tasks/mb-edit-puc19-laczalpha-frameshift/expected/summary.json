@@ -1,0 +1,117 @@
+{
+  "taskId": "mb-edit-puc19-laczalpha-frameshift",
+  "ok": true,
+  "workspace": {
+    "finalRevision": 1,
+    "moleculeIds": [
+      "mol_puc19_laczalpha_cds"
+    ]
+  },
+  "checks": [
+    {
+      "id": "length_after_insert",
+      "status": "pass",
+      "observed": 2694,
+      "expected": 2694
+    },
+    {
+      "id": "workspace_validation_ok",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "inserted_noti_site_present",
+      "status": "pass",
+      "observed": "GAATTCGCGGCCGC",
+      "expected": "GAATTCGCGGCCGC"
+    },
+    {
+      "id": "laczalpha_frame_proxy_frameshift_reported",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "laczalpha_frame_proxy_before_segments",
+      "status": "pass",
+      "observed": [
+        {
+          "start": 238,
+          "end": 681,
+          "strand": "-"
+        }
+      ],
+      "expected": [
+        {
+          "start": 238,
+          "end": 681,
+          "strand": "-"
+        }
+      ]
+    },
+    {
+      "id": "laczalpha_frame_proxy_after_segments",
+      "status": "pass",
+      "observed": [
+        {
+          "start": 238,
+          "end": 689,
+          "strand": "-"
+        }
+      ],
+      "expected": [
+        {
+          "start": 238,
+          "end": 689,
+          "strand": "-"
+        }
+      ]
+    },
+    {
+      "id": "bla_after_segments",
+      "status": "pass",
+      "observed": [
+        {
+          "start": 1637,
+          "end": 2425,
+          "strand": "-"
+        }
+      ],
+      "expected": [
+        {
+          "start": 1637,
+          "end": 2425,
+          "strand": "-"
+        }
+      ]
+    },
+    {
+      "id": "bla_no_frameshift",
+      "status": "pass",
+      "observed": false,
+      "expected": false
+    },
+    {
+      "id": "translation_checked_outside_edit_sequence",
+      "status": "pass",
+      "observed": {
+        "beforePartialTerminalCodon": null,
+        "afterPartialTerminalCodon": "GC"
+      },
+      "expected": {
+        "beforePartialTerminalCodon": null,
+        "afterPartialTerminalCodon": "GC"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "edited_laczalpha_plasmid_map",
+      "kind": "plasmid_map",
+      "path": "artifacts/plasmid-map.svg",
+      "sha256": "6eb1c95a4f7b3545cb426367a3f1f273fab4f2578cc8c36bb5d65ef6eebfa39b",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

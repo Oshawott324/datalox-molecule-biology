@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-edit-puc19-mcs-insert",
+  "artifacts": [
+    {
+      "id": "edited_plasmid_map",
+      "kind": "plasmid_map",
+      "path": "artifacts/plasmid-map.svg",
+      "sha256": "db0dfb4ed4dc7e0e2d8c88e7dbb69d9a1163c6cf530472d16aefa744b10cea86",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

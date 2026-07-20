@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-edit-puc19-laczalpha-frameshift",
+  "artifacts": [
+    {
+      "id": "edited_laczalpha_plasmid_map",
+      "kind": "plasmid_map",
+      "path": "artifacts/plasmid-map.svg",
+      "sha256": "6eb1c95a4f7b3545cb426367a3f1f273fab4f2578cc8c36bb5d65ef6eebfa39b",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

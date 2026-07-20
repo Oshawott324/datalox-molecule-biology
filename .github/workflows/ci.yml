@@ -37,6 +37,9 @@ jobs:
       - name: MCP non-repo cwd smoke test
         run: npm run smoke:mcp:cwd
 
+      - name: Eval corpus v0 check
+        run: npm run eval:corpus:v0:check
+
       - name: pUC19 MCP demo
         run: npm run demo:puc19:mcp
 

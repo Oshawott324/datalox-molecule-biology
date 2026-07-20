@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" role="img" aria-label="pUC19 plasmid map">
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; fill: #1f2927; }
+    .meta { font-size: 12px; fill: #5d6a66; }
+    .primer-label { font-size: 11px; fill: #2b3c39; }
+    .guide-label { font-size: 11px; fill: #2b3c39; font-weight: 700; }
+    .cut-label { font-size: 11px; fill: #263238; font-weight: 700; }
+  </style>
+  <defs>
+    <marker id="primer-arrow-forward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#1976D2"/></marker>
+    <marker id="primer-arrow-reverse" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#D32F2F"/></marker>
+    <marker id="guide-arrow-forward" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#00897B"/></marker>
+    <marker id="guide-arrow-reverse" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="#7B1FA2"/></marker>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <circle cx="360" cy="280" r="173.600" fill="none" stroke="#c9d3d0" stroke-width="9"/>
+  
+  
+  <path d="M 456.396 123.741 A 183.600 183.600 0 0 1 506.212 168.955" fill="none" stroke="#E9A227" stroke-width="10" stroke-linecap="round"><title>lacZalpha</title></path>
+  <path d="M 521.712 193.062 A 183.600 183.600 0 0 1 543.464 287.064" fill="none" stroke="#E9A227" stroke-width="10" stroke-linecap="round"><title>lacZalpha</title></path>
+  <path d="M 506.212 168.955 A 183.600 183.600 0 0 1 521.305 192.309" fill="none" stroke="#90A4AE" stroke-width="10" stroke-linecap="round"><title>MCS</title></path>
+  <path d="M 524.082 362.378 A 183.600 183.600 0 0 1 523.889 362.761" fill="none" stroke="#78909C" stroke-width="10" stroke-linecap="round"><title>pMB1 ori</title></path>
+  <path d="M 245.408 423.449 A 183.600 183.600 0 0 1 252.221 131.364" fill="none" stroke="#E9A227" stroke-width="10" stroke-linecap="round"><title>bla</title></path>
+  <path d="M 245.408 423.449 A 183.600 183.600 0 0 1 252.221 131.364" fill="none" stroke="#E9A227" stroke-width="10" stroke-linecap="round"><title>bla</title></path>
+  
+  <line x1="491.076" y1="183.783" x2="517.679" y2="164.256" stroke="#263238" stroke-width="2"><title>NotI cut at 403</title></line>
+  <text class="cut-label" x="562.822" y="131.118" text-anchor="start" dominant-baseline="middle">NotI</text>
+  <text x="360" y="272" text-anchor="middle" font-weight="700">pUC19</text>
+  <text class="meta" x="360" y="294" text-anchor="middle">2694 bp circular DNA</text>
+  <text class="meta" x="360" y="314" text-anchor="middle">mol_puc19</text>
+  <line x1="488.769" y1="138.123" x2="515.652" y2="108.503" stroke="#8b9692" stroke-width="1"/>
+  <text x="515.652" y="108.503" text-anchor="start" dominant-baseline="middle">lacZalpha</text>
+  <line x1="520.920" y1="176.003" x2="569.633" y2="144.522" stroke="#8b9692" stroke-width="1"/>
+  <text x="569.633" y="144.522" text-anchor="start" dominant-baseline="middle">MCS</text>
+  <line x1="531.131" y1="366.167" x2="599.011" y2="400.346" stroke="#8b9692" stroke-width="1"/>
+  <text x="599.011" y="400.346" text-anchor="start" dominant-baseline="middle">pMB1 ori</text>
+  <line x1="168.452" y1="275.532" x2="74.478" y2="273.340" stroke="#8b9692" stroke-width="1"/>
+  <text x="74.478" y="273.340" text-anchor="end" dominant-baseline="middle">bla</text>
+  <line x1="168.452" y1="275.532" x2="128.463" y2="274.599" stroke="#8b9692" stroke-width="1"/>
+  <text x="128.463" y="274.599" text-anchor="end" dominant-baseline="middle">bla</text>
+</svg>

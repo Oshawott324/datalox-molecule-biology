@@ -1,0 +1,201 @@
+{
+  "open_sequence": {
+    "ok": true,
+    "tool": "open_sequence",
+    "revision": 0,
+    "moleculeIds": [
+      "mol_puc19"
+    ]
+  },
+  "edit_sequence": {
+    "ok": true,
+    "tool": "edit_sequence",
+    "revision": 1,
+    "moleculeId": "mol_puc19",
+    "operation": "insert",
+    "lengthBefore": 2686,
+    "lengthAfter": 2694,
+    "delta": 8,
+    "featureImpact": [
+      {
+        "featureId": "feat_mol_puc19_source",
+        "name": "source",
+        "impact": "split",
+        "beforeSegments": [
+          {
+            "start": 1,
+            "end": 2686,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1,
+            "end": 2694,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": [
+          "Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations."
+        ]
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha",
+        "name": "lacZalpha",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 238,
+            "end": 395,
+            "strand": "-"
+          },
+          {
+            "start": 455,
+            "end": 682,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 238,
+            "end": 395,
+            "strand": "-"
+          },
+          {
+            "start": 463,
+            "end": 690,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_mcs",
+        "name": "MCS",
+        "impact": "split",
+        "beforeSegments": [
+          {
+            "start": 396,
+            "end": 452,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 396,
+            "end": 460,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": [
+          "Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations."
+        ]
+      },
+      {
+        "featureId": "feat_mol_puc19_pmb1_ori",
+        "name": "pMB1 ori",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 866,
+            "end": 866,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 874,
+            "end": 874,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_bla",
+        "name": "bla",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 1629,
+            "end": 2417,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1637,
+            "end": 2425,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_bla_2",
+        "name": "bla",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 1629,
+            "end": 2417,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1637,
+            "end": 2425,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      }
+    ]
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 1,
+    "validationOk": true,
+    "issueCount": 0
+  },
+  "get_sequence_context": {
+    "ok": true,
+    "tool": "get_sequence_context",
+    "moleculeId": "mol_puc19",
+    "region": {
+      "start": 396,
+      "end": 409,
+      "strand": "+",
+      "length": 14
+    },
+    "sequence": "GAATTCGCGGCCGC"
+  },
+  "find_restriction_sites": {
+    "ok": true,
+    "tool": "find_restriction_sites",
+    "sites": [
+      {
+        "enzyme": "NotI",
+        "start": 402,
+        "end": 409,
+        "cutPosition": 403
+      }
+    ],
+    "sitesTotalCount": 1,
+    "sitesTruncated": false
+  },
+  "render_plasmid_map": {
+    "ok": true,
+    "tool": "render_plasmid_map",
+    "moleculeId": "mol_puc19",
+    "artifactKind": "plasmid_map"
+  }
+}

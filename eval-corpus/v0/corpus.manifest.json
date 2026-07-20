@@ -1,0 +1,52 @@
+{
+  "schema": "datalox.molecule.eval-corpus",
+  "version": "0.1.0",
+  "createdAt": "2026-07-20T00:00:00.000Z",
+  "packageName": "@datalox/molecule-biology",
+  "requiredToolSurface": {
+    "toolCount": 30,
+    "requiredTools": [
+      "edit_sequence",
+      "find_restriction_sites",
+      "get_sequence_context",
+      "open_sequence",
+      "render_plasmid_map",
+      "translate_region",
+      "validate_workspace"
+    ],
+    "descriptorDigest": "c158dcae98492bc3f75b846317373e3243b541538fc85f51a2a51053bb0b8e38"
+  },
+  "artifactHashAlgorithm": "sha256",
+  "tasks": [
+    {
+      "id": "mb-edit-puc19-mcs-insert",
+      "title": "pUC19 MCS NotI insert with bla CDS frame preserved",
+      "path": "tasks/mb-edit-puc19-mcs-insert/task.json",
+      "category": "sequence_edit",
+      "requiredTools": [
+        "open_sequence",
+        "edit_sequence",
+        "validate_workspace",
+        "get_sequence_context",
+        "find_restriction_sites",
+        "render_plasmid_map"
+      ],
+      "expectedSummaryPath": "tasks/mb-edit-puc19-mcs-insert/expected/summary.json"
+    },
+    {
+      "id": "mb-edit-puc19-laczalpha-frameshift",
+      "title": "pUC19 lacZalpha frame proxy reports MCS insertion frameshift",
+      "path": "tasks/mb-edit-puc19-laczalpha-frameshift/task.json",
+      "category": "sequence_edit",
+      "requiredTools": [
+        "open_sequence",
+        "translate_region",
+        "edit_sequence",
+        "validate_workspace",
+        "get_sequence_context",
+        "render_plasmid_map"
+      ],
+      "expectedSummaryPath": "tasks/mb-edit-puc19-laczalpha-frameshift/expected/summary.json"
+    }
+  ]
+}

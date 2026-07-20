@@ -1,0 +1,237 @@
+{
+  "open_sequence": {
+    "ok": true,
+    "tool": "open_sequence",
+    "revision": 0,
+    "moleculeIds": [
+      "mol_puc19_laczalpha_cds"
+    ]
+  },
+  "translate_region_before": {
+    "ok": true,
+    "tool": "translate_region",
+    "moleculeId": "mol_puc19_laczalpha_cds",
+    "region": {
+      "start": 238,
+      "end": 681,
+      "strand": "-"
+    },
+    "nucleotideLength": 444,
+    "aminoAcidLength": 148,
+    "partialTerminalCodon": null
+  },
+  "edit_sequence": {
+    "ok": true,
+    "tool": "edit_sequence",
+    "revision": 1,
+    "moleculeId": "mol_puc19_laczalpha_cds",
+    "operation": "insert",
+    "lengthBefore": 2686,
+    "lengthAfter": 2694,
+    "delta": 8,
+    "featureImpact": [
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_source",
+        "name": "source",
+        "impact": "split",
+        "beforeSegments": [
+          {
+            "start": 1,
+            "end": 2686,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1,
+            "end": 2694,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": [
+          "Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations."
+        ]
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_laczalpha",
+        "name": "lacZalpha",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 238,
+            "end": 395,
+            "strand": "-"
+          },
+          {
+            "start": 455,
+            "end": 682,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 238,
+            "end": 395,
+            "strand": "-"
+          },
+          {
+            "start": 463,
+            "end": 690,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_laczalpha_frame_proxy",
+        "name": "lacZalpha_frame_proxy",
+        "impact": "split",
+        "beforeSegments": [
+          {
+            "start": 238,
+            "end": 681,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 238,
+            "end": 689,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": true,
+        "notes": [
+          "CDS length may no longer preserve the original reading frame.",
+          "Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations."
+        ]
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_mcs",
+        "name": "MCS",
+        "impact": "split",
+        "beforeSegments": [
+          {
+            "start": 396,
+            "end": 452,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 396,
+            "end": 460,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": [
+          "Edit splits a feature segment; v1 reports the merged span and does not fabricate split annotations."
+        ]
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_pmb1_ori",
+        "name": "pMB1 ori",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 866,
+            "end": 866,
+            "strand": "+"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 874,
+            "end": 874,
+            "strand": "+"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_bla",
+        "name": "bla",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 1629,
+            "end": 2417,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1637,
+            "end": 2425,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      },
+      {
+        "featureId": "feat_mol_puc19_laczalpha_cds_bla_2",
+        "name": "bla",
+        "impact": "shifted",
+        "beforeSegments": [
+          {
+            "start": 1629,
+            "end": 2417,
+            "strand": "-"
+          }
+        ],
+        "afterSegments": [
+          {
+            "start": 1637,
+            "end": 2425,
+            "strand": "-"
+          }
+        ],
+        "frameShifted": false,
+        "notes": []
+      }
+    ]
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 1,
+    "validationOk": true,
+    "issueCount": 0
+  },
+  "get_sequence_context": {
+    "ok": true,
+    "tool": "get_sequence_context",
+    "moleculeId": "mol_puc19_laczalpha_cds",
+    "region": {
+      "start": 396,
+      "end": 409,
+      "strand": "+",
+      "length": 14
+    },
+    "sequence": "GAATTCGCGGCCGC"
+  },
+  "translate_region_after": {
+    "ok": true,
+    "tool": "translate_region",
+    "moleculeId": "mol_puc19_laczalpha_cds",
+    "region": {
+      "start": 238,
+      "end": 689,
+      "strand": "-"
+    },
+    "nucleotideLength": 452,
+    "aminoAcidLength": 150,
+    "partialTerminalCodon": "GC"
+  },
+  "render_plasmid_map": {
+    "ok": true,
+    "tool": "render_plasmid_map",
+    "moleculeId": "mol_puc19_laczalpha_cds",
+    "artifactKind": "plasmid_map"
+  }
+}
