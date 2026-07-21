@@ -55,6 +55,52 @@ Implementation constraints (per the NCBI BLAST URL API usage policy):
 
 ## B1: `blast_sequence`
 
+### Live Fixture Capture Helper
+
+B1 implementation is blocked until one real NCBI BLAST URL API run is captured
+as a fixture. The helper below exists only to clear that gate. It is not called
+from CI, from `npm test`, or from the MCP server.
+
+```bash
+# Required by NCBI's BLAST URL API usage policy.
+export NCBI_BLAST_EMAIL="you@example.com"
+
+npm run fixture:blast:capture -- \
+  --fixture-id puc19-mcs-noti-blastn-nt \
+  --sequence GAATTCGCGGCCGC \
+  --program blastn \
+  --database nt \
+  --hitlist-size 5 \
+  --expect 0.001
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:NCBI_BLAST_EMAIL = "you@example.com"
+npm run fixture:blast:capture -- `
+  --fixture-id puc19-mcs-noti-blastn-nt `
+  --sequence GAATTCGCGGCCGC `
+  --program blastn `
+  --database nt `
+  --hitlist-size 5 `
+  --expect 0.001
+```
+
+The helper writes:
+
+```text
+fixtures/blast/<fixture-id>/query.fa
+fixtures/blast/<fixture-id>/put-response.txt
+fixtures/blast/<fixture-id>/status-*.txt
+fixtures/blast/<fixture-id>/result.json
+fixtures/blast/<fixture-id>/metadata.json
+```
+
+Review these raw files before using them as implementation fixtures. If the
+live response shape differs from this spec, update the spec first, then
+implement B1 against the observed contract.
+
 ### Input
 
 ```ts

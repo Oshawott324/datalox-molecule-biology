@@ -1,2 +1,5 @@
 # Corpus artifacts and inputs are byte-hashed; git must never normalize them.
 eval-corpus/** -text
+
+# BLAST live-response fixtures are raw API observations; preserve exact bytes.
+fixtures/blast/** -text
