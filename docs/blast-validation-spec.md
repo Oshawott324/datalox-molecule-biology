@@ -66,8 +66,8 @@ from CI, from `npm test`, or from the MCP server.
 export NCBI_BLAST_EMAIL="you@example.com"
 
 npm run fixture:blast:capture -- \
-  --fixture-id puc19-mcs-noti-blastn-nt \
-  --sequence GAATTCGCGGCCGC \
+  --fixture-id puc19-bla-blastn-nt \
+  --sequence CAATGCTTAATCAGTGAGGCACCTATCTCAGCGATCTGTCTATTTCGTTCATCCATAGTTGCCTGACTCCCCGTCGTGTAGATAACTACGATACGGGAGGGCTTACCATCTGGCCCCAGTGCTGCAATGATACCGCGAGACCCACGCTCACCGGCTCCAGATTTATCAGCAATAAACCAGCCAGCCGGAAGGGCCGAGCGCAGAAGTGGTCCTGCAACTTTATCCGCCTCCATCCAGTCTATTAATTGTTGCCGGGAAGCTAGAGTAAGTAGTTCGCCAGTTAATAGTTTGCGCAACGTT \
   --program blastn \
   --database nt \
   --hitlist-size 5 \
@@ -79,8 +79,8 @@ On Windows PowerShell:
 ```powershell
 $env:NCBI_BLAST_EMAIL = "you@example.com"
 npm run fixture:blast:capture -- `
-  --fixture-id puc19-mcs-noti-blastn-nt `
-  --sequence GAATTCGCGGCCGC `
+  --fixture-id puc19-bla-blastn-nt `
+  --sequence CAATGCTTAATCAGTGAGGCACCTATCTCAGCGATCTGTCTATTTCGTTCATCCATAGTTGCCTGACTCCCCGTCGTGTAGATAACTACGATACGGGAGGGCTTACCATCTGGCCCCAGTGCTGCAATGATACCGCGAGACCCACGCTCACCGGCTCCAGATTTATCAGCAATAAACCAGCCAGCCGGAAGGGCCGAGCGCAGAAGTGGTCCTGCAACTTTATCCGCCTCCATCCAGTCTATTAATTGTTGCCGGGAAGCTAGAGTAAGTAGTTCGCCAGTTAATAGTTTGCGCAACGTT `
   --program blastn `
   --database nt `
   --hitlist-size 5 `
@@ -100,6 +100,18 @@ fixtures/blast/<fixture-id>/metadata.json
 Review these raw files before using them as implementation fixtures. If the
 live response shape differs from this spec, update the spec first, then
 implement B1 against the observed contract.
+
+Use a gene-length B1 query, not a short multiple-cloning-site motif. A 14 bp
+restriction-site query such as `GAATTCGCGGCCGC` is too short for ordinary
+`blastn` seeding and is biologically nonspecific even if short-query settings
+are used. The example above is a 300 bp pUC19 `bla` window from positions
+1629..1928 of the checked-in fixture, chosen to produce stable high-identity
+nucleotide hits for parser and provenance tests.
+
+The captured BLAST result is a frozen API observation, not a regenerable
+truth artifact. `nt` changes over time and RIDs are random. B1 tests should
+therefore assert parser structure and provenance fields from the saved fixture,
+not exact future rank order or E-values from a new live query.
 
 ### Input
 
