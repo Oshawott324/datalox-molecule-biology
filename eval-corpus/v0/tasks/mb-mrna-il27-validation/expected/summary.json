@@ -1,0 +1,63 @@
+{
+  "taskId": "mb-mrna-il27-validation",
+  "ok": true,
+  "workspace": {
+    "finalRevision": 0,
+    "moleculeIds": [
+      "mol_mrna_eval"
+    ]
+  },
+  "checks": [
+    {
+      "id": "workspace_validation_ok",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "mrna_construct_summary",
+      "status": "pass",
+      "observed": "valid",
+      "expected": "valid"
+    },
+    {
+      "id": "mrna_construct_fail_count",
+      "status": "pass",
+      "observed": 0,
+      "expected": 0
+    },
+    {
+      "id": "mrna_construct_warning_count",
+      "status": "pass",
+      "observed": 0,
+      "expected": 0
+    },
+    {
+      "id": "protein_amino_acids",
+      "status": "pass",
+      "observed": "MAAA*",
+      "expected": "MAAA*"
+    },
+    {
+      "id": "protein_length_stop_trimmed",
+      "status": "pass",
+      "observed": {
+        "proteinLength": 4,
+        "stopTrimmed": true
+      },
+      "expected": {
+        "proteinLength": 4,
+        "stopTrimmed": true
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "translated_protein_fasta",
+      "kind": "protein_fasta",
+      "path": "artifacts/protein.fa",
+      "sha256": "27cbdb8fa55b3d459b0adcbc68260fbb3fe4d1c8243a74ebcabb51735e93bfb4",
+      "mimeType": "text/x-fasta"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-crispr-puc19-ngg",
+  "artifacts": [
+    {
+      "id": "selected_grna_report",
+      "kind": "markdown",
+      "path": "artifacts/grna-report.md",
+      "sha256": "4c2832855a060d8bfb432c810cb81b48600e019ea6de19ca9d95ae779f60a327",
+      "mimeType": "text/markdown"
+    }
+  ]
+}

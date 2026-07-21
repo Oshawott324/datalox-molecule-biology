@@ -1,0 +1,17 @@
+LOCUS       mol_eval_produ      50 bp    DNA    circular 03-JUL-2026
+DEFINITION  eval_product; simulated restriction-ligation candidate candidate_forward.
+FEATURES             Location/Qualifiers
+     source          1..50
+                     /label="eval_product"
+                     /note="Simulated restriction-ligation candidate; not persisted to workspace."
+     misc_feature    50
+                     /label="junction_1"
+                     /note="EcoRI to EcoRI; five_prime_overhang; overhang AATT"
+                     /regenerated_site="GAATTC"
+     misc_feature    1
+                     /label="junction_2"
+                     /note="BamHI to BamHI; five_prime_overhang; overhang GATC"
+                     /regenerated_site="GGATCC"
+ORIGIN
+        1 gatccttttt tttttttttt tttttaaaag aattcggggg gggggggggg
+//

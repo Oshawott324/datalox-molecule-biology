@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-assembly-restriction-ligation",
+  "artifacts": [
+    {
+      "id": "restriction_ligation_product",
+      "kind": "genbank",
+      "path": "artifacts/assembly-product.gb",
+      "sha256": "33611b3f6bafa00d09c7ac1adfb7422f51336805aff53813e5d6a312b5b5030f",
+      "mimeType": "chemical/x-genbank"
+    }
+  ]
+}

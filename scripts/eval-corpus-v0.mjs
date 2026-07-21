@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { moleculeToolDescriptors } from "../dist/src/index.js";
+import { moleculeToolDescriptors, reverseComplement } from "../dist/src/index.js";
 
 const mode = process.argv[2];
 if (mode !== "generate" && mode !== "check") {
@@ -58,6 +58,65 @@ const tasks = [
     },
     render: { outputPath: "reports/maps/mb-edit-puc19-laczalpha-frameshift.svg", showPrimers: false, showGuides: false },
     variant: "laczalpha_frame_proxy",
+  },
+  {
+    id: "mb-digest-puc19-hindiii-xhoi",
+    title: "pUC19 diagnostic digest gel distinguishes insert orientation",
+    category: "digest",
+    moleculeIds: ["mol_empty", "mol_forward", "mol_reverse"],
+    expectedChecks: {
+      finalRevision: 2,
+      selectedPair: ["HindIII", "XhoI"],
+      fragments: {
+        mol_empty: [2686],
+        mol_forward: [480, 2885],
+        mol_reverse: [284, 3081],
+      },
+    },
+  },
+  {
+    id: "mb-assembly-restriction-ligation",
+    title: "EcoRI/BamHI restriction ligation produces a GenBank artifact",
+    category: "assembly",
+    moleculeIds: ["mol_vector_eval", "mol_insert_eval"],
+    expectedChecks: {
+      finalRevision: 1,
+      productLength: 50,
+      regeneratedSites: ["GAATTC", "GGATCC"],
+    },
+  },
+  {
+    id: "mb-crispr-puc19-ngg",
+    title: "SpCas9 guide design persists one selected local guide and report",
+    category: "crispr",
+    moleculeId: "mol_crispr_eval",
+    expectedChecks: {
+      finalRevision: 1,
+      guide: {
+        id: "grna_eval_1",
+        sequence: "ACGTACGTACGTACGTACGT",
+        pam: "AGG",
+        start: 1,
+        end: 20,
+        pamStart: 21,
+        pamEnd: 23,
+        gcPercent: 50,
+      },
+    },
+  },
+  {
+    id: "mb-mrna-il27-validation",
+    title: "Valid mRNA construct exports a translated protein FASTA",
+    category: "mrna",
+    moleculeId: "mol_mrna_eval",
+    expectedChecks: {
+      finalRevision: 0,
+      validationSummary: "valid",
+      proteinId: "il27_proxy",
+      aminoAcids: "MAAA*",
+      proteinLength: 4,
+      stopTrimmed: true,
+    },
   },
 ];
 
@@ -127,6 +186,14 @@ async function checkCorpus() {
 }
 
 async function runTask(task) {
+  if (task.category === "digest") return runDigestTask(task);
+  if (task.category === "assembly") return runAssemblyTask(task);
+  if (task.category === "crispr") return runCrisprTask(task);
+  if (task.category === "mrna") return runMrnaTask(task);
+  return runSequenceEditTask(task);
+}
+
+async function runSequenceEditTask(task) {
   const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), `mol-eval-${task.id}-`));
   const stagedInput = path.join(workspaceDir, "imports", task.inputFileName);
   await fs.mkdir(path.dirname(stagedInput), { recursive: true });
@@ -239,6 +306,202 @@ async function runTask(task) {
   }
 }
 
+async function runDigestTask(task) {
+  const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), `mol-eval-${task.id}-`));
+  const staged = await stageTaskInputs(task, workspaceDir);
+  const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+  const client = await connectedClient();
+  try {
+    const emptyOpen = await callTool(client, "open_sequence", {
+      inputPath: staged.get("puc19-empty.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_empty",
+    });
+    const forwardOpen = await callTool(client, "open_sequence", {
+      inputPath: staged.get("puc19-forward.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_forward",
+      expectedRevision: emptyOpen.revision,
+    });
+    const reverseOpen = await callTool(client, "open_sequence", {
+      inputPath: staged.get("puc19-reverse.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_reverse",
+      expectedRevision: forwardOpen.revision,
+    });
+    const digests = {};
+    for (const moleculeId of task.moleculeIds) {
+      digests[moleculeId] = await callTool(client, "simulate_digest", {
+        workspacePath,
+        moleculeId,
+        enzymes: task.expectedChecks.selectedPair,
+      });
+    }
+    const validate = await callTool(client, "validate_workspace", { workspacePath, checkSequenceDigests: true });
+    const lanes = task.moleculeIds.map((moleculeId) => ({
+      label: digestLaneLabel(moleculeId),
+      fragments: digestFragmentSizes(digests[moleculeId]).map((size) => ({ size })),
+    }));
+    const gelArgs = {
+      workspacePath,
+      gelId: "eval_diagnostic_digest",
+      lanes,
+      customLadder: [100, 250, 500, 1000, 2000, 3000, 5000],
+      outputPath: "reports/gels/eval-diagnostic-digest.svg",
+    };
+    const gel = await callTool(client, "render_digest_gel", gelArgs);
+    const gelBytes = await fs.readFile(gel.data.outputPath);
+    const gelAgain = await callTool(client, "render_digest_gel", { ...gelArgs, outputPath: "reports/gels/eval-diagnostic-digest.det.svg" });
+    const gelAgainBytes = await fs.readFile(gelAgain.data.outputPath);
+    assertByteEqual(gelBytes, gelAgainBytes, `${task.id}: render_digest_gel`);
+
+    const artifactHash = sha256Buffer(gelBytes);
+    const summary = buildDigestSummary(task, { reverseOpen, digests, validate, artifactHash });
+    return taskRunResult(task, summary, {
+      observations: normalizeDigestObservations({ emptyOpen, forwardOpen, reverseOpen, digests, validate, gel }),
+      artifacts: [{ relativePath: "artifacts/digest-gel.svg", bytes: gelBytes }],
+    });
+  } finally {
+    await client.close();
+  }
+}
+
+async function runAssemblyTask(task) {
+  const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), `mol-eval-${task.id}-`));
+  const staged = await stageTaskInputs(task, workspaceDir);
+  const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+  const client = await connectedClient();
+  try {
+    const vectorOpen = await callTool(client, "open_sequence", {
+      inputPath: staged.get("eval-vector.gb"),
+      workspaceDir,
+      format: "genbank",
+      moleculeId: "mol_vector_eval",
+    });
+    const insertOpen = await callTool(client, "open_sequence", {
+      inputPath: staged.get("eval-insert.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_insert_eval",
+      expectedRevision: vectorOpen.revision,
+    });
+    const assemblyArgs = {
+      workspacePath,
+      method: "restriction_ligation",
+      vector: { moleculeId: "mol_vector_eval", leftEnzyme: "EcoRI", rightEnzyme: "BamHI" },
+      insert: { moleculeId: "mol_insert_eval", leftEnzyme: "EcoRI", rightEnzyme: "BamHI", orientation: "forward" },
+      product: { moleculeId: "mol_eval_product", name: "eval_product", topology: "circular" },
+    };
+    const assembly = await callTool(client, "simulate_assembly", assemblyArgs);
+    const artifactBytes = await fs.readFile(assembly.artifacts[0].path);
+    const assemblyAgain = await callTool(client, "simulate_assembly", assemblyArgs);
+    const artifactAgainBytes = await fs.readFile(assemblyAgain.artifacts[0].path);
+    assertByteEqual(artifactBytes, artifactAgainBytes, `${task.id}: simulate_assembly GenBank artifact`);
+    const validate = await callTool(client, "validate_workspace", { workspacePath, checkSequenceDigests: true });
+
+    const summary = buildAssemblySummary(task, { insertOpen, assembly, validate, artifactHash: sha256Buffer(artifactBytes) });
+    return taskRunResult(task, summary, {
+      observations: normalizeAssemblyObservations({ vectorOpen, insertOpen, assembly, validate }),
+      artifacts: [{ relativePath: "artifacts/assembly-product.gb", bytes: artifactBytes }],
+    });
+  } finally {
+    await client.close();
+  }
+}
+
+async function runCrisprTask(task) {
+  const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), `mol-eval-${task.id}-`));
+  const staged = await stageTaskInputs(task, workspaceDir);
+  const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+  const client = await connectedClient();
+  try {
+    const open = await callTool(client, "open_sequence", {
+      inputPath: staged.get("crispr-source.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: task.moleculeId,
+    });
+    const design = await callTool(client, "design_grnas", {
+      workspacePath,
+      moleculeId: task.moleculeId,
+      targetRegion: { start: 1, end: 20 },
+      options: { strand: "+" },
+    });
+    const guide = guideRecordFromCandidate(task.moleculeId, task.expectedChecks.guide, design.data.candidates[0]);
+    const upsert = await callTool(client, "upsert_grna", {
+      workspacePath,
+      expectedRevision: open.revision,
+      guide,
+    });
+    const validate = await callTool(client, "validate_workspace", { workspacePath, checkSequenceDigests: true });
+    const reportArgs = {
+      workspacePath,
+      guideIds: [guide.id],
+      outputPath: "reports/guides/eval-guide.md",
+    };
+    const report = await callTool(client, "export_grna_report", reportArgs);
+    const reportBytes = await fs.readFile(report.artifacts[0].path);
+    const reportAgain = await callTool(client, "export_grna_report", { ...reportArgs, outputPath: "reports/guides/eval-guide.det.md" });
+    const reportAgainBytes = await fs.readFile(reportAgain.artifacts[0].path);
+    assertByteEqual(reportBytes, reportAgainBytes, `${task.id}: export_grna_report`);
+
+    const summary = buildCrisprSummary(task, { upsert, design, validate, report, artifactHash: sha256Buffer(reportBytes) });
+    return taskRunResult(task, summary, {
+      observations: normalizeCrisprObservations({ open, design, upsert, validate, report }),
+      artifacts: [{ relativePath: "artifacts/grna-report.md", bytes: reportBytes }],
+    });
+  } finally {
+    await client.close();
+  }
+}
+
+async function runMrnaTask(task) {
+  const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), `mol-eval-${task.id}-`));
+  const staged = await stageTaskInputs(task, workspaceDir);
+  const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+  const client = await connectedClient();
+  try {
+    const open = await callTool(client, "open_sequence", {
+      inputPath: staged.get("il27-proxy-mrna.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: task.moleculeId,
+    });
+    const elements = mrnaElements();
+    const construct = await callTool(client, "validate_mrna_construct", {
+      workspacePath,
+      moleculeId: task.moleculeId,
+      templateType: "mrna",
+      elements,
+    });
+    const validate = await callTool(client, "validate_workspace", { workspacePath, checkSequenceDigests: true });
+    const proteinArgs = {
+      workspacePath,
+      moleculeId: task.moleculeId,
+      cdsStart: 11,
+      cdsEnd: 25,
+      proteinId: task.expectedChecks.proteinId,
+      outputPath: "reports/proteins/il27-proxy.fa",
+    };
+    const protein = await callTool(client, "export_protein_fasta", proteinArgs);
+    const proteinBytes = await fs.readFile(protein.artifacts[0].path);
+    const proteinAgain = await callTool(client, "export_protein_fasta", { ...proteinArgs, outputPath: "reports/proteins/il27-proxy.det.fa" });
+    const proteinAgainBytes = await fs.readFile(proteinAgain.artifacts[0].path);
+    assertByteEqual(proteinBytes, proteinAgainBytes, `${task.id}: export_protein_fasta`);
+
+    const summary = buildMrnaSummary(task, { open, construct, validate, protein, artifactHash: sha256Buffer(proteinBytes) });
+    return taskRunResult(task, summary, {
+      observations: normalizeMrnaObservations({ open, construct, validate, protein }),
+      artifacts: [{ relativePath: "artifacts/protein.fa", bytes: proteinBytes }],
+    });
+  } finally {
+    await client.close();
+  }
+}
+
 function buildSummary(task, result) {
   const checks = [
     passCheck("length_after_insert", result.edit.data.lengthAfter, task.expectedChecks.finalLength),
@@ -286,13 +549,146 @@ function buildSummary(task, result) {
   };
 }
 
+function buildDigestSummary(task, result) {
+  const observedFragments = Object.fromEntries(task.moleculeIds.map((moleculeId) => [
+    moleculeId,
+    digestFragmentSizes(result.digests[moleculeId]),
+  ]));
+  const checks = [
+    passCheck("workspace_validation_ok", result.validate.data.valid, true),
+    passCheck("selected_enzyme_pair", task.expectedChecks.selectedPair, ["HindIII", "XhoI"]),
+    passCheck("digest_fragments", observedFragments, task.expectedChecks.fragments),
+  ];
+  return {
+    taskId: task.id,
+    ok: true,
+    workspace: {
+      finalRevision: result.reverseOpen.revision,
+      moleculeIds: task.moleculeIds,
+    },
+    checks,
+    artifacts: [{
+      id: "diagnostic_digest_gel",
+      kind: "gel",
+      path: "artifacts/digest-gel.svg",
+      sha256: result.artifactHash,
+      mimeType: "image/svg+xml",
+    }],
+  };
+}
+
+function buildAssemblySummary(task, result) {
+  const candidate = result.assembly.data.candidates[0];
+  const regeneratedSites = candidate.junctions
+    .map((junction) => junction.regeneratedRecognitionSequence)
+    .filter((value) => typeof value === "string");
+  const checks = [
+    passCheck("workspace_validation_ok", result.validate.data.valid, true),
+    passCheck("candidate_count", result.assembly.data.candidates.length, 1),
+    passCheck("product_length", candidate.length, task.expectedChecks.productLength),
+    passCheck("candidate_orientation", candidate.orientation, "forward"),
+    passCheck("regenerated_recognition_sites", regeneratedSites, task.expectedChecks.regeneratedSites),
+    passCheck("workspace_not_mutated_by_simulation", result.assembly.revision, result.insertOpen.revision),
+  ];
+  return {
+    taskId: task.id,
+    ok: true,
+    workspace: {
+      finalRevision: result.insertOpen.revision,
+      moleculeIds: task.moleculeIds,
+    },
+    checks,
+    artifacts: [{
+      id: "restriction_ligation_product",
+      kind: "genbank",
+      path: "artifacts/assembly-product.gb",
+      sha256: result.artifactHash,
+      mimeType: "chemical/x-genbank",
+    }],
+  };
+}
+
+function buildCrisprSummary(task, result) {
+  const candidate = result.design.data.candidates[0];
+  const checks = [
+    passCheck("workspace_validation_ok", result.validate.data.valid, true),
+    passCheck("candidate_count", result.design.data.candidates.length, 1),
+    passCheck("selected_guide_sequence", candidate.sequence, task.expectedChecks.guide.sequence),
+    passCheck("selected_guide_coordinates", {
+      start: candidate.start,
+      end: candidate.end,
+      pamStart: candidate.pamStart,
+      pamEnd: candidate.pamEnd,
+    }, {
+      start: task.expectedChecks.guide.start,
+      end: task.expectedChecks.guide.end,
+      pamStart: task.expectedChecks.guide.pamStart,
+      pamEnd: task.expectedChecks.guide.pamEnd,
+    }),
+    passCheck("guide_upsert_revision", result.upsert.revision, task.expectedChecks.finalRevision),
+    passCheck("cr1_omits_efficacy_score", candidate.rankingEvidence.efficacyScoreIncluded, false),
+    passCheck("report_omits_detailed_off_target_hits", result.report.data.reportsDetailedOffTargetHits, false),
+  ];
+  return {
+    taskId: task.id,
+    ok: true,
+    workspace: {
+      finalRevision: result.upsert.revision,
+      moleculeIds: [task.moleculeId],
+    },
+    checks,
+    artifacts: [{
+      id: "selected_grna_report",
+      kind: "markdown",
+      path: "artifacts/grna-report.md",
+      sha256: result.artifactHash,
+      mimeType: "text/markdown",
+    }],
+  };
+}
+
+function buildMrnaSummary(task, result) {
+  const checks = [
+    passCheck("workspace_validation_ok", result.validate.data.valid, true),
+    passCheck("mrna_construct_summary", result.construct.data.summary, task.expectedChecks.validationSummary),
+    passCheck("mrna_construct_fail_count", result.construct.data.failCount, 0),
+    passCheck("mrna_construct_warning_count", result.construct.data.warningCount, 0),
+    passCheck("protein_amino_acids", result.protein.data.aminoAcids, task.expectedChecks.aminoAcids),
+    passCheck("protein_length_stop_trimmed", {
+      proteinLength: result.protein.data.proteinLength,
+      stopTrimmed: result.protein.data.stopTrimmed,
+    }, {
+      proteinLength: task.expectedChecks.proteinLength,
+      stopTrimmed: task.expectedChecks.stopTrimmed,
+    }),
+  ];
+  return {
+    taskId: task.id,
+    ok: true,
+    workspace: {
+      finalRevision: result.open.revision,
+      moleculeIds: [task.moleculeId],
+    },
+    checks,
+    artifacts: [{
+      id: "translated_protein_fasta",
+      kind: "protein_fasta",
+      path: "artifacts/protein.fa",
+      sha256: result.artifactHash,
+      mimeType: "text/x-fasta",
+    }],
+  };
+}
+
 async function writeTaskFiles(task, generated) {
   const root = path.join(taskRoot, task.id);
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(path.join(root, "inputs"), { recursive: true });
   await fs.mkdir(path.join(root, "expected"), { recursive: true });
   await fs.mkdir(path.join(root, "artifacts"), { recursive: true });
-  await fs.writeFile(path.join(root, "inputs", task.inputFileName), await inputContentForTask(task), "utf8");
+  for (const input of await taskInputFiles(task)) {
+    await fs.writeFile(path.join(root, "inputs", input.fileName), input.content, "utf8");
+  }
   await writeJson(path.join(root, "task.json"), generated.taskManifest);
   await writeJson(path.join(root, "expected", "summary.json"), generated.summary);
   await writeJson(path.join(root, "expected", "tool-observations.json"), generated.observations);
@@ -303,33 +699,27 @@ async function writeTaskFiles(task, generated) {
 }
 
 async function taskManifest(task) {
-  const inputContent = await inputContentForTask(task);
+  const inputs = await taskInputFiles(task);
   return {
     schema: "datalox.molecule.eval-task",
     version: "0.1.0",
     id: task.id,
     title: task.title,
     category: task.category,
-    objective: task.id === "mb-edit-puc19-mcs-insert"
-      ? "Import authentic pUC19, insert a NotI payload after EcoRI in the MCS, validate the workspace, and render the edited plasmid map."
-      : "Import pUC19 with a benchmark-only lacZalpha CDS proxy, insert the same NotI payload, and verify the proxy frameshift is reported.",
+    objective: objectiveForTask(task),
     constraints: [
       "Use public MCP tools only.",
       "Do not patch molecule.workspace.json directly.",
       "Call validate_workspace with checkSequenceDigests=true after edit_sequence.",
       "Do not infer amino-acid consequences from edit_sequence alone.",
     ],
-    inputs: [
-      {
-        id: task.id === "mb-edit-puc19-mcs-insert" ? "puc19" : "puc19_laczalpha_cds",
-        path: `inputs/${task.inputFileName}`,
-        kind: "genbank",
-        sha256: sha256String(inputContent),
-        source: task.variant === "laczalpha_frame_proxy"
-          ? "Derived from fixtures/genbank/puc19.gb by adding benchmark-only lacZalpha_frame_proxy CDS; sequence is unchanged."
-          : "Repo fixture copied from fixtures/genbank/puc19.gb.",
-      },
-    ],
+    inputs: inputs.map((input) => ({
+      id: input.id,
+      path: `inputs/${input.fileName}`,
+      kind: input.kind,
+      sha256: sha256String(input.content),
+      source: input.source,
+    })),
     toolPlan: requiredToolsForTask(task).map((tool, index) => ({
       step: index + 1,
       tool,
@@ -345,9 +735,7 @@ async function taskManifest(task) {
       mode: "exact_json_subset",
       artifactHashRequired: true,
     },
-    caveats: task.variant === "laczalpha_frame_proxy"
-      ? ["lacZalpha_frame_proxy is a benchmark-only CDS annotation and is not claimed as the authentic NCBI feature model."]
-      : ["The authentic fixture annotates lacZalpha as a non-CDS gene feature, so this task only asserts bla CDS frame preservation."],
+    caveats: caveatsForTask(task),
   };
 }
 
@@ -409,11 +797,121 @@ function selectedObservations(task, observations) {
   return Object.fromEntries(Object.entries(normalized).filter(([, value]) => value !== undefined));
 }
 
+async function taskRunResult(task, summary, options) {
+  return {
+    requiredTools: requiredToolsForTask(task),
+    taskManifest: await taskManifest(task),
+    summary,
+    artifactsManifest: {
+      taskId: task.id,
+      artifacts: summary.artifacts,
+    },
+    observations: options.observations,
+    artifacts: options.artifacts,
+  };
+}
+
+async function stageTaskInputs(task, workspaceDir) {
+  const staged = new Map();
+  for (const input of await taskInputFiles(task)) {
+    const stagedPath = path.join(workspaceDir, "imports", input.fileName);
+    await fs.mkdir(path.dirname(stagedPath), { recursive: true });
+    await fs.writeFile(stagedPath, input.content, "utf8");
+    staged.set(input.fileName, stagedPath);
+  }
+  return staged;
+}
+
+async function taskInputFiles(task) {
+  if (task.id === "mb-edit-puc19-mcs-insert") {
+    return [{
+      id: "puc19",
+      fileName: task.inputFileName,
+      kind: "genbank",
+      content: await inputContentForTask(task),
+      source: "Repo fixture copied from fixtures/genbank/puc19.gb.",
+    }];
+  }
+  if (task.id === "mb-edit-puc19-laczalpha-frameshift") {
+    return [{
+      id: "puc19_laczalpha_cds",
+      fileName: task.inputFileName,
+      kind: "genbank",
+      content: await inputContentForTask(task),
+      source: "Derived from fixtures/genbank/puc19.gb by adding benchmark-only lacZalpha_frame_proxy CDS; sequence is unchanged.",
+    }];
+  }
+  if (task.id === "mb-digest-puc19-hindiii-xhoi") {
+    const pUC19 = await fs.readFile(path.join(repoRoot, "fixtures", "genbank", "puc19.gb"), "utf8");
+    const vector = extractGenbankOriginSequence(pUC19);
+    const insert = await readFastaSequence(path.join(repoRoot, "fixtures", "fasta", "datalox_insert_v1.fa"));
+    const forwardSequence = `${vector.slice(0, 396)}${insert}${vector.slice(417)}`;
+    const reverseSequence = `${vector.slice(0, 396)}${reverseComplement(insert)}${vector.slice(417)}`;
+    return [
+      { id: "puc19_empty", fileName: "puc19-empty.gb", kind: "genbank", content: pUC19, source: "Repo fixture copied from fixtures/genbank/puc19.gb." },
+      { id: "puc19_forward", fileName: "puc19-forward.gb", kind: "genbank", content: formatCircularGenBank("mol_forward", "pUC19 payload forward orientation-control construct", forwardSequence), source: "Generated from authentic pUC19 plus fixtures/fasta/datalox_insert_v1.fa in forward orientation." },
+      { id: "puc19_reverse", fileName: "puc19-reverse.gb", kind: "genbank", content: formatCircularGenBank("mol_reverse", "pUC19 payload reverse orientation-control construct", reverseSequence), source: "Generated from authentic pUC19 plus reverse-complemented fixtures/fasta/datalox_insert_v1.fa." },
+    ];
+  }
+  if (task.id === "mb-assembly-restriction-ligation") {
+    return [
+      {
+        id: "eval_vector",
+        fileName: "eval-vector.gb",
+        kind: "genbank",
+        content: formatCircularGenBank("mol_vector_eval", "EcoRI BamHI evaluation vector", "AAAA" + "GAATTC" + "CCCCCCCCCCCCCC" + "GGATCC" + "TTTTTTTTTTTTTTTTTTTT"),
+        source: "Synthetic circular vector with unique EcoRI and BamHI sites; matches W3 restriction-ligation test geometry.",
+      },
+      {
+        id: "eval_insert",
+        fileName: "eval-insert.fa",
+        kind: "fasta",
+        content: ">mol_insert_eval\nAAAAGAATTCGGGGGGGGGGGGGGGGATCCAAAA\n",
+        source: "Synthetic linear insert with unique EcoRI and BamHI sites; matches W3 restriction-ligation test geometry.",
+      },
+    ];
+  }
+  if (task.id === "mb-crispr-puc19-ngg") {
+    return [{
+      id: "crispr_source",
+      fileName: "crispr-source.fa",
+      kind: "fasta",
+      content: ">mol_crispr_eval\nACGTACGTACGTACGTACGTAGGAAAA\n",
+      source: "Synthetic local SpCas9 NGG target with one passing plus-strand guide.",
+    }];
+  }
+  if (task.id === "mb-mrna-il27-validation") {
+    return [{
+      id: "il27_proxy_mrna",
+      fileName: "il27-proxy-mrna.fa",
+      kind: "fasta",
+      content: `>${task.moleculeId}\n${validMrnaSequence()}\n`,
+      source: "Synthetic minimal mRNA proxy with ordered 5'UTR, CDS, 3'UTR, Kozak context, stop codon, and polyA signal.",
+    }];
+  }
+  throw new Error(`No task inputs defined for ${task.id}`);
+}
+
 function requiredToolsForTask(task) {
   if (task.id === "mb-edit-puc19-mcs-insert") {
     return ["open_sequence", "edit_sequence", "validate_workspace", "get_sequence_context", "find_restriction_sites", "render_plasmid_map"];
   }
-  return ["open_sequence", "translate_region", "edit_sequence", "validate_workspace", "get_sequence_context", "render_plasmid_map"];
+  if (task.id === "mb-edit-puc19-laczalpha-frameshift") {
+    return ["open_sequence", "translate_region", "edit_sequence", "validate_workspace", "get_sequence_context", "render_plasmid_map"];
+  }
+  if (task.id === "mb-digest-puc19-hindiii-xhoi") {
+    return ["open_sequence", "simulate_digest", "validate_workspace", "render_digest_gel"];
+  }
+  if (task.id === "mb-assembly-restriction-ligation") {
+    return ["open_sequence", "simulate_assembly", "validate_workspace"];
+  }
+  if (task.id === "mb-crispr-puc19-ngg") {
+    return ["open_sequence", "design_grnas", "upsert_grna", "validate_workspace", "export_grna_report"];
+  }
+  if (task.id === "mb-mrna-il27-validation") {
+    return ["open_sequence", "validate_mrna_construct", "validate_workspace", "export_protein_fasta"];
+  }
+  throw new Error(`No required tools defined for ${task.id}`);
 }
 
 function purposeForTool(task, tool) {
@@ -425,6 +923,14 @@ function purposeForTool(task, tool) {
     find_restriction_sites: "Verify the inserted NotI restriction site deterministically.",
     translate_region: "Check protein consequence outside edit_sequence.",
     render_plasmid_map: "Render byte-stable plasmid map artifact.",
+    simulate_digest: "Compute deterministic restriction digest fragments.",
+    render_digest_gel: "Render byte-stable digest gel artifact.",
+    simulate_assembly: "Simulate deterministic restriction-ligation candidates.",
+    design_grnas: "Scan deterministic local SpCas9 NGG guide candidates.",
+    upsert_grna: "Persist the selected guide through revision-safe workspace write.",
+    export_grna_report: "Export byte-stable selected guide report artifact.",
+    validate_mrna_construct: "Validate ordered mRNA construct elements and CDS integrity.",
+    export_protein_fasta: "Export translated protein FASTA artifact.",
   };
   return purposes[tool] ?? `Run ${tool}`;
 }
@@ -489,6 +995,123 @@ function hasAnyCdsFrameshift(editEnvelope) {
   return editEnvelope.data.featureImpact.some((impact) => impact.frameShifted === true);
 }
 
+function digestFragmentSizes(envelope) {
+  return envelope.data.fragments.map((fragment) => fragment.size).sort((left, right) => left - right);
+}
+
+function digestLaneLabel(moleculeId) {
+  const labels = {
+    mol_empty: "Empty vector",
+    mol_forward: "Forward orientation",
+    mol_reverse: "Reverse orientation",
+  };
+  return labels[moleculeId] ?? moleculeId;
+}
+
+function guideRecordFromCandidate(moleculeId, expected, candidate) {
+  return {
+    id: expected.id,
+    moleculeId,
+    name: "selected guide 1",
+    sequence: candidate.sequence,
+    pam: candidate.pam,
+    strand: candidate.strand,
+    start: candidate.start,
+    end: candidate.end,
+    pamStart: candidate.pamStart,
+    pamEnd: candidate.pamEnd,
+    pamType: "SpCas9",
+    gcPercent: candidate.gcPercent,
+    seedRegionMaxHomopolymer: candidate.seedRegionMaxHomopolymer,
+    offTargetScope: "workspace_molecules_only",
+    offTargetHitCount: candidate.offTargets.length,
+    rankingEvidence: candidate.rankingEvidence,
+    sourceTool: "design_grnas",
+  };
+}
+
+function objectiveForTask(task) {
+  const objectives = {
+    "mb-edit-puc19-mcs-insert": "Import authentic pUC19, insert a NotI payload after EcoRI in the MCS, validate the workspace, and render the edited plasmid map.",
+    "mb-edit-puc19-laczalpha-frameshift": "Import pUC19 with a benchmark-only lacZalpha CDS proxy, insert the same NotI payload, and verify the proxy frameshift is reported.",
+    "mb-digest-puc19-hindiii-xhoi": "Import empty, forward, and reverse pUC19 diagnostic constructs; simulate HindIII+XhoI digests; render one multi-lane gel artifact.",
+    "mb-assembly-restriction-ligation": "Import a synthetic EcoRI/BamHI vector and insert, simulate directional restriction ligation, and verify the GenBank product artifact.",
+    "mb-crispr-puc19-ngg": "Import a local SpCas9 NGG target, design guides, persist one selected guide, validate the workspace, and export a guide report.",
+    "mb-mrna-il27-validation": "Import a minimal mRNA proxy, validate ordered mRNA elements and CDS integrity, then export the translated protein FASTA.",
+  };
+  return objectives[task.id] ?? task.title;
+}
+
+function caveatsForTask(task) {
+  const caveats = {
+    "mb-edit-puc19-mcs-insert": ["The authentic fixture annotates lacZalpha as a non-CDS gene feature, so this task only asserts bla CDS frame preservation."],
+    "mb-edit-puc19-laczalpha-frameshift": ["lacZalpha_frame_proxy is a benchmark-only CDS annotation and is not claimed as the authentic NCBI feature model."],
+    "mb-digest-puc19-hindiii-xhoi": ["Forward and reverse construct inputs are deterministic task fixtures generated from authentic pUC19 plus fixtures/fasta/datalox_insert_v1.fa."],
+    "mb-assembly-restriction-ligation": ["This task tests shipped restriction-ligation simulation only; Gibson and Golden Gate are not in v0 scope."],
+    "mb-crispr-puc19-ngg": ["CR1 reports filter-based guide ranking only; no validated Azimuth/Doench efficacy score is included."],
+    "mb-mrna-il27-validation": ["The sequence is a minimal synthetic mRNA proxy for construct-validation behavior, not a therapeutic IL-27 design."],
+  };
+  return caveats[task.id] ?? [];
+}
+
+function extractGenbankOriginSequence(content) {
+  const lines = content.split(/\r?\n/);
+  const originIndex = lines.findIndex((line) => line.startsWith("ORIGIN"));
+  const endIndex = lines.findIndex((line, index) => index > originIndex && line.startsWith("//"));
+  if (originIndex === -1 || endIndex === -1) throw new Error("GenBank input does not contain ORIGIN section");
+  return lines.slice(originIndex + 1, endIndex)
+    .map((line) => line.replace(/[^A-Za-z]/g, ""))
+    .join("")
+    .toUpperCase();
+}
+
+async function readFastaSequence(filePath) {
+  return (await fs.readFile(filePath, "utf8"))
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0 && !line.startsWith(">"))
+    .join("")
+    .toUpperCase();
+}
+
+function formatCircularGenBank(name, description, sequence) {
+  const origin = sequence.toLowerCase().match(/.{1,60}/g)
+    .map((line, index) => `${String(index * 60 + 1).padStart(9)} ${line.match(/.{1,10}/g).join(" ")}`)
+    .join("\n");
+  const insertFeature = sequence.length >= 1096
+    ? `     misc_feature    397..1096
+                     /label="datalox_insert_v1"
+`
+    : "";
+  return `LOCUS       ${name.padEnd(14).slice(0, 14)} ${String(sequence.length).padStart(7)} bp    DNA    circular 01-JAN-2026
+DEFINITION  ${description}.
+FEATURES             Location/Qualifiers
+     source          1..${sequence.length}
+                     /organism="synthetic construct"
+${insertFeature}
+ORIGIN
+${origin}
+//
+`;
+}
+
+function validMrnaSequence() {
+  return "TTTTTTTACCATGGCCGCCGCCTAAGGAATAAAGGGGGGG";
+}
+
+function mrnaElements() {
+  return [
+    { type: "five_utr", coordinates: { start: 1, end: 10 } },
+    { type: "cds", coordinates: { start: 11, end: 25 } },
+    { type: "three_utr", coordinates: { start: 26, end: 40 } },
+  ];
+}
+
+function assertByteEqual(left, right, label) {
+  if (!left.equals(right)) {
+    throw new Error(`${label} is not byte-deterministic`);
+  }
+}
+
 function normalizeTranslation(envelope) {
   return {
     ok: envelope.ok,
@@ -510,6 +1133,155 @@ function normalizeFeatureImpact(impact) {
     afterSegments: impact.afterSegments,
     frameShifted: impact.frameShifted ?? false,
     notes: impact.notes ?? [],
+  };
+}
+
+function normalizeDigestObservations(observations) {
+  return {
+    open_sequence: {
+      mol_empty: normalizeOpen(observations.emptyOpen),
+      mol_forward: normalizeOpen(observations.forwardOpen),
+      mol_reverse: normalizeOpen(observations.reverseOpen),
+    },
+    simulate_digest: Object.fromEntries(Object.entries(observations.digests).map(([moleculeId, envelope]) => [
+      moleculeId,
+      {
+        ok: envelope.ok,
+        tool: envelope.tool,
+        fragments: digestFragmentSizes(envelope),
+        enzymes: envelope.data.enzymes,
+        topology: envelope.data.topology,
+      },
+    ])),
+    validate_workspace: normalizeWorkspaceValidation(observations.validate),
+    render_digest_gel: {
+      ok: observations.gel.ok,
+      tool: observations.gel.tool,
+      laneCount: observations.gel.data.laneCount,
+      ladder: observations.gel.data.ladder,
+      sampleBands: observations.gel.data.bands
+        .filter((band) => !band.isLadder)
+        .map((band) => ({ laneLabel: band.laneLabel, size: band.size, y: band.y, outOfLadderRange: band.outOfLadderRange })),
+      artifactKind: observations.gel.artifacts?.[0]?.kind,
+    },
+  };
+}
+
+function normalizeAssemblyObservations(observations) {
+  const candidate = observations.assembly.data.candidates[0];
+  return {
+    open_sequence: {
+      vector: normalizeOpen(observations.vectorOpen),
+      insert: normalizeOpen(observations.insertOpen),
+    },
+    simulate_assembly: {
+      ok: observations.assembly.ok,
+      tool: observations.assembly.tool,
+      revision: observations.assembly.revision,
+      candidateCount: observations.assembly.data.candidates.length,
+      candidate: {
+        candidateId: candidate.candidateId,
+        name: candidate.name,
+        topology: candidate.topology,
+        length: candidate.length,
+        orientation: candidate.orientation,
+        junctions: candidate.junctions.map((junction) => ({
+          endType: junction.endType,
+          overhangSequence: junction.overhangSequence,
+          regeneratedRecognitionSequence: junction.regeneratedRecognitionSequence ?? null,
+        })),
+      },
+      artifactKind: observations.assembly.artifacts?.[0]?.kind,
+    },
+    validate_workspace: normalizeWorkspaceValidation(observations.validate),
+  };
+}
+
+function normalizeCrisprObservations(observations) {
+  const candidate = observations.design.data.candidates[0];
+  return {
+    open_sequence: normalizeOpen(observations.open),
+    design_grnas: {
+      ok: observations.design.ok,
+      tool: observations.design.tool,
+      candidateCount: observations.design.data.candidates.length,
+      candidate: {
+        sequence: candidate.sequence,
+        pam: candidate.pam,
+        strand: candidate.strand,
+        start: candidate.start,
+        end: candidate.end,
+        pamStart: candidate.pamStart,
+        pamEnd: candidate.pamEnd,
+        gcPercent: candidate.gcPercent,
+        passingFilters: candidate.passingFilters,
+        filterFailures: candidate.filterFailures,
+        rankingEvidence: candidate.rankingEvidence,
+      },
+    },
+    upsert_grna: {
+      ok: observations.upsert.ok,
+      tool: observations.upsert.tool,
+      revision: observations.upsert.revision,
+      guideId: observations.upsert.data.guideId,
+      action: observations.upsert.data.action,
+    },
+    validate_workspace: normalizeWorkspaceValidation(observations.validate),
+    export_grna_report: {
+      ok: observations.report.ok,
+      tool: observations.report.tool,
+      guideIds: observations.report.data.guideIds,
+      reportedGuideCount: observations.report.data.reportedGuideCount,
+      reportsDetailedOffTargetHits: observations.report.data.reportsDetailedOffTargetHits,
+      artifactKind: observations.report.artifacts?.[0]?.kind,
+    },
+  };
+}
+
+function normalizeMrnaObservations(observations) {
+  return {
+    open_sequence: normalizeOpen(observations.open),
+    validate_mrna_construct: {
+      ok: observations.construct.ok,
+      tool: observations.construct.tool,
+      summary: observations.construct.data.summary,
+      failCount: observations.construct.data.failCount,
+      warningCount: observations.construct.data.warningCount,
+      checks: observations.construct.data.checks.map((check) => ({
+        checkId: check.checkId,
+        status: check.status,
+        element: check.element ?? null,
+      })),
+    },
+    validate_workspace: normalizeWorkspaceValidation(observations.validate),
+    export_protein_fasta: {
+      ok: observations.protein.ok,
+      tool: observations.protein.tool,
+      proteinId: observations.protein.data.proteinId,
+      aminoAcids: observations.protein.data.aminoAcids,
+      proteinLength: observations.protein.data.proteinLength,
+      stopTrimmed: observations.protein.data.stopTrimmed,
+      artifactKind: observations.protein.artifacts?.[0]?.kind,
+    },
+  };
+}
+
+function normalizeOpen(envelope) {
+  return {
+    ok: envelope.ok,
+    tool: envelope.tool,
+    revision: envelope.revision,
+    moleculeIds: envelope.data.moleculeIds,
+  };
+}
+
+function normalizeWorkspaceValidation(envelope) {
+  return {
+    ok: envelope.ok,
+    tool: envelope.tool,
+    revision: envelope.revision,
+    validationOk: envelope.data.valid,
+    issueCount: envelope.data.issues.length,
   };
 }
 

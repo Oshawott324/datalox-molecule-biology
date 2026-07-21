@@ -1,0 +1,62 @@
+{
+  "schema": "datalox.molecule.eval-task",
+  "version": "0.1.0",
+  "id": "mb-assembly-restriction-ligation",
+  "title": "EcoRI/BamHI restriction ligation produces a GenBank artifact",
+  "category": "assembly",
+  "objective": "Import a synthetic EcoRI/BamHI vector and insert, simulate directional restriction ligation, and verify the GenBank product artifact.",
+  "constraints": [
+    "Use public MCP tools only.",
+    "Do not patch molecule.workspace.json directly.",
+    "Call validate_workspace with checkSequenceDigests=true after edit_sequence.",
+    "Do not infer amino-acid consequences from edit_sequence alone."
+  ],
+  "inputs": [
+    {
+      "id": "eval_vector",
+      "path": "inputs/eval-vector.gb",
+      "kind": "genbank",
+      "sha256": "48b131ddfe42e4e1a2ce4234e0d996ec5ddf54f40767e39d51f436e460a966e3",
+      "source": "Synthetic circular vector with unique EcoRI and BamHI sites; matches W3 restriction-ligation test geometry."
+    },
+    {
+      "id": "eval_insert",
+      "path": "inputs/eval-insert.fa",
+      "kind": "fasta",
+      "sha256": "1063361bf1c765d23f34d4a43e45a16c6e126ca2e98bb5b9b966ebac70ab4612",
+      "source": "Synthetic linear insert with unique EcoRI and BamHI sites; matches W3 restriction-ligation test geometry."
+    }
+  ],
+  "toolPlan": [
+    {
+      "step": 1,
+      "tool": "open_sequence",
+      "purpose": "Import task input into a fresh workspace.",
+      "required": true
+    },
+    {
+      "step": 2,
+      "tool": "simulate_assembly",
+      "purpose": "Simulate deterministic restriction-ligation candidates.",
+      "required": true
+    },
+    {
+      "step": 3,
+      "tool": "validate_workspace",
+      "purpose": "Verify workspace JSON and stored sequence digest consistency.",
+      "required": true
+    }
+  ],
+  "expected": {
+    "summaryPath": "expected/summary.json",
+    "toolObservationsPath": "expected/tool-observations.json",
+    "artifactsPath": "expected/artifacts.json"
+  },
+  "grading": {
+    "mode": "exact_json_subset",
+    "artifactHashRequired": true
+  },
+  "caveats": [
+    "This task tests shipped restriction-ligation simulation only; Gibson and Golden Gate are not in v0 scope."
+  ]
+}

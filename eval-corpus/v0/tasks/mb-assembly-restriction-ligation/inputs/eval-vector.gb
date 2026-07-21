@@ -1,0 +1,9 @@
+LOCUS       mol_vector_eva      50 bp    DNA    circular 01-JAN-2026
+DEFINITION  EcoRI BamHI evaluation vector.
+FEATURES             Location/Qualifiers
+     source          1..50
+                     /organism="synthetic construct"
+
+ORIGIN
+        1 aaaagaattc cccccccccc ccccggatcc tttttttttt tttttttttt
+//

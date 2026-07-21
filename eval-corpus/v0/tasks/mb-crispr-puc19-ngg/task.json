@@ -1,0 +1,67 @@
+{
+  "schema": "datalox.molecule.eval-task",
+  "version": "0.1.0",
+  "id": "mb-crispr-puc19-ngg",
+  "title": "SpCas9 guide design persists one selected local guide and report",
+  "category": "crispr",
+  "objective": "Import a local SpCas9 NGG target, design guides, persist one selected guide, validate the workspace, and export a guide report.",
+  "constraints": [
+    "Use public MCP tools only.",
+    "Do not patch molecule.workspace.json directly.",
+    "Call validate_workspace with checkSequenceDigests=true after edit_sequence.",
+    "Do not infer amino-acid consequences from edit_sequence alone."
+  ],
+  "inputs": [
+    {
+      "id": "crispr_source",
+      "path": "inputs/crispr-source.fa",
+      "kind": "fasta",
+      "sha256": "95387e60956859a485c27d04ddd59db1f73c48db6d0554236a749ce7a807a1cc",
+      "source": "Synthetic local SpCas9 NGG target with one passing plus-strand guide."
+    }
+  ],
+  "toolPlan": [
+    {
+      "step": 1,
+      "tool": "open_sequence",
+      "purpose": "Import task input into a fresh workspace.",
+      "required": true
+    },
+    {
+      "step": 2,
+      "tool": "design_grnas",
+      "purpose": "Scan deterministic local SpCas9 NGG guide candidates.",
+      "required": true
+    },
+    {
+      "step": 3,
+      "tool": "upsert_grna",
+      "purpose": "Persist the selected guide through revision-safe workspace write.",
+      "required": true
+    },
+    {
+      "step": 4,
+      "tool": "validate_workspace",
+      "purpose": "Verify workspace JSON and stored sequence digest consistency.",
+      "required": true
+    },
+    {
+      "step": 5,
+      "tool": "export_grna_report",
+      "purpose": "Export byte-stable selected guide report artifact.",
+      "required": true
+    }
+  ],
+  "expected": {
+    "summaryPath": "expected/summary.json",
+    "toolObservationsPath": "expected/tool-observations.json",
+    "artifactsPath": "expected/artifacts.json"
+  },
+  "grading": {
+    "mode": "exact_json_subset",
+    "artifactHashRequired": true
+  },
+  "caveats": [
+    "CR1 reports filter-based guide ranking only; no validated Azimuth/Doench efficacy score is included."
+  ]
+}

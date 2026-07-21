@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="520" viewBox="0 0 720 520" role="img" aria-label="eval_diagnostic_digest digest gel">
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1f2927; }
+    .title { font-size: 15px; font-weight: 700; }
+    .meta { font-size: 12px; fill: #5d6a66; }
+    .lane-label { font-size: 11px; fill: #3a4643; }
+    .ladder-label { font-size: 10px; fill: #465A64; }
+    .warning-label { font-size: 10px; fill: #B23A48; }
+  </style>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text class="title" x="22" y="27">eval_diagnostic_digest</text>
+  <text class="meta" x="22" y="46">log10-scaled linear DNA fragment migration</text>
+  <rect x="48" y="56" width="644" height="424" rx="8" fill="#EEF4F2" stroke="#CDD8D5"/>
+  <text class="lane-label" x="78" y="504" text-anchor="middle">Ladder</text>
+  <text class="lane-label" x="262" y="504" text-anchor="middle">Empty vector</text>
+  <text class="lane-label" x="446" y="504" text-anchor="middle">Forward orientation</text>
+  <text class="lane-label" x="630" y="504" text-anchor="middle">Reverse orientation</text>
+  <line x1="66" y1="462" x2="90" y2="462" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 100 bp</title></line>
+  <line x1="66" y1="372.995" x2="90" y2="372.995" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 250 bp</title></line>
+  <line x1="66" y1="305.665" x2="90" y2="305.665" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 500 bp</title></line>
+  <line x1="66" y1="238.335" x2="90" y2="238.335" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 1000 bp</title></line>
+  <line x1="66" y1="171.005" x2="90" y2="171.005" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 2000 bp</title></line>
+  <line x1="66" y1="131.620" x2="90" y2="131.620" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 3000 bp</title></line>
+  <line x1="66" y1="82" x2="90" y2="82" stroke="#465A64" stroke-width="5" stroke-linecap="round" opacity="0.78"><title>Ladder: 5000 bp</title></line>
+  <line x1="245" y1="142.359" x2="279" y2="142.359" stroke="#151B1A" stroke-width="5" stroke-linecap="round" opacity="0.88"><title>Empty vector: 2686 bp</title></line>
+  <line x1="429" y1="309.630" x2="463" y2="309.630" stroke="#151B1A" stroke-width="5" stroke-linecap="round" opacity="0.88"><title>Forward orientation: 480 bp</title></line>
+  <line x1="429" y1="135.417" x2="463" y2="135.417" stroke="#151B1A" stroke-width="5" stroke-linecap="round" opacity="0.88"><title>Forward orientation: 2885 bp</title></line>
+  <line x1="613" y1="360.609" x2="647" y2="360.609" stroke="#151B1A" stroke-width="5" stroke-linecap="round" opacity="0.88"><title>Reverse orientation: 284 bp</title></line>
+  <line x1="613" y1="129.032" x2="647" y2="129.032" stroke="#151B1A" stroke-width="5" stroke-linecap="round" opacity="0.88"><title>Reverse orientation: 3081 bp</title></line>
+  <text class="ladder-label" x="54" y="466" text-anchor="end">100 bp</text>
+  <text class="ladder-label" x="54" y="376.995" text-anchor="end">250 bp</text>
+  <text class="ladder-label" x="54" y="309.665" text-anchor="end">500 bp</text>
+  <text class="ladder-label" x="54" y="242.335" text-anchor="end">1 kb</text>
+  <text class="ladder-label" x="54" y="175.005" text-anchor="end">2 kb</text>
+  <text class="ladder-label" x="54" y="135.620" text-anchor="end">3 kb</text>
+  <text class="ladder-label" x="54" y="86" text-anchor="end">5 kb</text>
+  
+</svg>

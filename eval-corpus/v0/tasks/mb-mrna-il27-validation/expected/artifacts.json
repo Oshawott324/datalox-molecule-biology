@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-mrna-il27-validation",
+  "artifacts": [
+    {
+      "id": "translated_protein_fasta",
+      "kind": "protein_fasta",
+      "path": "artifacts/protein.fa",
+      "sha256": "27cbdb8fa55b3d459b0adcbc68260fbb3fe4d1c8243a74ebcabb51735e93bfb4",
+      "mimeType": "text/x-fasta"
+    }
+  ]
+}

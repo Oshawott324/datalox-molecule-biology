@@ -1,0 +1,73 @@
+{
+  "taskId": "mb-crispr-puc19-ngg",
+  "ok": true,
+  "workspace": {
+    "finalRevision": 1,
+    "moleculeIds": [
+      "mol_crispr_eval"
+    ]
+  },
+  "checks": [
+    {
+      "id": "workspace_validation_ok",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "candidate_count",
+      "status": "pass",
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "id": "selected_guide_sequence",
+      "status": "pass",
+      "observed": "ACGTACGTACGTACGTACGT",
+      "expected": "ACGTACGTACGTACGTACGT"
+    },
+    {
+      "id": "selected_guide_coordinates",
+      "status": "pass",
+      "observed": {
+        "start": 1,
+        "end": 20,
+        "pamStart": 21,
+        "pamEnd": 23
+      },
+      "expected": {
+        "start": 1,
+        "end": 20,
+        "pamStart": 21,
+        "pamEnd": 23
+      }
+    },
+    {
+      "id": "guide_upsert_revision",
+      "status": "pass",
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "id": "cr1_omits_efficacy_score",
+      "status": "pass",
+      "observed": false,
+      "expected": false
+    },
+    {
+      "id": "report_omits_detailed_off_target_hits",
+      "status": "pass",
+      "observed": false,
+      "expected": false
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "selected_grna_report",
+      "kind": "markdown",
+      "path": "artifacts/grna-report.md",
+      "sha256": "4c2832855a060d8bfb432c810cb81b48600e019ea6de19ca9d95ae779f60a327",
+      "mimeType": "text/markdown"
+    }
+  ]
+}

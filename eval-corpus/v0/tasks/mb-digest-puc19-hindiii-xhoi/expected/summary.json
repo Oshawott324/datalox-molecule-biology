@@ -1,0 +1,71 @@
+{
+  "taskId": "mb-digest-puc19-hindiii-xhoi",
+  "ok": true,
+  "workspace": {
+    "finalRevision": 2,
+    "moleculeIds": [
+      "mol_empty",
+      "mol_forward",
+      "mol_reverse"
+    ]
+  },
+  "checks": [
+    {
+      "id": "workspace_validation_ok",
+      "status": "pass",
+      "observed": true,
+      "expected": true
+    },
+    {
+      "id": "selected_enzyme_pair",
+      "status": "pass",
+      "observed": [
+        "HindIII",
+        "XhoI"
+      ],
+      "expected": [
+        "HindIII",
+        "XhoI"
+      ]
+    },
+    {
+      "id": "digest_fragments",
+      "status": "pass",
+      "observed": {
+        "mol_empty": [
+          2686
+        ],
+        "mol_forward": [
+          480,
+          2885
+        ],
+        "mol_reverse": [
+          284,
+          3081
+        ]
+      },
+      "expected": {
+        "mol_empty": [
+          2686
+        ],
+        "mol_forward": [
+          480,
+          2885
+        ],
+        "mol_reverse": [
+          284,
+          3081
+        ]
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "diagnostic_digest_gel",
+      "kind": "gel",
+      "path": "artifacts/digest-gel.svg",
+      "sha256": "9020019c95a613e59fc3dc347dd4fb82a3563d0c0cdc8d1eb374c722423f3f8d",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

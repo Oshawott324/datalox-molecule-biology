@@ -1,0 +1,70 @@
+{
+  "open_sequence": {
+    "ok": true,
+    "tool": "open_sequence",
+    "revision": 0,
+    "moleculeIds": [
+      "mol_mrna_eval"
+    ]
+  },
+  "validate_mrna_construct": {
+    "ok": true,
+    "tool": "validate_mrna_construct",
+    "summary": "valid",
+    "failCount": 0,
+    "warningCount": 0,
+    "checks": [
+      {
+        "checkId": "ELEMENT_ORDER",
+        "status": "pass",
+        "element": "construct"
+      },
+      {
+        "checkId": "CDS_STARTS_WITH_ATG",
+        "status": "pass",
+        "element": "cds"
+      },
+      {
+        "checkId": "CDS_IN_FRAME",
+        "status": "pass",
+        "element": "cds"
+      },
+      {
+        "checkId": "CDS_HAS_STOP_CODON",
+        "status": "pass",
+        "element": "cds"
+      },
+      {
+        "checkId": "CDS_NO_PREMATURE_STOP",
+        "status": "pass",
+        "element": "cds"
+      },
+      {
+        "checkId": "KOZAK_CONTEXT",
+        "status": "pass",
+        "element": "cds"
+      },
+      {
+        "checkId": "POLYA_SIGNAL_PRESENT",
+        "status": "pass",
+        "element": "three_utr"
+      }
+    ]
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 0,
+    "validationOk": true,
+    "issueCount": 0
+  },
+  "export_protein_fasta": {
+    "ok": true,
+    "tool": "export_protein_fasta",
+    "proteinId": "il27_proxy",
+    "aminoAcids": "MAAA*",
+    "proteinLength": 4,
+    "stopTrimmed": true,
+    "artifactKind": "protein_fasta"
+  }
+}

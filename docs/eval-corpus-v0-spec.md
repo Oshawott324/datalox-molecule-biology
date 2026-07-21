@@ -1,6 +1,8 @@
 # Eval Corpus v0 Spec
 
-Status: draft spec. No implementation until this document is reviewed.
+Status: implemented. `npm run eval:corpus:v0:check` verifies the checked-in
+v0 task manifests, expected summaries, selected observations, and artifact
+hashes through the public MCP stdio server.
 
 Purpose: create a local, deterministic benchmark corpus for the molecule-biology
 MCP. The corpus should test whether an agent can call tools, preserve revision
@@ -59,6 +61,10 @@ eval-corpus/
           artifacts.json
         artifacts/
           plasmid-map.svg
+      mb-digest-puc19-hindiii-xhoi/
+      mb-assembly-restriction-ligation/
+      mb-crispr-puc19-ngg/
+      mb-mrna-il27-validation/
 ```
 
 Notes:
@@ -160,7 +166,7 @@ type ExpectedSummary = {
   }>;
   artifacts: Array<{
     id: string;
-    kind: "genbank" | "plasmid_map" | "gel" | "markdown" | "json";
+    kind: "genbank" | "plasmid_map" | "gel" | "markdown" | "json" | "protein_fasta";
     path: string;
     sha256: string;
     mimeType: string;
@@ -203,8 +209,9 @@ the most important v0 biology distinction:
 - a pUC19 MCS edit that frameshifts lacZalpha when lacZalpha is explicitly
   annotated as a CDS.
 
-The remaining v0 tasks should get their own task manifests after this spec is
-accepted.
+The digest, assembly, CRISPR, and mRNA tasks are implemented as checked-in task
+manifests under `eval-corpus/v0/tasks/`; their generated expected summaries are
+the authoritative grading surface.
 
 ## First Task: `mb-edit-puc19-mcs-insert`
 

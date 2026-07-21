@@ -1,0 +1,12 @@
+{
+  "taskId": "mb-digest-puc19-hindiii-xhoi",
+  "artifacts": [
+    {
+      "id": "diagnostic_digest_gel",
+      "kind": "gel",
+      "path": "artifacts/digest-gel.svg",
+      "sha256": "9020019c95a613e59fc3dc347dd4fb82a3563d0c0cdc8d1eb374c722423f3f8d",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

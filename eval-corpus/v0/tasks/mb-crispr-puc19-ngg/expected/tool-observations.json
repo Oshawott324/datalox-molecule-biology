@@ -1,0 +1,60 @@
+{
+  "open_sequence": {
+    "ok": true,
+    "tool": "open_sequence",
+    "revision": 0,
+    "moleculeIds": [
+      "mol_crispr_eval"
+    ]
+  },
+  "design_grnas": {
+    "ok": true,
+    "tool": "design_grnas",
+    "candidateCount": 1,
+    "candidate": {
+      "sequence": "ACGTACGTACGTACGTACGT",
+      "pam": "AGG",
+      "strand": "+",
+      "start": 1,
+      "end": 20,
+      "pamStart": 21,
+      "pamEnd": 23,
+      "gcPercent": 50,
+      "passingFilters": true,
+      "filterFailures": [],
+      "rankingEvidence": {
+        "passingFilters": true,
+        "filterFailures": [],
+        "offTargetHitCount": 0,
+        "gcDistanceFrom50": 0,
+        "guideStart": 1,
+        "strand": "+",
+        "efficacyScoreIncluded": false
+      }
+    }
+  },
+  "upsert_grna": {
+    "ok": true,
+    "tool": "upsert_grna",
+    "revision": 1,
+    "guideId": "grna_eval_1",
+    "action": "created"
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 1,
+    "validationOk": true,
+    "issueCount": 0
+  },
+  "export_grna_report": {
+    "ok": true,
+    "tool": "export_grna_report",
+    "guideIds": [
+      "grna_eval_1"
+    ],
+    "reportedGuideCount": 1,
+    "reportsDetailedOffTargetHits": false,
+    "artifactKind": "grna_report"
+  }
+}

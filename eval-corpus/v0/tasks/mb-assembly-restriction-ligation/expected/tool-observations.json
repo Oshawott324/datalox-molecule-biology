@@ -1,0 +1,53 @@
+{
+  "open_sequence": {
+    "vector": {
+      "ok": true,
+      "tool": "open_sequence",
+      "revision": 0,
+      "moleculeIds": [
+        "mol_vector_eval"
+      ]
+    },
+    "insert": {
+      "ok": true,
+      "tool": "open_sequence",
+      "revision": 1,
+      "moleculeIds": [
+        "mol_insert_eval"
+      ]
+    }
+  },
+  "simulate_assembly": {
+    "ok": true,
+    "tool": "simulate_assembly",
+    "revision": 1,
+    "candidateCount": 1,
+    "candidate": {
+      "candidateId": "candidate_forward",
+      "name": "eval_product",
+      "topology": "circular",
+      "length": 50,
+      "orientation": "forward",
+      "junctions": [
+        {
+          "endType": "five_prime_overhang",
+          "overhangSequence": "AATT",
+          "regeneratedRecognitionSequence": "GAATTC"
+        },
+        {
+          "endType": "five_prime_overhang",
+          "overhangSequence": "GATC",
+          "regeneratedRecognitionSequence": "GGATCC"
+        }
+      ]
+    },
+    "artifactKind": "genbank"
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 1,
+    "validationOk": true,
+    "issueCount": 0
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "open_sequence": {
+    "mol_empty": {
+      "ok": true,
+      "tool": "open_sequence",
+      "revision": 0,
+      "moleculeIds": [
+        "mol_empty"
+      ]
+    },
+    "mol_forward": {
+      "ok": true,
+      "tool": "open_sequence",
+      "revision": 1,
+      "moleculeIds": [
+        "mol_forward"
+      ]
+    },
+    "mol_reverse": {
+      "ok": true,
+      "tool": "open_sequence",
+      "revision": 2,
+      "moleculeIds": [
+        "mol_reverse"
+      ]
+    }
+  },
+  "simulate_digest": {
+    "mol_empty": {
+      "ok": true,
+      "tool": "simulate_digest",
+      "fragments": [
+        2686
+      ],
+      "enzymes": [
+        "HindIII",
+        "XhoI"
+      ],
+      "topology": "circular"
+    },
+    "mol_forward": {
+      "ok": true,
+      "tool": "simulate_digest",
+      "fragments": [
+        480,
+        2885
+      ],
+      "enzymes": [
+        "HindIII",
+        "XhoI"
+      ],
+      "topology": "circular"
+    },
+    "mol_reverse": {
+      "ok": true,
+      "tool": "simulate_digest",
+      "fragments": [
+        284,
+        3081
+      ],
+      "enzymes": [
+        "HindIII",
+        "XhoI"
+      ],
+      "topology": "circular"
+    }
+  },
+  "validate_workspace": {
+    "ok": true,
+    "tool": "validate_workspace",
+    "revision": 2,
+    "validationOk": true,
+    "issueCount": 0
+  },
+  "render_digest_gel": {
+    "ok": true,
+    "tool": "render_digest_gel",
+    "laneCount": 4,
+    "ladder": [
+      100,
+      250,
+      500,
+      1000,
+      2000,
+      3000,
+      5000
+    ],
+    "sampleBands": [
+      {
+        "laneLabel": "Empty vector",
+        "size": 2686,
+        "y": 142.35911064912514,
+        "outOfLadderRange": false
+      },
+      {
+        "laneLabel": "Forward orientation",
+        "size": 480,
+        "y": 309.630229172943,
+        "outOfLadderRange": false
+      },
+      {
+        "laneLabel": "Forward orientation",
+        "size": 2885,
+        "y": 135.41659403591984,
+        "outOfLadderRange": false
+      },
+      {
+        "laneLabel": "Reverse orientation",
+        "size": 284,
+        "y": 360.6085870979245,
+        "outOfLadderRange": false
+      },
+      {
+        "laneLabel": "Reverse orientation",
+        "size": 3081,
+        "y": 129.03188171852275,
+        "outOfLadderRange": false
+      }
+    ],
+    "artifactKind": "gel"
+  }
+}

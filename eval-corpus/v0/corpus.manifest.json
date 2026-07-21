@@ -6,12 +6,20 @@
   "requiredToolSurface": {
     "toolCount": 30,
     "requiredTools": [
+      "design_grnas",
       "edit_sequence",
+      "export_grna_report",
+      "export_protein_fasta",
       "find_restriction_sites",
       "get_sequence_context",
       "open_sequence",
+      "render_digest_gel",
       "render_plasmid_map",
+      "simulate_assembly",
+      "simulate_digest",
       "translate_region",
+      "upsert_grna",
+      "validate_mrna_construct",
       "validate_workspace"
     ],
     "descriptorDigest": "c158dcae98492bc3f75b846317373e3243b541538fc85f51a2a51053bb0b8e38"
@@ -47,6 +55,58 @@
         "render_plasmid_map"
       ],
       "expectedSummaryPath": "tasks/mb-edit-puc19-laczalpha-frameshift/expected/summary.json"
+    },
+    {
+      "id": "mb-digest-puc19-hindiii-xhoi",
+      "title": "pUC19 diagnostic digest gel distinguishes insert orientation",
+      "path": "tasks/mb-digest-puc19-hindiii-xhoi/task.json",
+      "category": "digest",
+      "requiredTools": [
+        "open_sequence",
+        "simulate_digest",
+        "validate_workspace",
+        "render_digest_gel"
+      ],
+      "expectedSummaryPath": "tasks/mb-digest-puc19-hindiii-xhoi/expected/summary.json"
+    },
+    {
+      "id": "mb-assembly-restriction-ligation",
+      "title": "EcoRI/BamHI restriction ligation produces a GenBank artifact",
+      "path": "tasks/mb-assembly-restriction-ligation/task.json",
+      "category": "assembly",
+      "requiredTools": [
+        "open_sequence",
+        "simulate_assembly",
+        "validate_workspace"
+      ],
+      "expectedSummaryPath": "tasks/mb-assembly-restriction-ligation/expected/summary.json"
+    },
+    {
+      "id": "mb-crispr-puc19-ngg",
+      "title": "SpCas9 guide design persists one selected local guide and report",
+      "path": "tasks/mb-crispr-puc19-ngg/task.json",
+      "category": "crispr",
+      "requiredTools": [
+        "open_sequence",
+        "design_grnas",
+        "upsert_grna",
+        "validate_workspace",
+        "export_grna_report"
+      ],
+      "expectedSummaryPath": "tasks/mb-crispr-puc19-ngg/expected/summary.json"
+    },
+    {
+      "id": "mb-mrna-il27-validation",
+      "title": "Valid mRNA construct exports a translated protein FASTA",
+      "path": "tasks/mb-mrna-il27-validation/task.json",
+      "category": "mrna",
+      "requiredTools": [
+        "open_sequence",
+        "validate_mrna_construct",
+        "validate_workspace",
+        "export_protein_fasta"
+      ],
+      "expectedSummaryPath": "tasks/mb-mrna-il27-validation/expected/summary.json"
     }
   ]
 }
