@@ -7,7 +7,8 @@ detailed track specs; this document owns current status and sequencing.
 
 Verification basis: `src/tools/descriptors.ts` on `main` after merge commit
 `135aedf`, which has 30 registered tools including the HB1 `get_version`
-handshake and `edit_sequence`.
+handshake and `edit_sequence`. Eval corpus v0 is shipped on `main` at
+`516a2fe` with the independent biological anchor tests in `851f70b`.
 
 ## 1. Shipped
 
@@ -17,6 +18,8 @@ V1 hardening and roadmap status are shipped on `main`:
   bundle metadata, and V1 review-runner lifecycle limits.
 - `6b1225d` updates roadmap status and sequencing.
 - `135aedf` ships `edit_sequence`.
+- `516a2fe` ships eval corpus v0 task coverage.
+- `851f70b` adds independent biological anchor tests for the corpus.
 
 30 MCP tools are registered and dispatched generically. Grouped by track:
 
@@ -63,7 +66,7 @@ against safely. Do not start coding an item that only has a track doc.
 | Biology edge | Circular origin-spanning ORFs | Track bullet (`roadmap-snapgene-core.md` s5) | Post-V1 |
 | Biology edge | Alternative genetic codes | Track bullet (`roadmap-snapgene-core.md` s6) | Post-V1 |
 | Biology edge | Degenerate motif / enzyme recognition | Track bullet (`roadmap-snapgene-core.md` s7-8) | Revisits enzyme model |
-| Benchmark | Eval corpus + expected JSON + hashes | Track bullet (`roadmap-snapgene-core.md` s9) | Named deliverable, see section 4 |
+| Benchmark | Eval corpus + expected JSON + hashes | Shipped (`516a2fe`, anchored in `851f70b`) | Keep checker green in CI |
 
 Infrastructure (not tools): hosted hub UI to replace `demo:v1-review`, live MCP
 replay capture as middleware, shared cross-MCP contract package, Windows
@@ -78,30 +81,23 @@ time. The four goals and their first move:
 
 | Goal | First build | Why |
 |---|---|---|
-| Marketing / demo | Eval corpus v0, then demo revision using `edit_sequence` | Demo spine is ready; eval pins expected tool behavior |
+| Marketing / demo | Demo revision using `edit_sequence` | Eval corpus v0 is shipped; demo spine is ready |
 | Lab usefulness | B1/B2 BLAST | Wet-lab feedback names Primer-BLAST as the missing layer |
 | Benchmark credibility | Eval corpus (section 4) | Nothing is claimable as parity without it |
 | SnapGene surface | Auto-annotation -> Sanger -> Gibson/Golden Gate | Largest remaining product-surface blocks |
 
 ### Recommended sequence
 
-`edit_sequence` has shipped. Build eval corpus v0 next because it is the cheapest
-way to turn the shipped tool surface into regression-tested benchmark material:
-
-- Marketing: validates the demo spine with expected JSON and artifact hashes.
-- SnapGene surface: protects `edit_sequence`, digest, gel, map, and assembly
-  behavior before adding broader editor-like features.
-- Benchmark: creates the first reusable task set for model/tool evaluation.
-
-It needs no external dependency, no compliance surface, and no live fixture --
-unlike BLAST, which is gated on NCBI async behavior and usage-policy compliance
-and should not be coded blind.
+`edit_sequence` and eval corpus v0 have shipped. The next implementation gate is
+B1 fixture capture: one live NCBI BLAST URL API run must be saved under
+`fixtures/blast/` before `blast_sequence` code starts. This keeps B1 grounded in
+observed API behavior rather than a guessed async contract.
 
 Proposed order:
 
 ```text
-1. eval corpus v0         (section 4) -- cheap, unlocks benchmark + regression safety
-2. B1 blast_sequence      (after one live NCBI fixture is captured)
+1. B1 live fixture capture
+2. B1 blast_sequence      (after the fixture is reviewed)
 3. find_known_features    (needs a curated-library source decision first)
 4. B2 validate_primer_specificity
 5. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
@@ -112,23 +108,17 @@ CR2 and M2 stay gated on explicit customer pull plus their validation fixtures
 
 ## 4. Eval Corpus As A Named Deliverable
 
-Highest-strategic-value cheap item given CEO interest in a benchmark study.
-Already scoped in `roadmap-snapgene-core.md` s9. Promote it from "incidental
-fixture folder" to a real deliverable:
+Eval corpus v0 is shipped as `eval-corpus/v0/` with checked-in task fixtures,
+expected outputs, and artifact hashes.
 
-Implementation spec: `eval-corpus-v0-spec.md`.
+Implementation spec: `docs/eval-corpus-v0-spec.md`.
 
-- Fixed corpus: 5 public plasmids, 3 origin-spanning circular constructs,
-  3 degenerate motif/enzyme cases, 3 Golden Gate, 3 Gibson.
-- Each task ships expected JSON output + artifact hash/snapshot.
-- Reference comparison against a commercial tool where one exists.
-- Cross-MCP visual-reasoning tasks (gel/map/BLAST/flow/protein) belong here --
-  the differentiated benchmark angle no existing benchmark (GeneBench-Pro,
-  MCP-Bench) covers.
-
-A v0 corpus can be built now from existing fixtures and shipped tools, including
-`edit_sequence`; it does not need BLAST. Building it early also gives every
-subsequent tool a regression harness.
+- `npm run eval:corpus:v0:check` is read-only and runs in CI.
+- `npm run eval:corpus:v0:generate` is manual only; never run it in CI.
+- `tests/eval-corpus-reality.test.ts` anchors the highest-risk biological facts
+  outside the corpus expected files, so regenerate-to-match drift is caught.
+- Cross-MCP visual-reasoning tasks (gel/map/BLAST/flow/protein) are the next
+  benchmark expansion once their underlying tool surfaces are shipped.
 
 ## 5. edit_sequence Implementation Spec
 
