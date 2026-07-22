@@ -91,6 +91,9 @@ export {
   alignSequences,
   exportProteinFasta,
   validateMrnaConstruct,
+  parseBlastJson2,
+  parseBlastPutResponse,
+  parseBlastStatus,
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
@@ -147,6 +150,13 @@ export type {
   MrnaCheckStatus,
   MrnaCheck,
   ValidateMrnaConstructResult,
+  BlastAlignment,
+  BlastHit,
+  BlastParsedResult,
+  BlastPutResponse,
+  BlastSearchStatistics,
+  BlastStatus,
+  BlastStrand,
   AssemblyArtifact,
   AssemblyCandidate,
   AssemblyCandidateEnd,

@@ -70,3 +70,5 @@ export type { DesignGrnasInput, DesignGrnasOptions, DesignGrnasResult, GuideCand
 export type { GuideRankingEvidence } from "./schema.js";
 export { exportGrnaReport, MAX_GRNA_REPORT_GUIDES } from "./grna-report.js";
 export type { ExportGrnaReportOptions, ExportGrnaReportResult } from "./grna-report.js";
+export { parseBlastJson2, parseBlastPutResponse, parseBlastStatus } from "./blast-parse.js";
+export type { BlastAlignment, BlastHit, BlastParsedResult, BlastPutResponse, BlastSearchStatistics, BlastStatus, BlastStrand } from "./blast-parse.js";
