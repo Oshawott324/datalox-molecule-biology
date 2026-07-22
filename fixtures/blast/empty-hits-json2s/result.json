@@ -1,0 +1,30 @@
+{
+  "BlastOutput2": [
+    {
+      "report": {
+        "program": "blastn",
+        "version": "BLASTN 2.17.0+",
+        "reference": "Handcrafted parser fixture for the no-hit JSON2_S shape.",
+        "search_target": {
+          "db": "core_nt"
+        },
+        "params": {
+          "expect": 0.001,
+          "sc_match": 2,
+          "sc_mismatch": -3,
+          "gap_open": 5,
+          "gap_extend": 2,
+          "filter": "L;m;"
+        },
+        "results": {
+          "search": {
+            "query_id": "Query_empty_hits",
+            "query_title": "empty_hits_query",
+            "query_len": 120,
+            "hits": []
+          }
+        }
+      }
+    }
+  ]
+}

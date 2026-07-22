@@ -117,6 +117,41 @@ truth artifact. `nt` changes over time and RIDs are random. B1 tests should
 therefore assert parser structure and provenance fields from the saved fixture,
 not exact future rank order or E-values from a new live query.
 
+### Parser Contract Pinned By `puc19-bla-blastn-nt`
+
+The first live fixture revealed the parser contract that B1 must implement:
+
+- `BlastOutput2` is an array. Validate it has exactly one report for single-query
+  B1 calls before reading `report`.
+- The requested database may resolve to a different effective database. For
+  example, requested `nt` returned `search_target.db: "core_nt"`. Surface both
+  requested and effective database names in provenance.
+- `result.json` does not contain the RID. Extract RID/RTOE/status from the Put
+  and status responses, then combine them with parsed JSON hits.
+- HSP records include full `qseq`, `hseq`, and `midline` strings. Do not put
+  these sequence strings in the default agent-facing envelope. Return summary
+  fields by default: identity, alignment length, coordinates, strands, E-value,
+  and bit score.
+- Empty hits are valid. A `hits: []` response should return `hits: []`, not an
+  error. Parser tests must cover this with a handcrafted JSON2_S fixture rather
+  than a second live NCBI call.
+
+Parser tests should pin these frozen-fixture facts:
+
+```text
+BlastOutput2.length = 1
+report.program = blastn
+report.results.search.query_len = 300
+report.results.search.hits.length = 5
+report.search_target.db = core_nt
+top hit accession = PX095324
+top HSP identity = 300
+top HSP align_len = 300
+top HSP query_from/query_to = 1/300
+top HSP hit_from/hit_to = 7277/7576
+top HSP evalue parses as number 1.39168e-149
+```
+
 ### Input
 
 ```ts
