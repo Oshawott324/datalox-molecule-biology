@@ -580,6 +580,39 @@ site.cutPosition }`:
 `showGuides: true` renders only guide records already persisted with
 `upsert_grna`; it does not rerun `design_grnas`.
 
+## Artifact Review Bundles
+
+Use `render_review_bundle` when the human needs one portable review file for
+artifacts the agent has already produced. Do not ask it to discover files by
+scanning `reports/`; pass artifact descriptors from prior tool envelopes or an
+explicit replay bundle path.
+
+```json
+{
+  "tool": "render_review_bundle",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "artifacts": [
+      {
+        "kind": "plasmid_map",
+        "path": "/path/run/reports/maps/mol_puc19.plasmid.svg",
+        "mimeType": "image/svg+xml"
+      },
+      {
+        "kind": "gel",
+        "path": "/path/run/reports/gels/diagnostic.gel.svg",
+        "mimeType": "image/svg+xml"
+      }
+    ],
+    "replayBundlePath": "/path/run/.datalox/replay-bundles/demo",
+    "outputPath": "reports/review/review.html"
+  }
+}
+```
+
+The review bundle is a shareable HTML record, not a deterministic biology
+result. Do not add it to eval-corpus hash pins.
+
 ## Visual Context
 
 Use `open_sequence_editor` only as a viewer/editor over workspace state.

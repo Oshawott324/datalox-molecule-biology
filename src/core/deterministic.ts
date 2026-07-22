@@ -84,3 +84,10 @@ export {
 export type { NcbiBlastProgram, NcbiBlastRequest, NcbiBlastRunOptions, NcbiBlastRunResult, NcbiBlastStatusObservation, NcbiBlastTransport } from "./blast-client.js";
 export { blastSequence } from "./blast.js";
 export type { BlastDatabase, BlastSequenceArtifact, BlastSequenceDeps, BlastSequenceInput, BlastSequenceProgram, BlastSequenceResult } from "./blast.js";
+export { renderReviewBundle, MAX_REVIEW_BUNDLE_ARTIFACT_BYTES } from "./review-bundle.js";
+export type {
+  RenderReviewBundleOptions,
+  RenderReviewBundleResult,
+  ReviewBundleArtifactInput,
+  ReviewBundleIncludedArtifact,
+} from "./review-bundle.js";

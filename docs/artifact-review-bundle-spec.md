@@ -55,8 +55,9 @@ A single `review.html` containing:
 4. **Structured result tables:** restriction sites, digest fragments, BLAST hit
    summary (summarized, never raw `qseq`/`hseq`/`midline`), primer/gRNA lists.
 5. **Human-readable replay summary:** an ordered, camera-friendly narrative of
-   the tool calls the agent made (derived from the provenance bundle records),
-   e.g. "opened pUC19 -> inserted NotI payload -> validated -> rendered map."
+   the tool calls the agent made (derived only from verified provenance bundle
+   records), e.g. "opened pUC19 -> inserted NotI payload -> validated ->
+   rendered map."
 6. **Embedded machine-readable manifest:** a `<script type="application/json"
    id="datalox-review-manifest">` block so the single file is both
    human-viewable and machine-parseable (artifact list, provenance `bundleId`,
@@ -89,6 +90,7 @@ type RenderReviewBundleResult = {
   moleculeIds: string[];
   includedArtifacts: Array<{ kind: string; path: string; missing?: boolean }>;
   provenanceBundleId?: string;
+  provenanceVerified?: boolean;
   revision: number;
 };
 ```
@@ -111,6 +113,9 @@ type RenderReviewBundleResult = {
   the workspace root unless the path points to an existing replay bundle under
   the workspace `.datalox/replay-bundles/` directory. Reject outside paths with
   `PATH_OUTSIDE_WORKSPACE`.
+- When `replayBundlePath` is provided, verify the bundle before summarizing it.
+  If verification fails, return a structured error; do not present unverified
+  records as provenance.
 
 ## Relationship to Provenance and Export
 

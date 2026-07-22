@@ -16,6 +16,7 @@ import {
   findRestrictionSites,
   restrictionStrandScope,
   renderDigestGel,
+  renderReviewBundle,
   simulateAssembly,
   simulateDigest,
   simulatePcr,
@@ -33,7 +34,7 @@ import { readWorkspace, validateWorkspace } from "../core/workspace.js";
 import { deleteFeature, deletePrimer, upsertFeature, upsertGuide, upsertPrimer } from "../core/writes.js";
 import { buildVersionHandshake, PACKAGE_NAME } from "../core/version.js";
 import { openSequenceEditor } from "../ui/index.js";
-import { toolFailure, toolFailureFromError, toolSuccess, type ToolResultEnvelope } from "./envelope.js";
+import { toolFailure, toolFailureFromError, toolSuccess, type ToolArtifact, type ToolResultEnvelope } from "./envelope.js";
 import { moleculeToolDescriptors } from "./descriptors.js";
 
 const MAX_ORF_RESULTS = 200;
@@ -66,6 +67,7 @@ export type ToolName =
   | "export_grna_report"
   | "render_plasmid_map"
   | "render_digest_gel"
+  | "render_review_bundle"
   | "align_sequences"
   | "blast_sequence"
   | "design_primers"
@@ -222,6 +224,15 @@ export type RenderDigestGelInput = WorkspaceInput & {
   height?: number;
 };
 
+export type RenderReviewBundleInput = WorkspaceInput & {
+  outputPath?: string;
+  artifacts?: Array<Pick<ToolArtifact, "kind" | "path" | "mimeType" | "description">>;
+  replayBundlePath?: string;
+  includeReplaySummary?: boolean;
+  moleculeIds?: string[];
+  includeLocalPaths?: boolean;
+};
+
 export type AlignSequencesInput = WorkspaceInput & {
   sequence?: string;
   targetSequence?: string;
@@ -348,6 +359,7 @@ export type ToolInputByName = {
   export_grna_report: ExportGrnaReportInput;
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
+  render_review_bundle: RenderReviewBundleInput;
   align_sequences: AlignSequencesInput;
   blast_sequence: BlastSequenceToolInput;
   design_primers: DesignPrimersToolInput;
@@ -385,6 +397,7 @@ export const toolHandlers = {
   export_grna_report: handleExportGrnaReport,
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
+  render_review_bundle: handleRenderReviewBundle,
   align_sequences: handleAlignSequences,
   blast_sequence: handleBlastSequence,
   design_primers: handleDesignPrimers,
@@ -912,6 +925,39 @@ export async function handleRenderDigestGel(input: RenderDigestGelInput): Promis
   }
 }
 
+export async function handleRenderReviewBundle(input: RenderReviewBundleInput): Promise<ToolResultEnvelope> {
+  const tool = "render_review_bundle";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const result = await renderReviewBundle(workspacePath, {
+      ...(input.outputPath ? { outputPath: input.outputPath } : {}),
+      ...(input.artifacts ? { artifacts: assertArtifactInputs(input.artifacts) } : {}),
+      ...(input.replayBundlePath ? { replayBundlePath: input.replayBundlePath } : {}),
+      ...(input.includeReplaySummary !== undefined ? { includeReplaySummary: input.includeReplaySummary } : {}),
+      ...(input.moleculeIds ? { moleculeIds: assertStringArray(input.moleculeIds, "moleculeIds") } : {}),
+      ...(input.includeLocalPaths !== undefined ? { includeLocalPaths: input.includeLocalPaths } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      revision: result.revision,
+      artifacts: [
+        {
+          kind: "review_bundle",
+          path: result.outputPath,
+          mimeType: result.mimeType,
+          description: "Self-contained static HTML review bundle for molecule artifacts and provenance.",
+        },
+      ],
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: { workspacePath },
+      },
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
 export async function handleAlignSequences(input: AlignSequencesInput): Promise<ToolResultEnvelope> {
   const tool = "align_sequences";
   try {
@@ -1276,6 +1322,28 @@ function assertCutSites(value: unknown): PlasmidMapCutSite[] {
     return {
       enzyme: candidate.enzyme,
       position: assertPositiveInteger(candidate.position, `cutSites[${index}].position`),
+    };
+  });
+}
+
+function assertArtifactInputs(value: unknown): RenderReviewBundleInput["artifacts"] {
+  if (!Array.isArray(value)) {
+    throw new MoleculeError("INVALID_ARGUMENT", "artifacts must be an array.", { artifacts: value });
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      throw new MoleculeError("INVALID_ARGUMENT", "artifacts entries must be objects.", { index, entry });
+    }
+    const candidate = entry as Record<string, unknown>;
+    assertNonEmptyString(candidate.kind, `artifacts[${index}].kind`);
+    assertNonEmptyString(candidate.path, `artifacts[${index}].path`);
+    if (candidate.mimeType !== undefined) assertNonEmptyString(candidate.mimeType, `artifacts[${index}].mimeType`);
+    if (candidate.description !== undefined) assertNonEmptyString(candidate.description, `artifacts[${index}].description`);
+    return {
+      kind: candidate.kind,
+      path: candidate.path,
+      ...(candidate.mimeType ? { mimeType: candidate.mimeType } : {}),
+      ...(candidate.description ? { description: candidate.description } : {}),
     };
   });
 }

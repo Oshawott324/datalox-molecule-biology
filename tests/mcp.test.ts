@@ -38,6 +38,7 @@ describe("MCP server", () => {
       "design_grnas",
       "export_grna_report",
       "blast_sequence",
+      "render_review_bundle",
       "validate_workspace",
     ]));
   });

@@ -287,6 +287,42 @@ describe("tool handlers and CLI parity", () => {
     });
   });
 
+  it("runs render-review-bundle through the CLI with explicit artifact descriptors", async () => {
+    const workspaceDir = await tempWorkspaceDir();
+    const open = await handleOpenSequence({
+      inputPath: await stageFixture(workspaceDir, "fasta/single.fa"),
+      workspaceDir,
+      format: "fasta",
+      moleculeId: "mol_single",
+    });
+    expect(open.ok).toBe(true);
+    const artifactPath = path.join(workspaceDir, "reports", "notes.txt");
+    await fs.mkdir(path.dirname(artifactPath), { recursive: true });
+    await fs.writeFile(artifactPath, "review text", "utf8");
+    const artifactsPath = path.join(workspaceDir, "artifacts.json");
+    await fs.writeFile(artifactsPath, JSON.stringify([{ kind: "notes", path: artifactPath, mimeType: "text/plain" }]), "utf8");
+
+    const cli = await runCli([
+      "render-review-bundle",
+      path.join(workspaceDir, "molecule.workspace.json"),
+      "--artifacts",
+      artifactsPath,
+      "--output",
+      "reports/review/cli-review.html",
+    ]);
+
+    expect(cli.exitCode).toBe(0);
+    expect(JSON.parse(cli.stdout)).toMatchObject({
+      ok: true,
+      tool: "render_review_bundle",
+      data: {
+        relativePath: path.join("reports", "review", "cli-review.html"),
+        includedArtifacts: [expect.objectContaining({ kind: "notes" })],
+      },
+      artifacts: [expect.objectContaining({ kind: "review_bundle", mimeType: "text/html" })],
+    });
+  });
+
   it("runs simulate-assembly through the CLI with a JSON input payload", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const vectorPath = path.join(workspaceDir, "vector.gb");

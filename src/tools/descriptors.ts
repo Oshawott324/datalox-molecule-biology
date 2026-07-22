@@ -394,6 +394,38 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "render_review_bundle",
+    description: "Render a self-contained static HTML review bundle for selected molecule artifacts and provenance.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        outputPath: { type: "string" },
+        replayBundlePath: { type: "string" },
+        includeReplaySummary: { type: "boolean" },
+        includeLocalPaths: { type: "boolean" },
+        moleculeIds: { type: "array", items: { type: "string" } },
+        artifacts: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["kind", "path"],
+            additionalProperties: false,
+            properties: {
+              kind: { type: "string" },
+              path: { type: "string" },
+              mimeType: { type: "string" },
+              description: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
     name: "align_sequences",
     description: "Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment.",
     inputSchema: {

@@ -26,6 +26,7 @@ import {
   type OpenSequenceEditorInput,
   type RenderPlasmidMapInput,
   type RenderDigestGelInput,
+  type RenderReviewBundleInput,
   type ReverseComplementInput,
   type SequenceContextInput,
   type SimulateAssemblyToolInput,
@@ -78,6 +79,7 @@ const commandToTool: Record<string, ToolName> = {
   "export-grna-report": "export_grna_report",
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
+  "render-review-bundle": "render_review_bundle",
   "align-sequences": "align_sequences",
   "blast-sequence": "blast_sequence",
   "design-primers": "design_primers",
@@ -155,7 +157,15 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
-    if (rawName === "include-sequence" || rawName === "no-check-sequence-digests" || rawName === "bind-to-molecule" || rawName === "show-primers" || rawName === "show-guides") {
+    if (
+      rawName === "include-sequence"
+      || rawName === "no-check-sequence-digests"
+      || rawName === "bind-to-molecule"
+      || rawName === "show-primers"
+      || rawName === "show-guides"
+      || rawName === "include-replay-summary"
+      || rawName === "include-local-paths"
+    ) {
       flags[rawName] = true;
       continue;
     }
@@ -198,6 +208,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "export_grna_report") return exportGrnaReportInput(parsed);
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
+  if (tool === "render_review_bundle") return renderReviewBundleInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
   if (tool === "blast_sequence") return blastSequenceInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
@@ -436,6 +447,19 @@ async function renderDigestGelInput(parsed: ParsedArgs): Promise<RenderDigestGel
     ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
     ...(stringFlag(parsed, "width") !== undefined ? { width: numberFlag(parsed, "width") } : {}),
     ...(stringFlag(parsed, "height") !== undefined ? { height: numberFlag(parsed, "height") } : {}),
+  };
+}
+
+async function renderReviewBundleInput(parsed: ParsedArgs): Promise<RenderReviewBundleInput> {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "output") ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") ? { outputPath: stringFlag(parsed, "output-path") } : {}),
+    ...(stringFlag(parsed, "artifacts") ? { artifacts: await jsonFileFlag(parsed, "artifacts") as RenderReviewBundleInput["artifacts"] } : {}),
+    ...(stringFlag(parsed, "replay-bundle-path") ? { replayBundlePath: stringFlag(parsed, "replay-bundle-path") } : {}),
+    ...(stringFlag(parsed, "molecule-ids") ? { moleculeIds: commaListFlag(parsed, "molecule-ids") } : {}),
+    ...(parsed.flags["include-replay-summary"] === true ? { includeReplaySummary: true } : {}),
+    ...(parsed.flags["include-local-paths"] === true ? { includeLocalPaths: true } : {}),
   };
 }
 
