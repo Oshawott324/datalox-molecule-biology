@@ -110,4 +110,83 @@ describe("BLAST JSON2_S parser", () => {
 
     expect(() => parseBlastJson2(fixture)).toThrow("Expected exactly one BLAST report.");
   });
+
+  // Structured error contract: the parser is a defensive boundary over a messy
+  // external API, so malformed responses must fail loudly with a field path.
+  it("throws a structured PARSE_ERROR on invalid JSON", () => {
+    const error = caught(() => parseBlastJson2("{ not valid json"));
+    expect(error.code).toBe("PARSE_ERROR");
+    expect(error.message).toMatch(/not valid JSON/);
+  });
+
+  it("rejects a zero-report BlastOutput2 array", () => {
+    expect(caught(() => parseBlastJson2({ BlastOutput2: [] }))).toMatchObject({
+      code: "PARSE_ERROR",
+      details: { path: "BlastOutput2", actualCount: 0 },
+    });
+  });
+
+  it("rejects a non-array BlastOutput2", () => {
+    expect(caught(() => parseBlastJson2({ BlastOutput2: {} }))).toMatchObject({
+      code: "PARSE_ERROR",
+      details: { path: "BlastOutput2" },
+    });
+  });
+
+  it("throws PARSE_ERROR naming the path of a missing required field", () => {
+    const fixture = readJsonFixture(liveFixture) as Record<string, never>;
+    delete (fixture as unknown as { BlastOutput2: [{ report: { results: { search: { query_len?: number } } } }] })
+      .BlastOutput2[0].report.results.search.query_len;
+    expect(caught(() => parseBlastJson2(fixture))).toMatchObject({
+      code: "PARSE_ERROR",
+      details: { path: expect.stringContaining("query_len") },
+    });
+  });
+
+  it("throws PARSE_ERROR when a hit is missing its accession", () => {
+    const fixture = readJsonFixture(liveFixture) as {
+      BlastOutput2: [{ report: { results: { search: { hits: [{ description: [{ accession?: string }] }] } } } }];
+    };
+    delete fixture.BlastOutput2[0].report.results.search.hits[0].description[0].accession;
+    expect(caught(() => parseBlastJson2(fixture))).toMatchObject({
+      code: "PARSE_ERROR",
+      details: { path: expect.stringContaining("accession") },
+    });
+  });
+
+  it("computes identity/coverage percent and parses a minus-strand HSP", () => {
+    const fixture = readJsonFixture(liveFixture) as {
+      BlastOutput2: [{ report: { results: { search: { hits: [{ hsps: [Record<string, unknown>] }] } } } }];
+    };
+    const hsp = fixture.BlastOutput2[0].report.results.search.hits[0].hsps[0];
+    hsp.identity = 228;
+    hsp.align_len = 240;
+    hsp.hit_strand = "Minus";
+    const alignment = parseBlastJson2(fixture).hits[0].alignments[0];
+    expect(alignment.identityPercent).toBe(95); // 228 / 240
+    expect(alignment.coveragePercent).toBe(80); // 240 / 300
+    expect(alignment.strand).toBe("minus");
+  });
+
+  it("reads WAITING, FAILED, and unknown poll statuses", () => {
+    expect(parseBlastStatus("Status=WAITING")).toBe("WAITING");
+    expect(parseBlastStatus("Status=FAILED")).toBe("FAILED");
+    expect(parseBlastStatus("Status=SOMETHING_ELSE")).toBe("UNKNOWN");
+    expect(parseBlastStatus("no status line at all")).toBe("UNKNOWN");
+  });
+
+  it("throws PARSE_ERROR when the Put response has no RID", () => {
+    const error = caught(() => parseBlastPutResponse("no rid or rtoe present"));
+    expect(error.code).toBe("PARSE_ERROR");
+    expect(error.message).toMatch(/RID\/RTOE/);
+  });
 });
+
+function caught(run: () => unknown): { code?: string; message?: string; details?: Record<string, unknown> } {
+  try {
+    run();
+  } catch (error) {
+    return error as { code?: string; message?: string; details?: Record<string, unknown> };
+  }
+  throw new Error("expected the parser to throw");
+}
