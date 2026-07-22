@@ -40,7 +40,7 @@ async function main() {
     PROGRAM: program,
     HITLIST_SIZE: String(hitlistSize),
     EXPECT: expect,
-    FORMAT_TYPE: "JSON2",
+    FORMAT_TYPE: "JSON2_S",
     tool,
     email,
   };
@@ -104,7 +104,7 @@ async function main() {
   const resultText = await getText({
     CMD: "Get",
     RID: rid,
-    FORMAT_TYPE: "JSON2",
+    FORMAT_TYPE: "JSON2_S",
     HITLIST_SIZE: String(hitlistSize),
     tool,
     email,

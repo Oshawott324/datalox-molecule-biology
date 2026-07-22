@@ -101,6 +101,10 @@ Review these raw files before using them as implementation fixtures. If the
 live response shape differs from this spec, update the spec first, then
 implement B1 against the observed contract.
 
+Live fixture note: use `FORMAT_TYPE=JSON2_S` when retrieving JSON results.
+NCBI may return `FORMAT_TYPE=JSON2` as a ZIP attachment, while `JSON2_S` returns
+plain JSON suitable for checked-in parser fixtures.
+
 Use a gene-length B1 query, not a short multiple-cloning-site motif. A 14 bp
 restriction-site query such as `GAATTCGCGGCCGC` is too short for ordinary
 `blastn` seeding and is biologically nonspecific even if short-query settings
