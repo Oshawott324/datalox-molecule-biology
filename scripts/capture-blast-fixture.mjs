@@ -3,6 +3,18 @@ import path from "node:path";
 
 const endpoint = "https://blast.ncbi.nlm.nih.gov/Blast.cgi";
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const responseRedactions = [
+  {
+    field: "email",
+    replacement: "<redacted:ncbi_email>",
+    reason: "NCBI contact parameter is required for live calls but is not needed in a public fixture.",
+  },
+  {
+    field: "MYNCBI_USER",
+    replacement: "<redacted:ncbi_user>",
+    reason: "NCBI page-local account identifier is not needed for parser fixtures.",
+  },
+];
 
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
@@ -49,7 +61,7 @@ async function main() {
     putParams.SHORT_QUERY_ADJUST = "true";
   }
 
-  const putText = await postForm(putParams);
+  const putText = redactResponseText(await postForm(putParams), email);
   await fs.writeFile(path.join(outputDir, "put-response.txt"), putText, "utf8");
   const rid = parseLineValue(putText, "RID");
   const rtoe = Number.parseInt(parseLineValue(putText, "RTOE"), 10);
@@ -66,13 +78,13 @@ async function main() {
   let finalStatus = "UNKNOWN";
   let statusText = "";
   while (elapsedSeconds <= maxWaitSeconds) {
-    statusText = await getText({
+    statusText = redactResponseText(await getText({
       CMD: "Get",
       RID: rid,
       FORMAT_OBJECT: "SearchInfo",
       tool,
       email,
-    });
+    }), email);
     await fs.writeFile(path.join(outputDir, `status-${String(elapsedSeconds).padStart(4, "0")}.txt`), statusText, "utf8");
     finalStatus = parseStatus(statusText);
     if (finalStatus === "READY") break;
@@ -97,6 +109,7 @@ async function main() {
       entrezQuery: args["entrez-query"] ?? null,
       queryLength: sequence.length,
       resultFile: null,
+      redactions: responseRedactions,
     });
     throw new Error(`BLAST search did not complete. RID=${rid} STATUS=${finalStatus}. Raw status files are in ${outputDir}`);
   }
@@ -126,6 +139,7 @@ async function main() {
     entrezQuery: args["entrez-query"] ?? null,
     queryLength: sequence.length,
     resultFile: "result.json",
+    redactions: responseRedactions,
   });
 
   console.log(JSON.stringify({
@@ -177,6 +191,15 @@ function parseLineValue(text, key) {
 
 function parseStatus(text) {
   return parseLineValue(text, "Status") ?? parseLineValue(text, "STATUS") ?? "UNKNOWN";
+}
+
+function redactResponseText(text, email) {
+  return text
+    .replaceAll(email, "<redacted:ncbi_email>")
+    .replaceAll(encodeURIComponent(email), "%3Credacted%3Ancbi_email%3E")
+    .replaceAll(encodeURIComponent(encodeURIComponent(email)), "%3Credacted%3Ancbi_email%3E")
+    .replace(/MYNCBI_USER=\d+/g, "MYNCBI_USER=<redacted:ncbi_user>")
+    .replace(/MYNCBI%5FUSER%3D\d+/g, "MYNCBI%5FUSER%3D<redacted:ncbi_user>");
 }
 
 function sleepSeconds(seconds) {

@@ -1,0 +1,36 @@
+{
+  "fixtureId": "puc19-bla-blastn-nt",
+  "submittedAt": "2026-07-22T01:21:30.203Z",
+  "completedAt": "2026-07-22T01:25:10.585Z",
+  "endpoint": "https://blast.ncbi.nlm.nih.gov/Blast.cgi",
+  "rid": "606SVMTS014",
+  "rtoe": 30,
+  "status": "READY",
+  "program": "blastn",
+  "database": "nt",
+  "databaseEffective": "core_nt",
+  "databaseOrgDbs": "dbvers5",
+  "databaseBuildDate": null,
+  "databaseBuildDateSource": "Not present in the captured NCBI JSON2_S result or saved HTML responses.",
+  "databaseStatistics": {
+    "db_num": 128547243,
+    "db_len": 948086538397
+  },
+  "hitlistSize": 5,
+  "expect": "0.001",
+  "entrezQuery": null,
+  "queryLength": 300,
+  "resultFile": "result.json",
+  "redactions": [
+    {
+      "field": "email",
+      "replacement": "<redacted:ncbi_email>",
+      "reason": "NCBI contact parameter is required for live calls but is not needed in a public fixture."
+    },
+    {
+      "field": "MYNCBI_USER",
+      "replacement": "<redacted:ncbi_user>",
+      "reason": "NCBI page-local account identifier is not needed for parser fixtures."
+    }
+  ]
+}
