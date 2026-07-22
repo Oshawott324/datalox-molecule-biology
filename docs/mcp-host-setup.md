@@ -173,15 +173,14 @@ If the binary is absent the tool returns `DEPENDENCY_MISSING` with the name of
 the missing binary, so agents can surface a clear error instead of a silent
 failure. No other tools are affected.
 
-### Network / live-service dependencies (planned)
+### Network / live-service dependencies
 
-The B-series BLAST tools (`blast_sequence`, `validate_primer_specificity`) are
-**not implemented yet** and are not in the tool list above. When they land they
-add a *network* dependency rather than a binary: outbound HTTPS to
-`https://blast.ncbi.nlm.nih.gov`. There is no API key to configure — the NCBI
-BLAST URL API is unauthenticated and governed by a fair-use polling policy. See
-[blast-validation-spec.md](blast-validation-spec.md) for the gate that must be
-satisfied before those tools ship.
+B1 `blast_sequence` adds a network dependency rather than a binary: outbound
+HTTPS to `https://blast.ncbi.nlm.nih.gov` plus `NCBI_BLAST_EMAIL` for the NCBI
+BLAST URL API `email` parameter. There is no API key to configure. B2
+`validate_primer_specificity` remains future work. See
+[blast-validation-spec.md](blast-validation-spec.md) for the live-service
+contract.
 
 ### Installing primer3_core
 

@@ -2,8 +2,9 @@
 
 > **Status note (2026-07-15):** M1 `validate_mrna_construct` and X1
 > `export_protein_fasta` have shipped since this document was written; their
-> per-section statuses below are updated to reflect that. B1/B2 remain planned,
-> M2/CR2 remain gated. Cross-track current status and sequencing are owned by
+> per-section statuses below are updated to reflect that. B1 `blast_sequence`
+> is implemented locally; B2 remains planned, M2/CR2 remain gated. Cross-track
+> current status and sequencing are owned by
 > `docs/roadmap-index-2026-07.md`.
 
 This document adds three tracks to the existing W/CR roadmap in
@@ -59,7 +60,8 @@ workflows.
 
 ### B1: `blast_sequence`
 
-Status: **planned**.
+Status: **implemented locally**. Uses the frozen `puc19-bla-blastn-nt` fixture
+to test parser/client behavior without live network calls in CI.
 
 General homology search via NCBI BLAST URL API. Returns structured hits
 with full provenance. Designed for agent workflows where the agent needs to
@@ -106,16 +108,15 @@ provenance.
 ### B-Series Gating Rule
 
 `docs/blast-validation-spec.md` holds the authoritative gate (endpoint, usage
-policy, provenance schema, error taxonomy, and fixture requirement); the two
-points below are the roadmap-level summary. Do not implement B1 until:
+policy, provenance schema, error taxonomy, and fixture requirement). The B1
+gate has been cleared:
 
-1. The NCBI BLAST URL API async pattern (submit RID, poll, parse XML/JSON) is
+1. The NCBI BLAST URL API async pattern (submit RID, poll, parse JSON2_S) is
    specced and the provenance schema is pinned. See
    `docs/blast-validation-spec.md`.
 2. One live blastn query against `nt` or `refseq_select` has been executed and
    the raw RID, status-poll response, and result response saved as a test
-   fixture. Without this, the async pattern is coded blindly against NCBI's
-   actual API behavior.
+   fixture.
 
 ## M-Series: mRNA Construct Validation
 
@@ -225,8 +226,7 @@ Done since this list was written: M1 `validate_mrna_construct` and X1
 `export_protein_fasta` are shipped. The remaining B/M/CR order is:
 
 ```text
-1. B1 blast_sequence — spec first (blast-validation-spec.md), then implement
-2. B2 validate_primer_specificity — depends on B1
+1. B2 validate_primer_specificity - depends on B1
 3. UI: mRNA element colors and BLAST hit table rendering
 4. M2 codon optimization — gated, wait for customer pull
 5. CR2 Azimuth scoring — gated, wait for coefficient/license/fixture validation

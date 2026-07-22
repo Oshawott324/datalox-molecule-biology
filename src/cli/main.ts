@@ -12,6 +12,7 @@ import {
   runToolHandler,
   toolFailureFromError,
   type AlignSequencesInput,
+  type BlastSequenceToolInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
   type DesignGrnasToolInput,
@@ -78,6 +79,7 @@ const commandToTool: Record<string, ToolName> = {
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
   "align-sequences": "align_sequences",
+  "blast-sequence": "blast_sequence",
   "design-primers": "design_primers",
   "design-grnas": "design_grnas",
   "export-protein-fasta": "export_protein_fasta",
@@ -197,6 +199,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
+  if (tool === "blast_sequence") return blastSequenceInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
   if (tool === "design_grnas") return designGrnasInput(parsed);
   if (tool === "export_protein_fasta") return exportProteinFastaInput(parsed);
@@ -447,6 +450,22 @@ function alignSequencesInput(parsed: ParsedArgs): AlignSequencesInput {
     ...(stringFlag(parsed, "match") !== undefined ? { match: numberFlag(parsed, "match") } : {}),
     ...(stringFlag(parsed, "mismatch") !== undefined ? { mismatch: numberFlag(parsed, "mismatch") } : {}),
     ...(stringFlag(parsed, "gap") !== undefined ? { gap: numberFlag(parsed, "gap") } : {}),
+  };
+}
+
+function blastSequenceInput(parsed: ParsedArgs): BlastSequenceToolInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "molecule-id") !== undefined ? { moleculeId: stringFlag(parsed, "molecule-id") } : {}),
+    ...(stringFlag(parsed, "molecule") !== undefined ? { molecule: stringFlag(parsed, "molecule") } : {}),
+    ...(stringFlag(parsed, "sequence") !== undefined ? { sequence: stringFlag(parsed, "sequence") } : {}),
+    database: stringFlag(parsed, "database") as BlastSequenceToolInput["database"],
+    program: stringFlag(parsed, "program") as BlastSequenceToolInput["program"],
+    ...(stringFlag(parsed, "hitlist-size") !== undefined ? { hitlistSize: numberFlag(parsed, "hitlist-size") } : {}),
+    ...(stringFlag(parsed, "e-value-threshold") !== undefined ? { eValueThreshold: Number(stringFlag(parsed, "e-value-threshold")) } : {}),
+    ...(stringFlag(parsed, "entrez-query") !== undefined ? { entrezQuery: stringFlag(parsed, "entrez-query") } : {}),
+    ...(stringFlag(parsed, "output") !== undefined ? { outputPath: stringFlag(parsed, "output") } : {}),
+    ...(stringFlag(parsed, "output-path") !== undefined ? { outputPath: stringFlag(parsed, "output-path") } : {}),
   };
 }
 

@@ -82,3 +82,5 @@ export {
   runNcbiBlast,
 } from "./blast-client.js";
 export type { NcbiBlastProgram, NcbiBlastRequest, NcbiBlastRunOptions, NcbiBlastRunResult, NcbiBlastStatusObservation, NcbiBlastTransport } from "./blast-client.js";
+export { blastSequence } from "./blast.js";
+export type { BlastDatabase, BlastSequenceArtifact, BlastSequenceDeps, BlastSequenceInput, BlastSequenceProgram, BlastSequenceResult } from "./blast.js";

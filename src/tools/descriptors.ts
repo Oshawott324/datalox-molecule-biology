@@ -439,6 +439,59 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "blast_sequence",
+    description: "Submit a nucleotide or protein query to the NCBI BLAST URL API, poll for completion, and return summarized hits plus a raw JSON artifact when workspacePath is provided.",
+    inputSchema: {
+      type: "object",
+      required: ["database", "program"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        moleculeId: {
+          type: "string",
+          description: "Workspace molecule id to use as the BLAST query. Provide this or sequence.",
+        },
+        molecule: {
+          type: "string",
+          description: "Alias for moleculeId.",
+        },
+        sequence: {
+          type: "string",
+          description: "Raw query sequence. Provide this or moleculeId.",
+        },
+        database: {
+          type: "string",
+          enum: ["nt", "nr", "refseq_rna", "refseq_select"],
+          description: "Requested NCBI BLAST database. The response also reports NCBI's effective database when it differs.",
+        },
+        program: {
+          type: "string",
+          enum: ["blastn", "blastp", "blastx", "tblastn"],
+          description: "BLAST program. Compatible pairs: blastn->nt/refseq_select, blastp->nr, blastx->nr, tblastn->nt/refseq_rna.",
+        },
+        hitlistSize: {
+          type: "integer",
+          minimum: 1,
+          description: "Maximum number of database hits to request. Default 10, hard maximum 100 enforced by the domain layer.",
+        },
+        eValueThreshold: {
+          type: "number",
+          minimum: 0,
+          description: "Positive E-value threshold. Default 0.001.",
+        },
+        entrezQuery: {
+          type: "string",
+          description: "Optional NCBI Entrez filter, for example Homo sapiens[Organism].",
+        },
+        outputPath: {
+          type: "string",
+          description: "Workspace-relative path for the raw JSON2_S artifact. Requires workspacePath.",
+        },
+      },
+    },
+  },
+  {
     name: "design_primers",
     description: "Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates.",
     inputSchema: {

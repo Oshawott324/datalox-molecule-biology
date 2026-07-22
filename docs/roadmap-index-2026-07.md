@@ -5,10 +5,10 @@ This supersedes the status fields in `2026-07-biology-tracks-roadmap.md` and
 `roadmap-snapgene-core.md`, which are stale. Those two documents remain the
 detailed track specs; this document owns current status and sequencing.
 
-Verification basis: `src/tools/descriptors.ts` on `main` after merge commit
-`135aedf`, which has 30 registered tools including the HB1 `get_version`
-handshake and `edit_sequence`. Eval corpus v0 is shipped on `main` at
-`516a2fe` with the independent biological anchor tests in `851f70b`.
+Verification basis: `src/tools/descriptors.ts` in this B1 implementation
+commit, which has 31 registered tools including the HB1 `get_version`
+handshake, `edit_sequence`, and `blast_sequence`. Eval corpus v0 is shipped on
+`main` at `516a2fe` with the independent biological anchor tests in `851f70b`.
 
 ## 1. Shipped
 
@@ -21,7 +21,7 @@ V1 hardening and roadmap status are shipped on `main`:
 - `516a2fe` ships eval corpus v0 task coverage.
 - `851f70b` adds independent biological anchor tests for the corpus.
 
-30 MCP tools are registered and dispatched generically. Grouped by track:
+31 MCP tools are registered and dispatched generically. Grouped by track:
 
 | Track | Tools |
 |---|---|
@@ -31,6 +31,7 @@ V1 hardening and roadmap status are shipped on `main`:
 | Cloning | `simulate_assembly` (restriction-ligation) |
 | Design | `design_primers` (Primer3), `design_grnas` (CR1 SpCas9 scan), `export_grna_report` |
 | mRNA / protein | `validate_mrna_construct` (M1), `export_protein_fasta` (X1) |
+| BLAST | `blast_sequence` (B1 NCBI BLAST URL API) |
 | Export | `export_genbank` |
 | Rendering / UI | `render_plasmid_map`, `render_digest_gel`, `open_sequence_editor` |
 
@@ -52,7 +53,6 @@ against safely. Do not start coding an item that only has a track doc.
 
 | Bucket | Item | Doc state | Gating condition |
 |---|---|---|---|
-| BLAST | B1 `blast_sequence` | Impl spec (`blast-validation-spec.md`) | Live NCBI RID/poll/result saved as fixture first |
 | BLAST | B2 `validate_primer_specificity` | Impl spec (`blast-validation-spec.md`) | B1 shipped |
 | Cloning | `simulate_gibson` | Track doc only (`roadmap-snapgene-core.md` s3) -- impl spec needed | Customer/demo pull |
 | Cloning | `simulate_golden_gate` (Type IIS) | Track doc only (`roadmap-snapgene-core.md` s4) -- impl spec needed | Customer/demo pull |
@@ -88,19 +88,17 @@ time. The four goals and their first move:
 
 ### Recommended sequence
 
-`edit_sequence` and eval corpus v0 have shipped. The next implementation gate is
-B1 fixture capture: one live NCBI BLAST URL API run must be saved under
-`fixtures/blast/` before `blast_sequence` code starts. This keeps B1 grounded in
-observed API behavior rather than a guessed async contract.
+`edit_sequence`, eval corpus v0, and B1 `blast_sequence` have shipped locally.
+B1 used the required frozen NCBI BLAST URL API fixture under `fixtures/blast/`,
+so its parser/client/tool path is grounded in observed API behavior rather than
+a guessed async contract.
 
 Proposed order:
 
 ```text
-1. B1 live fixture capture
-2. B1 blast_sequence      (after the fixture is reviewed)
-3. find_known_features    (needs a curated-library source decision first)
-4. B2 validate_primer_specificity
-5. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
+1. B2 validate_primer_specificity
+2. find_known_features    (needs a curated-library source decision first)
+3. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
 ```
 
 CR2 and M2 stay gated on explicit customer pull plus their validation fixtures

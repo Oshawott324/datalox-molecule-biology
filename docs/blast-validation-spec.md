@@ -55,11 +55,14 @@ Implementation constraints (per the NCBI BLAST URL API usage policy):
 
 ## B1: `blast_sequence`
 
+Status: **implemented locally**. The live fixture gate is cleared by
+`fixtures/blast/puc19-bla-blastn-nt/`, and automated tests use frozen fixture
+bytes only. Live BLAST remains manual/opt-in.
+
 ### Live Fixture Capture Helper
 
-B1 implementation is blocked until one real NCBI BLAST URL API run is captured
-as a fixture. The helper below exists only to clear that gate. It is not called
-from CI, from `npm test`, or from the MCP server.
+The helper below exists only to capture or refresh manual fixtures. It is not
+called from CI, from `npm test`, or from the MCP server.
 
 ```bash
 # Required by NCBI's BLAST URL API usage policy.
@@ -215,7 +218,8 @@ type BlastSequenceResult = {
   queryId: string;            // moleculeId or "raw_sequence"
   queryLength: number;
   queryDigest: string;        // SHA-256 of the query sequence for provenance
-  database: string;
+  requestedDatabase: string;
+  effectiveDatabase?: string;  // NCBI may resolve nt -> core_nt
   program: string;
   parameters: {
     hitlistSize: number;
@@ -226,7 +230,9 @@ type BlastSequenceResult = {
   submittedAt: string;        // ISO 8601
   completedAt: string;        // ISO 8601
   hits: BlastHit[];
-  hitsTruncated: boolean;     // true if database has more hits than hitlistSize
+  hitsTruncated: boolean;     // true when returned hit count reaches hitlistSize
+  hitlistLimitReached: boolean;
+  truncationRule: "hit_count_equals_requested_hitlist_size";
   ncbiUrl: string;            // https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=<rid>&CMD=Get
 };
 ```
@@ -239,7 +245,7 @@ an agent can include in a replay bundle.
 `blast_sequence` writes a JSON artifact containing the full result:
 
 ```text
-reports/blast/<queryId>.<program>.<database>.<timestamp>.json
+reports/blast/<queryId>.<program>.<database>.<rid>.json
 ```
 
 Returns:

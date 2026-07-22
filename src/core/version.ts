@@ -21,7 +21,7 @@ export const REQUIRED_V1_TOOLS = [
 export const DEFERRED_SCIENTIFIC_CAVEATS = [
   "Restriction-site discovery is limited to the verified local enzyme table and palindromic recognition models; strandScope is reported with restriction outputs.",
   "CRISPR guide ranking in CR1 is filter/evidence based only; Azimuth/Doench efficacy scoring remains gated until CR2 validation fixtures and asset review are complete.",
-  "Primer design requires the external primer3_core binary; specificity validation against NCBI BLAST is a future B-series tool.",
+  "Primer design requires the external primer3_core binary; primer-specific off-target validation through BLAST remains a future B2 tool.",
   "mRNA validation checks construct element order and integrity; codon optimization and immunogenicity optimization are deferred.",
 ] as const;
 

@@ -263,15 +263,15 @@ Look for:
 }
 ```
 
-## Planned: BLAST Tools And Network
+## BLAST Tools And Network
 
-The upcoming B-series BLAST tools (`blast_sequence`,
-`validate_primer_specificity`) are not a Primer3-style local binary — they call
-the NCBI BLAST URL API over the network. They need outbound HTTPS to
-`https://blast.ncbi.nlm.nih.gov` from wherever the MCP server runs. Inside WSL
-this works like any other HTTPS client: no extra install, no API key. See
-[blast-validation-spec.md](blast-validation-spec.md) for the validation gate
-those tools must clear first.
+B1 `blast_sequence` is not a Primer3-style local binary. It calls the NCBI
+BLAST URL API over the network and needs `NCBI_BLAST_EMAIL` plus outbound HTTPS
+to `https://blast.ncbi.nlm.nih.gov` from wherever the MCP server runs. Inside
+WSL this works like any other HTTPS client: no extra install, no API key. B2
+`validate_primer_specificity` remains future work. See
+[blast-validation-spec.md](blast-validation-spec.md) for the live-service
+contract.
 
 ## Troubleshooting
 

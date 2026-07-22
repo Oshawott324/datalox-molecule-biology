@@ -262,6 +262,31 @@ describe("tool handlers and CLI parity", () => {
     });
   });
 
+  it("wires blast-sequence through the CLI without reaching NCBI for validation errors", async () => {
+    const cli = await runCli([
+      "blast-sequence",
+      "--sequence",
+      "ACGTACGTACGTACGTACGTACGTACGTAC",
+      "--database",
+      "nr",
+      "--program",
+      "blastn",
+    ]);
+
+    expect(cli.exitCode).toBe(1);
+    expect(JSON.parse(cli.stdout)).toMatchObject({
+      ok: false,
+      tool: "blast_sequence",
+      error: {
+        code: "INVALID_ARGUMENT",
+        details: {
+          database: "nr",
+          program: "blastn",
+        },
+      },
+    });
+  });
+
   it("runs simulate-assembly through the CLI with a JSON input payload", async () => {
     const workspaceDir = await tempWorkspaceDir();
     const vectorPath = path.join(workspaceDir, "vector.gb");

@@ -6,7 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors, toolHandlers } from "../src/index.js";
+import { callMoleculeMcpTool, createMoleculeMcpServer, moleculeToolDescriptors, sequenceDigest, toolHandlers } from "../src/index.js";
 import { PACKAGE_VERSION, REQUIRED_V1_TOOLS } from "../src/core/version.js";
 import { assertSupportedInputSchema } from "../src/mcp/validate-args.js";
 import { toolFailure } from "../src/tools/envelope.js";
@@ -37,6 +37,7 @@ describe("MCP server", () => {
       "upsert_grna",
       "design_grnas",
       "export_grna_report",
+      "blast_sequence",
       "validate_workspace",
     ]));
   });
@@ -362,6 +363,90 @@ describe("MCP server", () => {
     expect(serialized).toContain("https://blast.ncbi.nlm.nih.gov/Blast.cgi?RID=ABC123&CMD=Get");
     expect(serialized).not.toContain(path.join(os.tmpdir(), "blast-result.xml"));
     expect(serialized).toContain("<redacted:absolute_path:blast-result.xml>");
+  });
+
+  it("rejects blast_sequence domain-invalid requests before network access", async () => {
+    const incompatible = await callMoleculeMcpTool("blast_sequence", {
+      sequence: "ACGTACGTACGTACGTACGTACGTACGTAC",
+      database: "nr",
+      program: "blastn",
+    });
+    expect(envelope(incompatible)).toMatchObject({
+      ok: false,
+      tool: "blast_sequence",
+      error: {
+        code: "INVALID_ARGUMENT",
+        details: {
+          database: "nr",
+          program: "blastn",
+        },
+      },
+    });
+
+    const missingQuery = await callMoleculeMcpTool("blast_sequence", {
+      database: "nt",
+      program: "blastn",
+    });
+    expect(envelope(missingQuery)).toMatchObject({
+      ok: false,
+      tool: "blast_sequence",
+      error: {
+        code: "INVALID_ARGUMENT",
+        message: "Provide exactly one of moleculeId or sequence.",
+      },
+    });
+  });
+
+  it("rejects blast_sequence molecule/program alphabet mismatch before network access", async () => {
+    const workspaceDir = await tempDir("mol-mcp-blast-protein-");
+    const sequencePath = path.join(workspaceDir, "data", "sequences", "protein.fa");
+    await fs.mkdir(path.dirname(sequencePath), { recursive: true });
+    await fs.writeFile(sequencePath, ">protein\nMTEYKLVVVG\n", "utf8");
+    const workspacePath = path.join(workspaceDir, "molecule.workspace.json");
+    await fs.writeFile(workspacePath, JSON.stringify({
+      schema: "datalox.molecule.workspace",
+      version: 1,
+      revision: 0,
+      workspaceId: "ws_mcp_blast_protein",
+      createdAt: "2026-07-22T00:00:00.000Z",
+      updatedAt: "2026-07-22T00:00:00.000Z",
+      molecules: [{
+        id: "mol_protein",
+        name: "protein",
+        path: "data/sequences/protein.fa",
+        sourceFormat: "fasta",
+        sequenceDigest: sequenceDigest("MTEYKLVVVG"),
+        length: 10,
+        topology: "linear",
+        moleculeType: "protein",
+        alphabet: "protein",
+      }],
+      features: [],
+      primers: [],
+      guides: [],
+      constructs: [],
+      experiments: [],
+      auditEvents: [],
+    }, null, 2), "utf8");
+
+    const result = await callMoleculeMcpTool("blast_sequence", {
+      workspacePath,
+      moleculeId: "mol_protein",
+      database: "nt",
+      program: "blastn",
+    });
+
+    expect(envelope(result)).toMatchObject({
+      ok: false,
+      tool: "blast_sequence",
+      error: {
+        code: "INVALID_ARGUMENT",
+        details: {
+          moleculeType: "protein",
+          requiredQueryType: "nucleotide",
+        },
+      },
+    });
   });
 
   it("advertises only JSON Schema keywords the boundary validator enforces", () => {

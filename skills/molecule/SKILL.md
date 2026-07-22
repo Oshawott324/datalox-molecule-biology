@@ -255,6 +255,7 @@ Use these tools instead of reasoning from memory:
 - `export_genbank`
 - `render_digest_gel`
 - `align_sequences`
+- `blast_sequence`
 - `design_primers`
 - `design_grnas`
 - `upsert_grna`
@@ -330,6 +331,33 @@ requires a ladder starting at 50 bp or lower to be calibrated normally.
 `render_digest_gel` uses the ladder as the calibrated range, adds ladder size
 labels to the SVG, and marks fragments outside the ladder range with
 `outOfLadderRange` / `rangeWarning` metadata.
+
+Use `blast_sequence` when the agent needs NCBI homology evidence. This is a
+live NCBI BLAST URL API call, not a deterministic local computation. Set
+`NCBI_BLAST_EMAIL` before calling it, keep submissions modest, and do not put
+live BLAST calls in CI. The envelope returns summarized hits only; when
+`workspacePath` is provided, the raw JSON2_S response is written as a
+`blast_result` artifact for provenance.
+
+```json
+{
+  "tool": "blast_sequence",
+  "arguments": {
+    "workspacePath": "/path/run/molecule.workspace.json",
+    "moleculeId": "mol_example",
+    "database": "nt",
+    "program": "blastn",
+    "hitlistSize": 10,
+    "eValueThreshold": 0.001
+  }
+}
+```
+
+Respect the program/database contract: `blastn` -> `nt` or `refseq_select`,
+`blastp`/`blastx` -> `nr`, and `tblastn` -> `nt` or `refseq_rna`. If the tool
+returns `BLAST_TIMEOUT`, preserve the returned RID and let the agent or human
+decide whether to retrieve the result later; do not auto-resubmit the same
+search.
 
 Use `simulate_assembly` for W3 restriction-ligation candidate generation. This
 tool is read-only with respect to workspace molecules: it resolves cut sites,

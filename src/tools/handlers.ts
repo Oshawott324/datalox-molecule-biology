@@ -5,6 +5,7 @@ import path from "node:path";
 import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from "../core/context.js";
 import {
   alignSequences,
+  blastSequence,
   editSequence,
   exportGenBank,
   exportGrnaReport,
@@ -22,6 +23,7 @@ import {
   validateMrnaConstruct,
 } from "../core/deterministic.js";
 import type { MrnaElementReference, MrnaTemplateType } from "../core/deterministic.js";
+import type { BlastDatabase, BlastSequenceProgram } from "../core/deterministic.js";
 import { MoleculeError } from "../core/errors.js";
 import { importSequenceFile, type ImportFormat } from "../core/import.js";
 import { reverseComplement } from "../core/sequence.js";
@@ -65,6 +67,7 @@ export type ToolName =
   | "render_plasmid_map"
   | "render_digest_gel"
   | "align_sequences"
+  | "blast_sequence"
   | "design_primers"
   | "design_grnas"
   | "export_protein_fasta"
@@ -230,6 +233,18 @@ export type AlignSequencesInput = WorkspaceInput & {
   gap?: number;
 };
 
+export type BlastSequenceToolInput = WorkspaceInput & {
+  moleculeId?: string;
+  molecule?: string;
+  sequence?: string;
+  database: BlastDatabase;
+  program: BlastSequenceProgram;
+  hitlistSize?: number;
+  eValueThreshold?: number;
+  entrezQuery?: string;
+  outputPath?: string;
+};
+
 export type ExportProteinFastaInput = WorkspaceInput & {
   moleculeId?: string;
   molecule?: string;
@@ -334,6 +349,7 @@ export type ToolInputByName = {
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
   align_sequences: AlignSequencesInput;
+  blast_sequence: BlastSequenceToolInput;
   design_primers: DesignPrimersToolInput;
   design_grnas: DesignGrnasToolInput;
   export_protein_fasta: ExportProteinFastaInput;
@@ -370,6 +386,7 @@ export const toolHandlers = {
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
   align_sequences: handleAlignSequences,
+  blast_sequence: handleBlastSequence,
   design_primers: handleDesignPrimers,
   design_grnas: handleDesignGrnas,
   export_protein_fasta: handleExportProteinFasta,
@@ -921,6 +938,43 @@ export async function handleAlignSequences(input: AlignSequencesInput): Promise<
       { ...(usesWorkspace ? { workspacePath: workspacePathFromInput(input) } : {}), ...result },
       usesWorkspace ? { workspacePath: workspacePathFromInput(input) } : {},
     );
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleBlastSequence(input: BlastSequenceToolInput): Promise<ToolResultEnvelope> {
+  const tool = "blast_sequence";
+  try {
+    const workspacePath = input.workspacePath !== undefined || input.workspaceDir !== undefined
+      ? workspacePathFromInput(input)
+      : undefined;
+    const moleculeId = input.moleculeId ?? input.molecule;
+    const result = await blastSequence({
+      ...(workspacePath !== undefined ? { workspacePath } : {}),
+      ...(moleculeId !== undefined ? { moleculeId } : {}),
+      ...(input.sequence !== undefined ? { sequence: input.sequence } : {}),
+      database: input.database,
+      program: input.program,
+      ...(input.hitlistSize !== undefined ? { hitlistSize: input.hitlistSize } : {}),
+      ...(input.eValueThreshold !== undefined ? { eValueThreshold: input.eValueThreshold } : {}),
+      ...(input.entrezQuery !== undefined ? { entrezQuery: input.entrezQuery } : {}),
+      ...(input.outputPath !== undefined ? { outputPath: input.outputPath } : {}),
+    });
+    return toolSuccess(tool, { ...(workspacePath !== undefined ? { workspacePath } : {}), ...result }, {
+      ...(workspacePath !== undefined ? { workspacePath } : {}),
+      ...(result.revision !== undefined ? { revision: result.revision } : {}),
+      ...(result.artifact !== undefined
+        ? {
+            artifacts: [{
+              kind: result.artifact.kind,
+              path: result.artifact.path,
+              mimeType: result.artifact.mimeType,
+              description: result.artifact.description,
+            }],
+          }
+        : {}),
+    });
   } catch (error) {
     return toolFailureFromError(tool, error);
   }
