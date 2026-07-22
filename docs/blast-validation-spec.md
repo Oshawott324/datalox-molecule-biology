@@ -288,119 +288,19 @@ molecule-biology blast-sequence \
 
 ## B2: `validate_primer_specificity`
 
-### Biological Review
+**Authoritative spec: `docs/primer-specificity-spec.md`.** B2's full contract --
+input/output types, the 3'-end competence rule, amplicon geometry, verdict
+classification, timeout handling, short-query BLAST parameters, and fixture/test
+requirements -- lives there. Do not implement B2 from this document.
 
-A primer is specific if it does not produce significant off-target amplicons
-in the target organism's genome. BLAST identifies binding sites; off-target
-amplification risk arises when a forward primer hit and a reverse primer hit
-are in opposite orientations within an amplifiable distance.
-
-B2 does not implement full Primer-BLAST in-silico PCR. It BLASTs each primer
-individually and flags potential off-target binding based on:
-
-1. Hits with identity above `minIdentityPercent` (default 90%).
-2. If both a forward and reverse primer hit the same accession within
-   `maxAmpliconSize` bp in opposing orientations, flag as potential off-target
-   amplification.
-
-### Input
-
-```ts
-type ValidatePrimerSpecificityInput = {
-  workspacePath: string;
-  primerIds: string[];           // IDs of persisted primers to check
-  database: "nt" | "refseq_select";
-  organism?: string;             // e.g. "Homo sapiens" — prepended to entrezQuery
-  minIdentityPercent?: number;   // default 90, threshold for flagging a hit
-  maxAmpliconSize?: number;      // default 5000, for off-target amplicon prediction
-  pairIds?: [string, string][];  // optional: forward+reverse pairs to check together
-  intendedTarget?: {
-    accession?: string;          // NCBI accession of the intended template; excluded from off-target count
-    moleculeId?: string;         // workspace molecule ID of the intended template
-    expectedAmplicon?: {
-      start: number;             // 1-based expected amplicon start on the intended target
-      end: number;               // 1-based expected amplicon end on the intended target
-    };
-  };
-  outputPath?: string;
-};
-```
-
-### Output
-
-```ts
-type PrimerSpecificityAssessment = "likely_specific" | "potential_off_targets" | "high_off_target_risk";
-
-type PrimerSpecificityResult = {
-  primerId: string;
-  sequence: string;
-  assessment: PrimerSpecificityAssessment;
-  significantHits: BlastHit[];   // hits above minIdentityPercent
-  rid: string;
-  ncbiUrl: string;
-};
-
-type PairAmpliconWarning = {
-  forwardPrimerId: string;
-  reversePrimerId: string;
-  accession: string;
-  predictedAmpliconSize: number;
-  forwardHitStart: number;
-  reverseHitStart: number;
-};
-
-type ValidatePrimerSpecificityResult = {
-  primerResults: PrimerSpecificityResult[];
-  pairWarnings: PairAmpliconWarning[];
-  database: string;
-  organism?: string;
-  submittedAt: string;
-  completedAt: string;
-};
-```
-
-Assessment logic:
-
-```text
-likely_specific:
-  No hits with identity >= minIdentityPercent other than hits to the
-  intendedTarget accession or moleculeId (if provided).
-
-potential_off_targets:
-  1-3 hits above threshold (excluding intendedTarget), none forming a
-  predicted off-target amplicon with a paired primer within maxAmpliconSize.
-
-high_off_target_risk:
-  Any hit forming a predicted off-target amplicon, OR more than 3 hits above
-  threshold (excluding intendedTarget).
-```
-
-### CLI
-
-```bash
-molecule-biology validate-primer-specificity \
-  <workspacePath> \
-  --primer-ids primer_fwd,primer_rev \
-  --database refseq_select \
-  --organism "Homo sapiens" \
-  --pair-ids primer_fwd:primer_rev
-```
-
-### Agent Workflow
-
-```text
-design_primers -> simulate_pcr -> validate_primer_specificity -> upsert_primer
-```
-
-The `validate_primer_specificity` result should be included in the replay
-bundle. If `assessment: "high_off_target_risk"`, the nextAction should be:
-
-```ts
-nextAction: {
-  tool: "manual_review";
-  instruction: "High off-target risk detected. Review BLAST hits before calling upsert_primer.";
-}
-```
+An earlier draft of B2 here classified off-targets by BLAST identity percent
+(`minIdentityPercent`, default 90%) and hit counts. That approach is superseded:
+primer amplification is a 3'-end property, not an identity-percent property. A
+primer with 5' mismatches still amplifies if its 3' end matches, and a single
+3'-terminal mismatch usually blocks it -- so identity percent flags the wrong
+bindings. B2 classifies bindings by 3' competence and predicts amplicons by
+geometry (opposing strands, 3' ends facing inward, within an amplicon distance).
+See the new spec for the full rationale and types.
 
 ## Scope Boundaries
 
@@ -414,9 +314,12 @@ nextAction: {
 | Local FASTA database | no | no | later |
 | Primer Tm / hairpin recheck | no | no | W2 already covers design |
 
-## Gating Rule
+## B-Series Gating Rule
 
-Do not start B1 implementation until:
+B1 has cleared this gate. B2 must clear the short-query fixture gate in
+`docs/primer-specificity-spec.md` before implementation starts.
+
+The B1 gate was:
 
 1. NCBI BLAST URL API async pattern (RID polling, backoff, timeout) is
    implemented and tested with a mock server. Network calls in tests must be
