@@ -94,6 +94,13 @@ export {
   parseBlastJson2,
   parseBlastPutResponse,
   parseBlastStatus,
+  blastQueryFasta,
+  DEFAULT_NCBI_BLAST_TOOL,
+  defaultNcbiBlastTransport,
+  NCBI_BLAST_ENDPOINT,
+  NCBI_BLAST_RESULT_FORMAT,
+  redactNcbiBlastResponseText,
+  runNcbiBlast,
 } from "./core/deterministic.js";
 export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-map.js";
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
@@ -157,6 +164,12 @@ export type {
   BlastSearchStatistics,
   BlastStatus,
   BlastStrand,
+  NcbiBlastProgram,
+  NcbiBlastRequest,
+  NcbiBlastRunOptions,
+  NcbiBlastRunResult,
+  NcbiBlastStatusObservation,
+  NcbiBlastTransport,
   AssemblyArtifact,
   AssemblyCandidate,
   AssemblyCandidateEnd,

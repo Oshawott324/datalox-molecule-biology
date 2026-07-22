@@ -1,7 +1,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-const endpoint = "https://blast.ncbi.nlm.nih.gov/Blast.cgi";
+import {
+  DEFAULT_NCBI_BLAST_TOOL,
+  blastQueryFasta,
+  defaultNcbiBlastTransport,
+  redactNcbiBlastResponseText,
+  runNcbiBlast,
+} from "../dist/src/core/blast-client.js";
+
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const responseRedactions = [
   {
@@ -32,108 +39,57 @@ async function main() {
   if (!/^[a-z0-9][a-z0-9._-]*$/i.test(fixtureId)) {
     throw new Error("--fixture-id may only contain letters, digits, dots, underscores, and hyphens.");
   }
+
+  const sequence = await querySequence(args);
   const program = blastProgram(args.program ?? "blastn");
   const database = requiredNonEmpty(args.database ?? "nt", "database");
   const hitlistSize = boundedInteger(args["hitlist-size"] ?? "5", "hitlist-size", 1, 100);
   const expect = args.expect ?? "0.001";
-  const sequence = await querySequence(args);
-  const tool = process.env.NCBI_BLAST_TOOL ?? "DataloxMoleculeBiologyMCP";
+  const tool = process.env.NCBI_BLAST_TOOL ?? DEFAULT_NCBI_BLAST_TOOL;
   const outputRoot = path.resolve(repoRoot, args["output-dir"] ?? path.join("fixtures", "blast"));
   const outputDir = path.join(outputRoot, fixtureId);
-  const submittedAt = new Date().toISOString();
 
   await fs.mkdir(outputDir, { recursive: true });
-  await fs.writeFile(path.join(outputDir, "query.fa"), fasta("query", sequence), "utf8");
+  await fs.writeFile(path.join(outputDir, "query.fa"), blastQueryFasta(sequence), "utf8");
 
-  const putParams = {
-    CMD: "Put",
-    QUERY: fasta("query", sequence),
-    DATABASE: database,
-    PROGRAM: program,
-    HITLIST_SIZE: String(hitlistSize),
-    EXPECT: expect,
-    FORMAT_TYPE: "JSON2_S",
-    tool,
-    email,
-  };
-  if (args["entrez-query"]) putParams.ENTREZ_QUERY = args["entrez-query"];
-  if (sequence.length < 30 && (program === "blastn" || program === "blastp")) {
-    putParams.SHORT_QUERY_ADJUST = "true";
-  }
-
-  const putText = redactResponseText(await postForm(putParams), email);
-  await fs.writeFile(path.join(outputDir, "put-response.txt"), putText, "utf8");
-  const rid = parseLineValue(putText, "RID");
-  const rtoe = Number.parseInt(parseLineValue(putText, "RTOE"), 10);
-  if (!rid || !Number.isInteger(rtoe)) {
-    throw new Error(`Could not parse RID/RTOE from NCBI response. Saved response at ${path.join(outputDir, "put-response.txt")}`);
-  }
-
-  const maxWaitSeconds = boundedInteger(args["max-wait-seconds"] ?? "600", "max-wait-seconds", 60, 3600);
-  const pollIntervalSeconds = Math.max(60, boundedInteger(args["poll-interval-seconds"] ?? "60", "poll-interval-seconds", 60, 3600));
-  let elapsedSeconds = 0;
-  await sleepSeconds(Math.max(rtoe, 60));
-  elapsedSeconds += Math.max(rtoe, 60);
-
-  let finalStatus = "UNKNOWN";
-  let statusText = "";
-  while (elapsedSeconds <= maxWaitSeconds) {
-    statusText = redactResponseText(await getText({
-      CMD: "Get",
-      RID: rid,
-      FORMAT_OBJECT: "SearchInfo",
-      tool,
-      email,
-    }), email);
-    await fs.writeFile(path.join(outputDir, `status-${String(elapsedSeconds).padStart(4, "0")}.txt`), statusText, "utf8");
-    finalStatus = parseStatus(statusText);
-    if (finalStatus === "READY") break;
-    if (finalStatus === "FAILED" || finalStatus === "UNKNOWN") break;
-    await sleepSeconds(pollIntervalSeconds);
-    elapsedSeconds += pollIntervalSeconds;
-  }
-
-  if (finalStatus !== "READY") {
-    await writeMetadata(outputDir, {
-      fixtureId,
-      submittedAt,
-      completedAt: new Date().toISOString(),
-      endpoint,
-      rid,
-      rtoe,
-      status: finalStatus,
-      program,
-      database,
-      hitlistSize,
-      expect,
-      entrezQuery: args["entrez-query"] ?? null,
-      queryLength: sequence.length,
-      resultFile: null,
-      redactions: responseRedactions,
-    });
-    throw new Error(`BLAST search did not complete. RID=${rid} STATUS=${finalStatus}. Raw status files are in ${outputDir}`);
-  }
-
-  const resultText = await getText({
-    CMD: "Get",
-    RID: rid,
-    FORMAT_TYPE: "JSON2_S",
-    HITLIST_SIZE: String(hitlistSize),
-    tool,
-    email,
-  });
-  JSON.parse(resultText);
-  await fs.writeFile(path.join(outputDir, "result.json"), resultText, "utf8");
-  await writeMetadata(outputDir, {
-    fixtureId,
-    submittedAt,
-    completedAt: new Date().toISOString(),
-    endpoint,
-    rid,
-    rtoe,
-    status: finalStatus,
+  const result = await runNcbiBlast({
+    sequence,
     program,
     database,
+    hitlistSize,
+    expect,
+    entrezQuery: args["entrez-query"],
+    tool,
+    email,
+    maxWaitSeconds: boundedInteger(args["max-wait-seconds"] ?? "600", "max-wait-seconds", 60, 3600),
+    pollIntervalSeconds: boundedInteger(args["poll-interval-seconds"] ?? "60", "poll-interval-seconds", 60, 3600),
+    transport: async (request) => redactNcbiBlastResponseText(await defaultNcbiBlastTransport(request), email),
+  });
+
+  await fs.writeFile(path.join(outputDir, "put-response.txt"), result.raw.putResponse, "utf8");
+  for (const statusResponse of result.raw.statusResponses) {
+    await fs.writeFile(
+      path.join(outputDir, `status-${String(statusResponse.elapsedSeconds).padStart(4, "0")}.txt`),
+      statusResponse.text,
+      "utf8",
+    );
+  }
+  await fs.writeFile(path.join(outputDir, "result.json"), result.raw.resultJson, "utf8");
+  await writeMetadata(outputDir, {
+    fixtureId,
+    submittedAt: result.submittedAt,
+    completedAt: result.completedAt,
+    endpoint: result.endpoint,
+    rid: result.rid,
+    rtoe: result.rtoe,
+    status: result.status,
+    program,
+    database,
+    databaseEffective: result.effectiveDatabase ?? null,
+    databaseStatistics: {
+      db_num: result.result.statistics?.dbNum ?? null,
+      db_len: result.result.statistics?.dbLen ?? null,
+    },
     hitlistSize,
     expect,
     entrezQuery: args["entrez-query"] ?? null,
@@ -146,8 +102,8 @@ async function main() {
     ok: true,
     fixtureId,
     outputDir,
-    rid,
-    status: finalStatus,
+    rid: result.rid,
+    status: result.status,
     resultFile: path.join(outputDir, "result.json"),
   }, null, 2));
 }
@@ -165,45 +121,6 @@ async function querySequence(parsedArgs) {
   if (hasSequence) return normalizeSequence(parsedArgs.sequence);
   const content = await fs.readFile(path.resolve(parsedArgs.fasta), "utf8");
   return normalizeSequence(content.split(/\r?\n/).filter((line) => !line.startsWith(">")).join(""));
-}
-
-async function postForm(params) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(params),
-  });
-  if (!response.ok) throw new Error(`NCBI BLAST PUT failed: HTTP ${response.status}`);
-  return response.text();
-}
-
-async function getText(params) {
-  const url = `${endpoint}?${new URLSearchParams(params).toString()}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`NCBI BLAST GET failed: HTTP ${response.status}`);
-  return response.text();
-}
-
-function parseLineValue(text, key) {
-  const match = new RegExp(`^\\s*${key}\\s*=\\s*(\\S+)\\s*$`, "m").exec(text);
-  return match?.[1];
-}
-
-function parseStatus(text) {
-  return parseLineValue(text, "Status") ?? parseLineValue(text, "STATUS") ?? "UNKNOWN";
-}
-
-function redactResponseText(text, email) {
-  return text
-    .replaceAll(email, "<redacted:ncbi_email>")
-    .replaceAll(encodeURIComponent(email), "%3Credacted%3Ancbi_email%3E")
-    .replaceAll(encodeURIComponent(encodeURIComponent(email)), "%3Credacted%3Ancbi_email%3E")
-    .replace(/MYNCBI_USER=\d+/g, "MYNCBI_USER=<redacted:ncbi_user>")
-    .replace(/MYNCBI%5FUSER%3D\d+/g, "MYNCBI%5FUSER%3D<redacted:ncbi_user>");
-}
-
-function sleepSeconds(seconds) {
-  return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 }
 
 function parseArgs(argv) {
@@ -249,8 +166,4 @@ function normalizeSequence(value) {
   const sequence = value.replace(/\s+/g, "").toUpperCase();
   if (!/^[A-Z*]+$/.test(sequence)) throw new Error("Query sequence contains unsupported symbols.");
   return sequence;
-}
-
-function fasta(id, sequence) {
-  return `>${id}\n${sequence.match(/.{1,60}/g).join("\n")}\n`;
 }

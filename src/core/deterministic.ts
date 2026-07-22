@@ -72,3 +72,13 @@ export { exportGrnaReport, MAX_GRNA_REPORT_GUIDES } from "./grna-report.js";
 export type { ExportGrnaReportOptions, ExportGrnaReportResult } from "./grna-report.js";
 export { parseBlastJson2, parseBlastPutResponse, parseBlastStatus } from "./blast-parse.js";
 export type { BlastAlignment, BlastHit, BlastParsedResult, BlastPutResponse, BlastSearchStatistics, BlastStatus, BlastStrand } from "./blast-parse.js";
+export {
+  blastQueryFasta,
+  DEFAULT_NCBI_BLAST_TOOL,
+  defaultNcbiBlastTransport,
+  NCBI_BLAST_ENDPOINT,
+  NCBI_BLAST_RESULT_FORMAT,
+  redactNcbiBlastResponseText,
+  runNcbiBlast,
+} from "./blast-client.js";
+export type { NcbiBlastProgram, NcbiBlastRequest, NcbiBlastRunOptions, NcbiBlastRunResult, NcbiBlastStatusObservation, NcbiBlastTransport } from "./blast-client.js";
