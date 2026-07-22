@@ -568,7 +568,8 @@ site.cutPosition }`:
       { "enzyme": "EcoRI", "position": 396 },
       { "enzyme": "HindIII", "position": 447 }
     ],
-    "showPrimers": true
+    "showPrimers": true,
+    "showGuides": true
   }
 }
 ```

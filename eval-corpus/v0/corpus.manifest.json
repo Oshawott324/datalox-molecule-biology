@@ -4,7 +4,7 @@
   "createdAt": "2026-07-20T00:00:00.000Z",
   "packageName": "@datalox/molecule-biology",
   "requiredToolSurface": {
-    "toolCount": 30,
+    "toolCount": 31,
     "requiredTools": [
       "design_grnas",
       "edit_sequence",
@@ -22,7 +22,7 @@
       "validate_mrna_construct",
       "validate_workspace"
     ],
-    "descriptorDigest": "c158dcae98492bc3f75b846317373e3243b541538fc85f51a2a51053bb0b8e38"
+    "descriptorDigest": "728619189c5749d9b03fab00de253b5f148225c0ecd0c9cc46a50ac78543c616"
   },
   "artifactHashAlgorithm": "sha256",
   "tasks": [

@@ -119,7 +119,7 @@ describe("plasmid map rendering", () => {
     expect(JSON.stringify(result)).toContain("<redacted:absolute_path:");
   });
 
-  it("renders caller-supplied cut sites and bound primer arrows", async () => {
+  it("renders caller-supplied cut sites, bound primer arrows, and persisted guide arcs together", async () => {
     const { workspacePath, moleculeId } = await importPuc19();
     const { sequence } = await readMoleculeSequence(workspacePath, moleculeId);
     await upsertPrimer(workspacePath, 0, {
@@ -134,12 +134,40 @@ describe("plasmid map rendering", () => {
       sequence: reverseComplement(sequence.slice(430, 450)),
       moleculeId,
     }, { bindToMolecule: true });
+    await upsertGuide(workspacePath, 2, {
+      id: "grna_puc19_mcs_overlay",
+      moleculeId,
+      name: "pUC19 MCS overlay guide",
+      sequence: sequence.slice(395, 415),
+      pam: sequence.slice(415, 418),
+      strand: "+",
+      start: 396,
+      end: 415,
+      pamStart: 416,
+      pamEnd: 418,
+      pamType: "SpCas9",
+      gcPercent: 50,
+      seedRegionMaxHomopolymer: 2,
+      offTargetScope: "workspace_molecules_only",
+      offTargetHitCount: 0,
+      rankingEvidence: {
+        passingFilters: true,
+        filterFailures: [],
+        offTargetHitCount: 0,
+        gcDistanceFrom50: 0,
+        guideStart: 396,
+        strand: "+",
+        efficacyScoreIncluded: false,
+      },
+      sourceTool: "design_grnas",
+    });
     const sites = await findRestrictionSites(workspacePath, moleculeId, ["EcoRI", "HindIII"]);
 
     const result = await renderPlasmidMap(workspacePath, moleculeId, {
       outputPath: "reports/maps/puc19-overlay.svg",
       cutSites: sites.map((site) => ({ enzyme: site.enzyme, position: site.cutPosition })),
       showPrimers: true,
+      showGuides: true,
       width: 640,
       height: 520,
     });
@@ -147,18 +175,24 @@ describe("plasmid map rendering", () => {
 
     expect(result.relativePath).toBe(path.join("reports", "maps", "puc19-overlay.svg"));
     expect(result.renderedPrimerIds).toEqual(["primer_puc19_mcs_fwd", "primer_puc19_mcs_rev"]);
+    expect(result.renderedGuideIds).toEqual(["grna_puc19_mcs_overlay"]);
     expect(result.renderedCutSites).toEqual([
       { enzyme: "EcoRI", position: 396 },
       { enzyme: "HindIII", position: 447 },
     ]);
     expect(result.rules).toMatchObject({
       primerRendering: "bound_primers_only_one_arrow_per_binding_segment",
+      guideRendering: "persisted_guides_only_protospacer_arc_with_pam_tick",
       cutSiteRendering: "caller_supplied_ticks_at_cut_position",
     });
     expect(svg).toContain("pUC19 MCS fwd");
     expect(svg).toContain("pUC19 MCS rev");
+    expect(svg).toContain("pUC19 MCS overlay guide");
+    expect(svg).toContain("PAM");
     expect(svg).toContain('stroke="#1976D2"');
     expect(svg).toContain('stroke="#D32F2F"');
+    expect(svg).toContain('stroke="#00897B"');
+    expect(svg).toContain("guide-arrow-forward");
     expect(svg).toContain(">EcoRI</text>");
     expect(svg).toContain(">HindIII</text>");
     expect(svg).toContain("EcoRI cut at 396");
