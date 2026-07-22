@@ -133,8 +133,13 @@ The first live fixture revealed the parser contract that B1 must implement:
   fields by default: identity, alignment length, coordinates, strands, E-value,
   and bit score.
 - Empty hits are valid. A `hits: []` response should return `hits: []`, not an
-  error. Parser tests must cover this with a handcrafted JSON2_S fixture rather
-  than a second live NCBI call.
+  error. A missing `hits` key should be normalized to the same zero-hit result:
+  `const hits = search.hits ?? []`. Parser tests must cover both shapes without
+  a second live NCBI call.
+- `search.stat` is useful provenance when present (`db_num`, `db_len`, scoring
+  parameters) but must be optional. The empty-hit fixture includes a minimal
+  `stat` block, and parser tests should also verify that deleting it does not
+  crash parsing.
 
 Parser tests should pin these frozen-fixture facts:
 

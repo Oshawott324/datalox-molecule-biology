@@ -21,7 +21,16 @@
             "query_id": "Query_empty_hits",
             "query_title": "empty_hits_query",
             "query_len": 120,
-            "hits": []
+            "hits": [],
+            "stat": {
+              "db_num": 128547243,
+              "db_len": 948086538397,
+              "hsp_len": 39,
+              "eff_space": 98456789012345,
+              "kappa": 0.41,
+              "lambda": 0.625,
+              "entropy": 0.78
+            }
           }
         }
       }
