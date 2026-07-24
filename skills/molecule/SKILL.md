@@ -359,6 +359,17 @@ returns `BLAST_TIMEOUT`, preserve the returned RID and let the agent or human
 decide whether to retrieve the result later; do not auto-resubmit the same
 search.
 
+Use `validate_primer_specificity` for the Primer-BLAST-equivalent check: give it
+a forward+reverse primer pair (as `forwardPrimerId`/`reversePrimerId` or
+`forwardSequence`/`reverseSequence`) and it BLASTs each primer and predicts
+off-target amplicons. The `verdict` (`specific` / `low_risk` /
+`high_off_target_risk` / `inconclusive`) is driven by 3'-end competence and
+amplicon geometry, NOT identity percent -- short primers hit many subjects at
+100% identity, so identity cannot discriminate specificity. On
+`high_off_target_risk` or `inconclusive`, the `nextAction` is `manual_review`;
+do not persist the pair. This is a live BLAST call (two submissions), so it is
+also out of CI.
+
 Use `simulate_assembly` for W3 restriction-ligation candidate generation. This
 tool is read-only with respect to workspace molecules: it resolves cut sites,
 checks verified ligation-end compatibility, writes candidate GenBank artifacts,

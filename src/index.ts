@@ -86,6 +86,11 @@ export {
   renderReviewBundle,
   exportReviewBundle,
   createStoredZip,
+  validatePrimerSpecificity,
+  computeBindingEvidence,
+  predictAmplicons,
+  markIntendedTarget,
+  classifyVerdict,
   simulateDigest,
   simulatePcr,
   STANDARD_GENETIC_CODE,
@@ -111,6 +116,12 @@ export { FEATURE_COLORS, featureColor, renderPlasmidMap } from "./core/render-ma
 export type { PlasmidMapCutSite, RenderPlasmidMapOptions, RenderPlasmidMapResult } from "./core/render-map.js";
 export { formatPrimer3BoulderInput, normalizePrimerDesignOptions, parsePrimer3Output } from "./core/primer-design.js";
 export type {
+  ValidatePrimerSpecificityInput,
+  ValidatePrimerSpecificityDeps,
+  PrimerSpecificityResult,
+  PrimerSpecificityVerdict,
+  PredictedAmplicon,
+  PrimerBindingEvidence,
   DigestFragment,
   DesignedPrimer,
   DesignGrnasInput,

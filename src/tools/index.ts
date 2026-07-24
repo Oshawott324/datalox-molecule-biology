@@ -38,6 +38,7 @@ export {
   workspacePathFromInput,
   type AlignSequencesInput,
   type BlastSequenceToolInput,
+  type ValidatePrimerSpecificityToolInput,
   type ExportProteinFastaInput,
   type ValidateMrnaConstructToolInput,
   type DeleteFeatureInput,

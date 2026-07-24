@@ -15,6 +15,15 @@ export type BlastAlignment = {
   subjectStart: number;
   subjectEnd: number;
   strand: BlastStrand;
+  // Populated only when parseBlastJson2 is called with retainAlignmentStrings:
+  // true. Internal use (B2 3'-end competence), never surfaced in agent output.
+  qseq?: string;
+  hseq?: string;
+  midline?: string;
+};
+
+export type ParseBlastJson2Options = {
+  retainAlignmentStrings?: boolean;
 };
 
 export type BlastHit = {
@@ -55,7 +64,8 @@ export type BlastPutResponse = {
 
 export type BlastStatus = "READY" | "WAITING" | "FAILED" | "UNKNOWN";
 
-export function parseBlastJson2(raw: string | unknown): BlastParsedResult {
+export function parseBlastJson2(raw: string | unknown, options: ParseBlastJson2Options = {}): BlastParsedResult {
+  const retainAlignmentStrings = options.retainAlignmentStrings === true;
   const parsed = typeof raw === "string" ? parseJson(raw) : raw;
   const reports = readArray((parsed as Record<string, unknown>)?.BlastOutput2, "BlastOutput2");
   if (reports.length !== 1) {
@@ -80,7 +90,7 @@ export function parseBlastJson2(raw: string | unknown): BlastParsedResult {
     effectiveDatabase: optionalString(readOptionalObject(report.search_target, "report.search_target")?.db, "report.search_target.db"),
     parameters: readOptionalObject(report.params, "report.params") ?? {},
     statistics: parseStatistics(readOptionalObject(search.stat, "report.results.search.stat")),
-    hits: rawHits.map((hit, index) => parseHit(hit, index, queryLength)),
+    hits: rawHits.map((hit, index) => parseHit(hit, index, queryLength, retainAlignmentStrings)),
   };
 }
 
@@ -103,7 +113,7 @@ export function parseBlastStatus(text: string): BlastStatus {
   return "UNKNOWN";
 }
 
-function parseHit(rawHit: unknown, index: number, queryLength: number): BlastHit {
+function parseHit(rawHit: unknown, index: number, queryLength: number, retainAlignmentStrings: boolean): BlastHit {
   const path = `report.results.search.hits[${index}]`;
   const hit = readObject(rawHit, path);
   const descriptions = readArray(hit.description, `${path}.description`);
@@ -116,11 +126,11 @@ function parseHit(rawHit: unknown, index: number, queryLength: number): BlastHit
     taxId: optionalNumber(description.taxid, `${path}.description[0].taxid`),
     organism: optionalString(description.sciname, `${path}.description[0].sciname`),
     subjectLength: readNumber(hit.len, `${path}.len`),
-    alignments: hsps.map((hsp, hspIndex) => parseHsp(hsp, `${path}.hsps[${hspIndex}]`, queryLength)),
+    alignments: hsps.map((hsp, hspIndex) => parseHsp(hsp, `${path}.hsps[${hspIndex}]`, queryLength, retainAlignmentStrings)),
   };
 }
 
-function parseHsp(rawHsp: unknown, path: string, queryLength: number): BlastAlignment {
+function parseHsp(rawHsp: unknown, path: string, queryLength: number, retainAlignmentStrings: boolean): BlastAlignment {
   const hsp = readObject(rawHsp, path);
   const alignedLength = readNumber(hsp.align_len, `${path}.align_len`);
   const identity = readNumber(hsp.identity, `${path}.identity`);
@@ -139,6 +149,13 @@ function parseHsp(rawHsp: unknown, path: string, queryLength: number): BlastAlig
     subjectStart: readNumber(hsp.hit_from, `${path}.hit_from`),
     subjectEnd: readNumber(hsp.hit_to, `${path}.hit_to`),
     strand: parseStrand(optionalString(hsp.hit_strand, `${path}.hit_strand`)),
+    ...(retainAlignmentStrings
+      ? {
+          qseq: readString(hsp.qseq, `${path}.qseq`),
+          hseq: readString(hsp.hseq, `${path}.hseq`),
+          midline: readString(hsp.midline, `${path}.midline`),
+        }
+      : {}),
   };
 }
 

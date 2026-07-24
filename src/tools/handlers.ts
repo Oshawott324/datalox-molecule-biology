@@ -6,6 +6,7 @@ import { getSequenceContext, listMoleculeSummaries, readMoleculeSequence } from 
 import {
   alignSequences,
   blastSequence,
+  validatePrimerSpecificity,
   editSequence,
   exportGenBank,
   exportGrnaReport,
@@ -72,6 +73,7 @@ export type ToolName =
   | "export_review_bundle"
   | "align_sequences"
   | "blast_sequence"
+  | "validate_primer_specificity"
   | "design_primers"
   | "design_grnas"
   | "export_protein_fasta"
@@ -262,6 +264,20 @@ export type BlastSequenceToolInput = WorkspaceInput & {
   outputPath?: string;
 };
 
+export type ValidatePrimerSpecificityToolInput = WorkspaceInput & {
+  forwardPrimerId?: string;
+  reversePrimerId?: string;
+  forwardSequence?: string;
+  reverseSequence?: string;
+  intendedTarget?: { moleculeId?: string; accession?: string; expectedProductSize?: number };
+  database?: "nt" | "refseq_select";
+  maxAmpliconSize?: number;
+  threePrimeWindow?: number;
+  hitlistSize?: number;
+  eValueThreshold?: number;
+  maxEvaluatedBindings?: number;
+};
+
 export type ExportProteinFastaInput = WorkspaceInput & {
   moleculeId?: string;
   molecule?: string;
@@ -369,6 +385,7 @@ export type ToolInputByName = {
   export_review_bundle: ExportReviewBundleInput;
   align_sequences: AlignSequencesInput;
   blast_sequence: BlastSequenceToolInput;
+  validate_primer_specificity: ValidatePrimerSpecificityToolInput;
   design_primers: DesignPrimersToolInput;
   design_grnas: DesignGrnasToolInput;
   export_protein_fasta: ExportProteinFastaInput;
@@ -408,6 +425,7 @@ export const toolHandlers = {
   export_review_bundle: handleExportReviewBundle,
   align_sequences: handleAlignSequences,
   blast_sequence: handleBlastSequence,
+  validate_primer_specificity: handleValidatePrimerSpecificity,
   design_primers: handleDesignPrimers,
   design_grnas: handleDesignGrnas,
   export_protein_fasta: handleExportProteinFasta,
@@ -1062,6 +1080,35 @@ export async function handleBlastSequence(input: BlastSequenceToolInput): Promis
             }],
           }
         : {}),
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleValidatePrimerSpecificity(input: ValidatePrimerSpecificityToolInput): Promise<ToolResultEnvelope> {
+  const tool = "validate_primer_specificity";
+  try {
+    const workspacePath = input.workspacePath !== undefined || input.workspaceDir !== undefined
+      ? workspacePathFromInput(input)
+      : undefined;
+    const result = await validatePrimerSpecificity({
+      ...(workspacePath !== undefined ? { workspacePath } : {}),
+      ...(input.forwardPrimerId !== undefined ? { forwardPrimerId: input.forwardPrimerId } : {}),
+      ...(input.reversePrimerId !== undefined ? { reversePrimerId: input.reversePrimerId } : {}),
+      ...(input.forwardSequence !== undefined ? { forwardSequence: input.forwardSequence } : {}),
+      ...(input.reverseSequence !== undefined ? { reverseSequence: input.reverseSequence } : {}),
+      ...(input.intendedTarget !== undefined ? { intendedTarget: input.intendedTarget } : {}),
+      ...(input.database !== undefined ? { database: input.database } : {}),
+      ...(input.maxAmpliconSize !== undefined ? { maxAmpliconSize: input.maxAmpliconSize } : {}),
+      ...(input.threePrimeWindow !== undefined ? { threePrimeWindow: input.threePrimeWindow } : {}),
+      ...(input.hitlistSize !== undefined ? { hitlistSize: input.hitlistSize } : {}),
+      ...(input.eValueThreshold !== undefined ? { eValueThreshold: input.eValueThreshold } : {}),
+      ...(input.maxEvaluatedBindings !== undefined ? { maxEvaluatedBindings: input.maxEvaluatedBindings } : {}),
+    });
+    return toolSuccess(tool, { ...(workspacePath !== undefined ? { workspacePath } : {}), ...result }, {
+      ...(workspacePath !== undefined ? { workspacePath } : {}),
+      nextAction: { tool: result.nextAction.tool, arguments: result.nextAction.arguments },
     });
   } catch (error) {
     return toolFailureFromError(tool, error);

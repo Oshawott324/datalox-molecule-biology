@@ -13,6 +13,7 @@ import {
   toolFailureFromError,
   type AlignSequencesInput,
   type BlastSequenceToolInput,
+  type ValidatePrimerSpecificityToolInput,
   type DeleteFeatureInput,
   type DeletePrimerInput,
   type DesignGrnasToolInput,
@@ -84,6 +85,7 @@ const commandToTool: Record<string, ToolName> = {
   "export-review-bundle": "export_review_bundle",
   "align-sequences": "align_sequences",
   "blast-sequence": "blast_sequence",
+  "validate-primer-specificity": "validate_primer_specificity",
   "design-primers": "design_primers",
   "design-grnas": "design_grnas",
   "export-protein-fasta": "export_protein_fasta",
@@ -214,6 +216,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "export_review_bundle") return exportReviewBundleInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
   if (tool === "blast_sequence") return blastSequenceInput(parsed);
+  if (tool === "validate_primer_specificity") return validatePrimerSpecificityInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
   if (tool === "design_grnas") return designGrnasInput(parsed);
   if (tool === "export_protein_fasta") return exportProteinFastaInput(parsed);
@@ -500,6 +503,22 @@ function blastSequenceInput(parsed: ParsedArgs): BlastSequenceToolInput {
     ...(stringFlag(parsed, "entrez-query") !== undefined ? { entrezQuery: stringFlag(parsed, "entrez-query") } : {}),
     ...(stringFlag(parsed, "output") !== undefined ? { outputPath: stringFlag(parsed, "output") } : {}),
     ...(stringFlag(parsed, "output-path") !== undefined ? { outputPath: stringFlag(parsed, "output-path") } : {}),
+  };
+}
+
+function validatePrimerSpecificityInput(parsed: ParsedArgs): ValidatePrimerSpecificityToolInput {
+  return {
+    ...workspaceInput(parsed),
+    ...(stringFlag(parsed, "forward-primer-id") !== undefined ? { forwardPrimerId: stringFlag(parsed, "forward-primer-id") } : {}),
+    ...(stringFlag(parsed, "reverse-primer-id") !== undefined ? { reversePrimerId: stringFlag(parsed, "reverse-primer-id") } : {}),
+    ...(stringFlag(parsed, "forward-sequence") !== undefined ? { forwardSequence: stringFlag(parsed, "forward-sequence") } : {}),
+    ...(stringFlag(parsed, "reverse-sequence") !== undefined ? { reverseSequence: stringFlag(parsed, "reverse-sequence") } : {}),
+    ...(stringFlag(parsed, "database") !== undefined ? { database: stringFlag(parsed, "database") as ValidatePrimerSpecificityToolInput["database"] } : {}),
+    ...(stringFlag(parsed, "max-amplicon-size") !== undefined ? { maxAmpliconSize: numberFlag(parsed, "max-amplicon-size") } : {}),
+    ...(stringFlag(parsed, "three-prime-window") !== undefined ? { threePrimeWindow: numberFlag(parsed, "three-prime-window") } : {}),
+    ...(stringFlag(parsed, "hitlist-size") !== undefined ? { hitlistSize: numberFlag(parsed, "hitlist-size") } : {}),
+    ...(stringFlag(parsed, "e-value-threshold") !== undefined ? { eValueThreshold: Number(stringFlag(parsed, "e-value-threshold")) } : {}),
+    ...(stringFlag(parsed, "max-evaluated-bindings") !== undefined ? { maxEvaluatedBindings: numberFlag(parsed, "max-evaluated-bindings") } : {}),
   };
 }
 

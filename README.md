@@ -66,6 +66,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `export_review_bundle` | Package review.html, raw artifacts, a workspace snapshot, and provenance into a single portable ZIP. |
 | `align_sequences` | Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment. |
 | `blast_sequence` | Submit a nucleotide or protein query to the NCBI BLAST URL API and return summarized hits plus a raw JSON artifact. |
+| `validate_primer_specificity` | Predict off-target amplicons for a primer pair via short-query BLAST, classified by 3'-end competence and amplicon geometry. |
 | `design_primers` | Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates. |
 | `design_grnas` | Design SpCas9 NGG guide RNA candidates with deterministic PAM scanning and workspace-scale off-target reporting. |
 | `export_protein_fasta` | Translate a CDS region and write the protein sequence to a FASTA artifact for external structure tools. |

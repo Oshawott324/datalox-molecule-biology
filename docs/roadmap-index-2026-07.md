@@ -5,9 +5,9 @@ This supersedes the status fields in `2026-07-biology-tracks-roadmap.md` and
 `roadmap-snapgene-core.md`, which are stale. Those two documents remain the
 detailed track specs; this document owns current status and sequencing.
 
-Verification basis: `src/tools/descriptors.ts` in this UI-4 implementation
-commit, which has 33 registered tools including the HB1 `get_version`
-handshake, `edit_sequence`, `blast_sequence`, `render_review_bundle`, and
+Verification basis: `src/tools/descriptors.ts`, which has 34 registered tools
+including the HB1 `get_version` handshake, `edit_sequence`, `blast_sequence`,
+`validate_primer_specificity`, `render_review_bundle`, and
 `export_review_bundle`.
 Eval corpus v0 is shipped on
 `main` at `516a2fe` with the independent biological anchor tests in `851f70b`.
@@ -55,7 +55,7 @@ against safely. Do not start coding an item that only has a track doc.
 
 | Bucket | Item | Doc state | Gating condition |
 |---|---|---|---|
-| BLAST | B2 `validate_primer_specificity` | Impl spec (`blast-validation-spec.md`) | B1 shipped |
+| BLAST | B2 `validate_primer_specificity` | **Shipped** (`primer-specificity-spec.md`) | 3'-competence + amplicon geometry; short-primer fixture captured |
 | Cloning | `simulate_gibson` | Track doc only (`roadmap-snapgene-core.md` s3) -- impl spec needed | Customer/demo pull |
 | Cloning | `simulate_golden_gate` (Type IIS) | Track doc only (`roadmap-snapgene-core.md` s4) -- impl spec needed | Customer/demo pull |
 | Annotation | `find_known_features` + curated library | No doc | Needs curated feature-library source decision |

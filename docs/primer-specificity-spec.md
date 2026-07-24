@@ -45,8 +45,8 @@ type ValidatePrimerSpecificityInput = {
   forwardSequence?: string;       // raw 5'->3' forward primer
   reverseSequence?: string;       // raw 5'->3' reverse primer
   intendedTarget?: {
-    moleculeId?: string;          // workspace molecule the pair is designed against
-    accession?: string;          // known subject accession of the intended template
+    moleculeId?: string;          // local intended construct context
+    accession?: string;           // NCBI accession required for BLAST-backed exclusion
     expectedProductSize?: number; // intended amplicon size, if known
   };
   database?: "nt" | "refseq_select"; // default nt
@@ -64,7 +64,7 @@ Validation rules:
   (`forwardSequence` + `reverseSequence`) must be provided. Mixed or partial
   pairs return `INVALID_ARGUMENT`.
 - Primer sequences must be unambiguous nucleotides. Reject ambiguity codes with
-  `INVALID_ARGUMENT` (matches the workspace unambiguous-sequence policy).
+  `AMBIGUOUS_SEQUENCE` (matches the workspace unambiguous-sequence policy).
 - If primer IDs are given, `workspacePath` is required and the primers must
   exist. Missing primer -> `PRIMER_NOT_FOUND`.
 - `program` is fixed to `blastn` for B2 (primers are nucleotide). It is not a
@@ -134,17 +134,27 @@ Locate the primer's 3' terminus on the subject by role and strand:
   pointing upstream (decreasing coordinate).
 
 "3' ends facing inward" means the forward binding's 3' position is less than the
-reverse binding's 3' position, with `productSize = reverse3Prime - forward3Prime + 1`.
-Use these normalized positions, never raw `hit_from`/`hit_to`, for distance and
-orientation.
+reverse binding's 3' position. The amplicon product size is the outer 5'-to-5'
+span:
+
+- forward binding 5' position = `subjectStart`
+- reverse binding 5' position = `subjectEnd`
+- `productSize = reverse5Prime - forward5Prime + 1`
+
+Use normalized positions, never raw `hit_from`/`hit_to`, for distance and
+orientation. The 3'-to-3' inner gap is not the product size; it excludes the
+primer lengths and undercounts the amplicon.
 
 ### Rule 3: Intended-target exclusion is per-amplicon, not per-accession
 
 If `intendedTarget` is provided, mark the intended product as
-`isIntendedTarget: true` and exclude it from the off-target verdict. Match the
-intended amplicon by accession/moleculeId AND product size within tolerance
-(default +/- 10 bp), not by accession alone -- a primer pair can mis-prime
-elsewhere on the intended molecule, and those amplicons must still count.
+`isIntendedTarget: true` and exclude it from the off-target verdict. B2 is
+BLAST-backed, so external hits can only be matched to the intended target by
+NCBI accession plus product size within tolerance (default +/- 10 bp).
+`moleculeId` may be carried as local context, but `accession` is required for
+exclusion; `moleculeId` alone must return `INVALID_ARGUMENT`. Match by product
+size too, not by accession alone -- a primer pair can mis-prime elsewhere on the
+intended molecule, and those amplicons must still count.
 
 ## Output
 
@@ -160,6 +170,7 @@ type PredictedAmplicon = {
 };
 
 type PrimerBindingEvidence = {
+  primerRole: "forward" | "reverse"; // input primer that produced this binding
   start: number;
   end: number;
   strand: "plus" | "minus";
@@ -200,7 +211,7 @@ Applied after intended-target exclusion:
 | Verdict | Condition |
 |---|---|
 | `specific` | Zero off-target amplicons. |
-| `low_risk` | Off-target amplicons exist, but every one is `risk: "weak"` -- at least one binding is not competent at the full 3' window, or `productSize` is in the low-efficiency range (default > 3000 bp). |
+| `low_risk` | Off-target amplicons exist, but every one is `risk: "weak"` -- `productSize` is in the low-efficiency range (default > 3000 bp). |
 | `high_off_target_risk` | At least one off-target amplicon with `risk: "strong"` (both bindings competent at the full 3' window) and `productSize` in the efficient range (default <= 3000 bp). |
 | `inconclusive` | BLAST for one or both primers did not resolve (timeout, RID returned but not READY), the short-query search returned too many low-specificity hits to evaluate (over `hitlistSize` with no competent bindings), or NCBI rejected the query. Set `inconclusiveReason`. |
 
@@ -262,7 +273,8 @@ geometry.
 
 | Code | Trigger |
 |---|---|
-| `INVALID_ARGUMENT` | Mixed/partial pair, ambiguous primer bases, both IDs and sequences given |
+| `INVALID_ARGUMENT` | Mixed/partial pair, both IDs and sequences given, moleculeId-only intended target |
+| `AMBIGUOUS_SEQUENCE` | Primer sequence contains IUPAC ambiguity codes |
 | `PRIMER_NOT_FOUND` | A referenced primer ID is not in the workspace |
 | `MOLECULE_NOT_FOUND` | `intendedTarget.moleculeId` is not in the workspace |
 | `PARSE_ERROR` | BLAST response could not be parsed (delegated to the B1 parser) |

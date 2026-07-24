@@ -557,6 +557,37 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "validate_primer_specificity",
+    description: "Predict off-target amplicons for a primer pair via short-query BLAST, classifying by 3'-end competence and amplicon geometry (not identity percent).",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        forwardPrimerId: { type: "string", description: "Persisted forward primer id. Provide the pair as IDs or as raw sequences." },
+        reversePrimerId: { type: "string", description: "Persisted reverse primer id." },
+        forwardSequence: { type: "string", description: "Raw forward primer sequence (5'->3'). Provide the pair as IDs or as raw sequences." },
+        reverseSequence: { type: "string", description: "Raw reverse primer sequence (5'->3')." },
+        intendedTarget: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            moleculeId: { type: "string", description: "Workspace molecule context for the intended target. BLAST-backed exclusion still requires accession." },
+            accession: { type: "string", description: "Subject accession used to exclude the intended product from off-target verdicts." },
+            expectedProductSize: { type: "integer", minimum: 1 },
+          },
+        },
+        database: { type: "string", enum: ["nt", "refseq_select"], description: "BLAST database. Default nt." },
+        maxAmpliconSize: { type: "integer", minimum: 1, description: "Products larger than this are not counted. Default 4000." },
+        threePrimeWindow: { type: "integer", minimum: 1, description: "3' bases that must match to be amplification-competent. Default 5." },
+        hitlistSize: { type: "integer", minimum: 1, description: "Hits per primer. Default 50." },
+        eValueThreshold: { type: "number", minimum: 0, description: "Retrieval E-value threshold. Default 1000 for short queries." },
+        maxEvaluatedBindings: { type: "integer", minimum: 1, description: "Per-primer competent-binding cap before inconclusive. Default 100." },
+      },
+    },
+  },
+  {
     name: "design_primers",
     description: "Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates.",
     inputSchema: {

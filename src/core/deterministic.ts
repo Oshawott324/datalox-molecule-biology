@@ -95,3 +95,18 @@ export { exportReviewBundle } from "./export-bundle.js";
 export type { ExportReviewBundleOptions, ExportReviewBundleResult } from "./export-bundle.js";
 export { createStoredZip, crc32 } from "./zip.js";
 export type { ZipEntry } from "./zip.js";
+export {
+  validatePrimerSpecificity,
+  computeBindingEvidence,
+  predictAmplicons,
+  markIntendedTarget,
+  classifyVerdict,
+} from "./primer-specificity.js";
+export type {
+  ValidatePrimerSpecificityInput,
+  ValidatePrimerSpecificityDeps,
+  PrimerSpecificityResult,
+  PrimerSpecificityVerdict,
+  PredictedAmplicon,
+  PrimerBindingEvidence,
+} from "./primer-specificity.js";
