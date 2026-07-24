@@ -5,9 +5,10 @@ This supersedes the status fields in `2026-07-biology-tracks-roadmap.md` and
 `roadmap-snapgene-core.md`, which are stale. Those two documents remain the
 detailed track specs; this document owns current status and sequencing.
 
-Verification basis: `src/tools/descriptors.ts` in this UI-5 implementation
-commit, which has 32 registered tools including the HB1 `get_version`
-handshake, `edit_sequence`, `blast_sequence`, and `render_review_bundle`.
+Verification basis: `src/tools/descriptors.ts` in this UI-4 implementation
+commit, which has 33 registered tools including the HB1 `get_version`
+handshake, `edit_sequence`, `blast_sequence`, `render_review_bundle`, and
+`export_review_bundle`.
 Eval corpus v0 is shipped on
 `main` at `516a2fe` with the independent biological anchor tests in `851f70b`.
 
@@ -22,7 +23,7 @@ V1 hardening and roadmap status are shipped on `main`:
 - `516a2fe` ships eval corpus v0 task coverage.
 - `851f70b` adds independent biological anchor tests for the corpus.
 
-32 MCP tools are registered and dispatched generically. Grouped by track:
+33 MCP tools are registered and dispatched generically. Grouped by track:
 
 | Track | Tools |
 |---|---|
@@ -34,7 +35,7 @@ V1 hardening and roadmap status are shipped on `main`:
 | mRNA / protein | `validate_mrna_construct` (M1), `export_protein_fasta` (X1) |
 | BLAST | `blast_sequence` (B1 NCBI BLAST URL API) |
 | Export | `export_genbank` |
-| Rendering / UI | `render_plasmid_map`, `render_digest_gel`, `render_review_bundle`, `open_sequence_editor` |
+| Rendering / UI | `render_plasmid_map`, `render_digest_gel`, `render_review_bundle`, `export_review_bundle`, `open_sequence_editor` |
 
 Also present: FASTA/GenBank import, revision-safe transactional writes,
 replay/provenance path, V1 review demo, source-verified pUC19 fixture,

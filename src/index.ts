@@ -84,6 +84,8 @@ export {
   restrictionEndFromProfile,
   renderDigestGel,
   renderReviewBundle,
+  exportReviewBundle,
+  createStoredZip,
   simulateDigest,
   simulatePcr,
   STANDARD_GENETIC_CODE,

@@ -63,6 +63,7 @@ npm run demo:puc19:mcp               # import pUC19 -> context -> restriction si
 | `render_plasmid_map` | Render a deterministic circular plasmid SVG map artifact. |
 | `render_digest_gel` | Render a deterministic SVG gel artifact from digest or PCR fragment sizes. |
 | `render_review_bundle` | Render a self-contained static HTML review bundle for selected molecule artifacts and provenance. |
+| `export_review_bundle` | Package review.html, raw artifacts, a workspace snapshot, and provenance into a single portable ZIP. |
 | `align_sequences` | Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment. |
 | `blast_sequence` | Submit a nucleotide or protein query to the NCBI BLAST URL API and return summarized hits plus a raw JSON artifact. |
 | `design_primers` | Design PCR primer candidates with the external primer3_core binary and return read-only structured candidates. |

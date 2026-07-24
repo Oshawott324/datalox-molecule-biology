@@ -613,6 +613,14 @@ explicit replay bundle path.
 The review bundle is a shareable HTML record, not a deterministic biology
 result. Do not add it to eval-corpus hash pins.
 
+Use `export_review_bundle` when the human needs one downloadable file that
+carries everything the agent did: it packages `review.html`, the raw artifact
+files, a workspace snapshot, and the provenance bundle into a single portable
+ZIP. It takes the same `artifacts` / `replayBundlePath` inputs as
+`render_review_bundle` plus an optional `bundleOutputPath`. Like the review
+bundle, the ZIP is a shareable record, not a deterministic artifact -- do not
+hash-pin it.
+
 ## Visual Context
 
 Use `open_sequence_editor` only as a viewer/editor over workspace state.

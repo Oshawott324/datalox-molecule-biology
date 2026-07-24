@@ -426,6 +426,39 @@ export const moleculeToolDescriptors = [
     },
   },
   {
+    name: "export_review_bundle",
+    description: "Package review.html, raw artifacts, a workspace snapshot, and provenance into a single portable ZIP.",
+    inputSchema: {
+      type: "object",
+      required: ["workspacePath"],
+      additionalProperties: false,
+      properties: {
+        workspacePath: workspaceProperties.workspacePath,
+        workspaceDir: workspaceProperties.workspaceDir,
+        bundleOutputPath: { type: "string" },
+        outputPath: { type: "string" },
+        replayBundlePath: { type: "string" },
+        includeReplaySummary: { type: "boolean" },
+        includeLocalPaths: { type: "boolean" },
+        moleculeIds: { type: "array", items: { type: "string" } },
+        artifacts: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["kind", "path"],
+            additionalProperties: false,
+            properties: {
+              kind: { type: "string" },
+              path: { type: "string" },
+              mimeType: { type: "string" },
+              description: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
     name: "align_sequences",
     description: "Align two sequences with deterministic Needleman-Wunsch global or Smith-Waterman local alignment.",
     inputSchema: {

@@ -39,6 +39,7 @@ describe("MCP server", () => {
       "export_grna_report",
       "blast_sequence",
       "render_review_bundle",
+      "export_review_bundle",
       "validate_workspace",
     ]));
   });

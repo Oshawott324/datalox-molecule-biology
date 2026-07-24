@@ -56,6 +56,7 @@ export {
   type RenderDigestGelInput,
   type RenderPlasmidMapInput,
   type RenderReviewBundleInput,
+  type ExportReviewBundleInput,
   type ReverseComplementInput,
   type SequenceContextInput,
   type SimulateAssemblyToolInput,

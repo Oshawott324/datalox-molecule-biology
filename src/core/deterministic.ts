@@ -91,3 +91,7 @@ export type {
   ReviewBundleArtifactInput,
   ReviewBundleIncludedArtifact,
 } from "./review-bundle.js";
+export { exportReviewBundle } from "./export-bundle.js";
+export type { ExportReviewBundleOptions, ExportReviewBundleResult } from "./export-bundle.js";
+export { createStoredZip, crc32 } from "./zip.js";
+export type { ZipEntry } from "./zip.js";

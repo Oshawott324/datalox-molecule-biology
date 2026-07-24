@@ -17,6 +17,7 @@ import {
   restrictionStrandScope,
   renderDigestGel,
   renderReviewBundle,
+  exportReviewBundle,
   simulateAssembly,
   simulateDigest,
   simulatePcr,
@@ -68,6 +69,7 @@ export type ToolName =
   | "render_plasmid_map"
   | "render_digest_gel"
   | "render_review_bundle"
+  | "export_review_bundle"
   | "align_sequences"
   | "blast_sequence"
   | "design_primers"
@@ -233,6 +235,10 @@ export type RenderReviewBundleInput = WorkspaceInput & {
   includeLocalPaths?: boolean;
 };
 
+export type ExportReviewBundleInput = RenderReviewBundleInput & {
+  bundleOutputPath?: string;
+};
+
 export type AlignSequencesInput = WorkspaceInput & {
   sequence?: string;
   targetSequence?: string;
@@ -360,6 +366,7 @@ export type ToolInputByName = {
   render_plasmid_map: RenderPlasmidMapInput;
   render_digest_gel: RenderDigestGelInput;
   render_review_bundle: RenderReviewBundleInput;
+  export_review_bundle: ExportReviewBundleInput;
   align_sequences: AlignSequencesInput;
   blast_sequence: BlastSequenceToolInput;
   design_primers: DesignPrimersToolInput;
@@ -398,6 +405,7 @@ export const toolHandlers = {
   render_plasmid_map: handleRenderPlasmidMap,
   render_digest_gel: handleRenderDigestGel,
   render_review_bundle: handleRenderReviewBundle,
+  export_review_bundle: handleExportReviewBundle,
   align_sequences: handleAlignSequences,
   blast_sequence: handleBlastSequence,
   design_primers: handleDesignPrimers,
@@ -946,6 +954,40 @@ export async function handleRenderReviewBundle(input: RenderReviewBundleInput): 
           path: result.outputPath,
           mimeType: result.mimeType,
           description: "Self-contained static HTML review bundle for molecule artifacts and provenance.",
+        },
+      ],
+      nextAction: {
+        tool: "validate_workspace",
+        arguments: { workspacePath },
+      },
+    });
+  } catch (error) {
+    return toolFailureFromError(tool, error);
+  }
+}
+
+export async function handleExportReviewBundle(input: ExportReviewBundleInput): Promise<ToolResultEnvelope> {
+  const tool = "export_review_bundle";
+  try {
+    const workspacePath = workspacePathFromInput(input);
+    const result = await exportReviewBundle(workspacePath, {
+      ...(input.bundleOutputPath ? { bundleOutputPath: input.bundleOutputPath } : {}),
+      ...(input.outputPath ? { outputPath: input.outputPath } : {}),
+      ...(input.artifacts ? { artifacts: assertArtifactInputs(input.artifacts) } : {}),
+      ...(input.replayBundlePath ? { replayBundlePath: input.replayBundlePath } : {}),
+      ...(input.includeReplaySummary !== undefined ? { includeReplaySummary: input.includeReplaySummary } : {}),
+      ...(input.moleculeIds ? { moleculeIds: assertStringArray(input.moleculeIds, "moleculeIds") } : {}),
+      ...(input.includeLocalPaths !== undefined ? { includeLocalPaths: input.includeLocalPaths } : {}),
+    });
+    return toolSuccess(tool, { workspacePath, ...result }, {
+      workspacePath,
+      revision: result.revision,
+      artifacts: [
+        {
+          kind: "export_bundle",
+          path: result.outputPath,
+          mimeType: "application/zip",
+          description: "Portable ZIP of review.html, raw artifacts, workspace snapshot, and provenance.",
         },
       ],
       nextAction: {

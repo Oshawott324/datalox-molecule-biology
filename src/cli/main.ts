@@ -27,6 +27,7 @@ import {
   type RenderPlasmidMapInput,
   type RenderDigestGelInput,
   type RenderReviewBundleInput,
+  type ExportReviewBundleInput,
   type ReverseComplementInput,
   type SequenceContextInput,
   type SimulateAssemblyToolInput,
@@ -80,6 +81,7 @@ const commandToTool: Record<string, ToolName> = {
   "render-plasmid-map": "render_plasmid_map",
   "render-digest-gel": "render_digest_gel",
   "render-review-bundle": "render_review_bundle",
+  "export-review-bundle": "export_review_bundle",
   "align-sequences": "align_sequences",
   "blast-sequence": "blast_sequence",
   "design-primers": "design_primers",
@@ -209,6 +211,7 @@ async function inputForTool(tool: ToolName, parsed: ParsedArgs): Promise<ToolInp
   if (tool === "render_plasmid_map") return renderPlasmidMapInput(parsed);
   if (tool === "render_digest_gel") return renderDigestGelInput(parsed);
   if (tool === "render_review_bundle") return renderReviewBundleInput(parsed);
+  if (tool === "export_review_bundle") return exportReviewBundleInput(parsed);
   if (tool === "align_sequences") return alignSequencesInput(parsed);
   if (tool === "blast_sequence") return blastSequenceInput(parsed);
   if (tool === "design_primers") return designPrimersInput(parsed);
@@ -460,6 +463,13 @@ async function renderReviewBundleInput(parsed: ParsedArgs): Promise<RenderReview
     ...(stringFlag(parsed, "molecule-ids") ? { moleculeIds: commaListFlag(parsed, "molecule-ids") } : {}),
     ...(parsed.flags["include-replay-summary"] === true ? { includeReplaySummary: true } : {}),
     ...(parsed.flags["include-local-paths"] === true ? { includeLocalPaths: true } : {}),
+  };
+}
+
+async function exportReviewBundleInput(parsed: ParsedArgs): Promise<ExportReviewBundleInput> {
+  return {
+    ...(await renderReviewBundleInput(parsed)),
+    ...(stringFlag(parsed, "bundle-output-path") ? { bundleOutputPath: stringFlag(parsed, "bundle-output-path") } : {}),
   };
 }
 
