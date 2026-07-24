@@ -59,6 +59,9 @@ export type BlastSequenceResult = {
   parameters: {
     hitlistSize: number;
     eValueThreshold: number;
+    shortQueryAdjust?: boolean;
+    wordSize?: number;
+    filter?: "F" | "T";
     entrezQuery?: string;
   };
   rid: string;
@@ -161,6 +164,9 @@ export async function blastSequence(input: BlastSequenceInput, deps: BlastSequen
     parameters: {
       hitlistSize,
       eValueThreshold,
+      ...(run.shortQueryAdjust ? { shortQueryAdjust: true } : {}),
+      ...(run.wordSize === undefined ? {} : { wordSize: run.wordSize }),
+      ...(run.filter === undefined ? {} : { filter: run.filter }),
       ...(input.entrezQuery !== undefined ? { entrezQuery: input.entrezQuery } : {}),
     },
     rid: run.rid,

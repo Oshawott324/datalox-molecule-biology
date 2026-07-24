@@ -45,6 +45,9 @@ async function main() {
   const database = requiredNonEmpty(args.database ?? "nt", "database");
   const hitlistSize = boundedInteger(args["hitlist-size"] ?? "5", "hitlist-size", 1, 100);
   const expect = args.expect ?? "0.001";
+  const shortQueryAdjust = optionalBoolean(args["short-query-adjust"], "short-query-adjust");
+  const wordSize = args["word-size"] === undefined ? undefined : boundedInteger(args["word-size"], "word-size", 1, 1000);
+  const filter = args.filter === undefined ? undefined : blastFilter(args.filter);
   const tool = process.env.NCBI_BLAST_TOOL ?? DEFAULT_NCBI_BLAST_TOOL;
   const outputRoot = path.resolve(repoRoot, args["output-dir"] ?? path.join("fixtures", "blast"));
   const outputDir = path.join(outputRoot, fixtureId);
@@ -58,6 +61,9 @@ async function main() {
     database,
     hitlistSize,
     expect,
+    ...(shortQueryAdjust === undefined ? {} : { shortQueryAdjust }),
+    ...(wordSize === undefined ? {} : { wordSize }),
+    ...(filter === undefined ? {} : { filter }),
     entrezQuery: args["entrez-query"],
     tool,
     email,
@@ -92,6 +98,9 @@ async function main() {
     },
     hitlistSize,
     expect,
+    shortQueryAdjust: result.shortQueryAdjust,
+    wordSize: result.wordSize ?? null,
+    filter: result.filter ?? null,
     entrezQuery: args["entrez-query"] ?? null,
     queryLength: sequence.length,
     resultFile: "result.json",
@@ -160,6 +169,18 @@ function boundedInteger(value, name, min, max) {
     throw new Error(`--${name} must be an integer from ${min} to ${max}.`);
   }
   return parsed;
+}
+
+function optionalBoolean(value, name) {
+  if (value === undefined) return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`--${name} must be true or false.`);
+}
+
+function blastFilter(value) {
+  if (value === "F" || value === "T") return value;
+  throw new Error("--filter must be F or T.");
 }
 
 function normalizeSequence(value) {

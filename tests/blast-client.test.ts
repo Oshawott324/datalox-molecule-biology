@@ -125,7 +125,7 @@ describe("NCBI BLAST client orchestration", () => {
     });
   });
 
-  it("adds SHORT_QUERY_ADJUST for short nucleotide queries only", async () => {
+  it("adds documented short-query parameters for short nucleotide queries", async () => {
     const requests: NcbiBlastRequest[] = [];
     await runNcbiBlast(baseOptions({
       sequence: "ACGTACGTACGT",
@@ -138,6 +138,29 @@ describe("NCBI BLAST client orchestration", () => {
     }));
 
     expect(requests[0].params.SHORT_QUERY_ADJUST).toBe("true");
+    expect(requests[0].params.WORD_SIZE).toBe("7");
+    expect(requests[0].params.FILTER).toBe("F");
+  });
+
+  it("honors explicit BLAST URL parameter overrides", async () => {
+    const requests: NcbiBlastRequest[] = [];
+    const result = await runNcbiBlast(baseOptions({
+      sequence: "ACGTACGTACGT",
+      shortQueryAdjust: false,
+      wordSize: 11,
+      filter: "T",
+      transport: async (request) => {
+        requests.push(request);
+        if (request.params.CMD === "Put") return putResponse;
+        if (request.params.FORMAT_OBJECT === "SearchInfo") return readyStatus;
+        return resultJson;
+      },
+    }));
+
+    expect(requests[0].params.SHORT_QUERY_ADJUST).toBeUndefined();
+    expect(requests[0].params.WORD_SIZE).toBe("11");
+    expect(requests[0].params.FILTER).toBe("T");
+    expect(result).toMatchObject({ shortQueryAdjust: false, wordSize: 11, filter: "T" });
   });
 
   it("redacts NCBI contact fields from captured HTML responses", () => {

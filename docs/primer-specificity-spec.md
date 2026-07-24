@@ -284,6 +284,17 @@ the same discipline as B1:
 
 Capture is manual and out of CI (network + email), like B1.
 
+Example capture command:
+
+```powershell
+$env:NCBI_BLAST_EMAIL = "you@example.com"
+npm run fixture:blast:capture -- `
+  --fixture-id puc19-m13f-blastn-short `
+  --sequence GTAAAACGACGGCCAGTGAATTC `
+  --program blastn --database nt --hitlist-size 50 --expect 1000 `
+  --short-query-adjust true --word-size 7 --filter F
+```
+
 ## Test Contract (offline, no live BLAST in CI)
 
 Amplicon-prediction logic is pure and must be unit-tested independently of the

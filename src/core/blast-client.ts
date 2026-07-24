@@ -33,6 +33,9 @@ export type NcbiBlastRunOptions = {
   program: NcbiBlastProgram;
   hitlistSize: number;
   expect: string;
+  shortQueryAdjust?: boolean;
+  wordSize?: number;
+  filter?: "F" | "T";
   entrezQuery?: string;
   tool?: string;
   email: string;
@@ -56,6 +59,9 @@ export type NcbiBlastRunResult = {
   effectiveDatabase?: string;
   hitlistSize: number;
   expect: string;
+  shortQueryAdjust: boolean;
+  wordSize?: number;
+  filter?: "F" | "T";
   entrezQuery?: string;
   queryLength: number;
   result: BlastParsedResult;
@@ -78,6 +84,10 @@ export async function runNcbiBlast(options: NcbiBlastRunOptions): Promise<NcbiBl
   const transport = options.transport ?? defaultNcbiBlastTransport;
   const sleepSeconds = options.sleepSeconds ?? sleepRealSeconds;
   const submittedAt = options.submittedAt ?? new Date().toISOString();
+  const shortQueryAdjust = options.shortQueryAdjust ?? useShortQueryAdjust(options.sequence, options.program);
+  const useShortNucleotideDefaults = shortQueryAdjust && useShortNucleotideQuery(options.sequence, options.program);
+  const wordSize = options.wordSize ?? (useShortNucleotideDefaults ? 7 : undefined);
+  const filter = options.filter ?? (useShortNucleotideDefaults ? "F" : undefined);
 
   const query = blastQueryFasta(options.sequence);
   const putResponse = await transport({
@@ -94,7 +104,9 @@ export async function runNcbiBlast(options: NcbiBlastRunOptions): Promise<NcbiBl
       tool,
       email: options.email,
       ...(options.entrezQuery === undefined ? {} : { ENTREZ_QUERY: options.entrezQuery }),
-      ...(useShortQueryAdjust(options.sequence, options.program) ? { SHORT_QUERY_ADJUST: "true" } : {}),
+      ...(shortQueryAdjust ? { SHORT_QUERY_ADJUST: "true" } : {}),
+      ...(wordSize === undefined ? {} : { WORD_SIZE: String(assertPositiveInteger(wordSize, "wordSize")) }),
+      ...(filter === undefined ? {} : { FILTER: assertBlastFilter(filter) }),
     },
   });
   const put = parseBlastPutResponse(putResponse);
@@ -150,6 +162,9 @@ export async function runNcbiBlast(options: NcbiBlastRunOptions): Promise<NcbiBl
         effectiveDatabase: result.effectiveDatabase,
         hitlistSize: options.hitlistSize,
         expect: options.expect,
+        shortQueryAdjust,
+        ...(wordSize === undefined ? {} : { wordSize }),
+        ...(filter === undefined ? {} : { filter }),
         entrezQuery: options.entrezQuery,
         queryLength: options.sequence.length,
         result,
@@ -218,6 +233,24 @@ function blastTimeoutError(
 
 function useShortQueryAdjust(sequence: string, program: NcbiBlastProgram): boolean {
   return sequence.length < 30 && (program === "blastn" || program === "blastp");
+}
+
+function useShortNucleotideQuery(sequence: string, program: NcbiBlastProgram): boolean {
+  return sequence.length < 30 && program === "blastn";
+}
+
+function assertPositiveInteger(value: number, label: string): number {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new MoleculeError("INVALID_ARGUMENT", `${label} must be a positive integer.`, { [label]: value });
+  }
+  return value;
+}
+
+function assertBlastFilter(value: string): "F" | "T" {
+  if (value !== "F" && value !== "T") {
+    throw new MoleculeError("INVALID_ARGUMENT", "filter must be F or T.", { filter: value });
+  }
+  return value;
 }
 
 function sleepRealSeconds(seconds: number): Promise<void> {
