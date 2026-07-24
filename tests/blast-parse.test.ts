@@ -7,6 +7,9 @@ import { parseBlastJson2, parseBlastPutResponse, parseBlastStatus } from "../src
 const liveFixture = "fixtures/blast/puc19-bla-blastn-nt/result.json";
 const livePutResponse = "fixtures/blast/puc19-bla-blastn-nt/put-response.txt";
 const liveStatusResponse = "fixtures/blast/puc19-bla-blastn-nt/status-0060.txt";
+const shortPrimerFixture = "fixtures/blast/puc19-m13f-blastn-short/result.json";
+const shortPrimerPutResponse = "fixtures/blast/puc19-m13f-blastn-short/put-response.txt";
+const shortPrimerStatusResponse = "fixtures/blast/puc19-m13f-blastn-short/status-0060.txt";
 const emptyFixture = "fixtures/blast/empty-hits-json2s/result.json";
 
 function readJsonFixture(path: string): unknown {
@@ -67,6 +70,50 @@ describe("BLAST JSON2_S parser", () => {
       rtoe: 30,
     });
     expect(parseBlastStatus(readFileSync(liveStatusResponse, "utf8"))).toBe("READY");
+  });
+
+  it("parses the frozen short-primer fixture for B2 specificity work", () => {
+    const parsed = parseBlastJson2(readFileSync(shortPrimerFixture, "utf8"));
+
+    expect(parsed).toMatchObject({
+      program: "blastn",
+      queryLength: 23,
+      effectiveDatabase: "core_nt",
+      parameters: {
+        expect: 1000,
+        sc_match: 1,
+        sc_mismatch: -3,
+        gap_open: 5,
+        gap_extend: 2,
+      },
+      statistics: {
+        dbNum: 128547243,
+        dbLen: 948086538397,
+      },
+    });
+    expect(parsed.hits).toHaveLength(50);
+    expect(parsed.hits.every((hit) => hit.alignments[0]?.identity === 23 && hit.alignments[0]?.alignedLength === 23)).toBe(true);
+    expect(parsed.hits.some((hit) => hit.alignments[0]?.strand === "plus")).toBe(true);
+    expect(parsed.hits.some((hit) => hit.alignments[0]?.strand === "minus")).toBe(true);
+    expect(parsed.hits[0]).toMatchObject({
+      accession: "OQ696820",
+      title: "Vector pSEVAUO-M21504, complete sequence",
+    });
+    expect(parsed.hits[0].alignments[0]).toMatchObject({
+      identityPercent: 100,
+      coveragePercent: 100,
+      eValue: 0.0252966,
+      queryStart: 1,
+      queryEnd: 23,
+      subjectStart: 4008,
+      subjectEnd: 3986,
+      strand: "minus",
+    });
+    expect(parseBlastPutResponse(readFileSync(shortPrimerPutResponse, "utf8"))).toEqual({
+      rid: "65PNC5F2016",
+      rtoe: 30,
+    });
+    expect(parseBlastStatus(readFileSync(shortPrimerStatusResponse, "utf8"))).toBe("READY");
   });
 
   it("parses an explicit empty hits array as a valid zero-hit result", () => {

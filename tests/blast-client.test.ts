@@ -177,6 +177,22 @@ describe("NCBI BLAST client orchestration", () => {
     expect(redacted).toContain("<redacted:ncbi_email>");
     expect(redacted).toContain("<redacted:ncbi_user>");
   });
+
+  it("redacts NCBI account fields from encoded BLAST page back URLs", () => {
+    const redacted = redactNcbiBlastResponseText(
+      [
+        "back_url=https%3A%2F%2Fblast.ncbi.nlm.nih.gov%2FBlast.cgi%3Femail%3Dtest%2540example%2Ecom%26MYNCBI%5FUSER%3D123456",
+        '<input name="email" type="hidden" value="test@example.com">',
+      ].join("\n"),
+      "test@example.com",
+    );
+
+    expect(redacted).not.toContain("test@example.com");
+    expect(redacted).not.toContain("test%2540example%2Ecom");
+    expect(redacted).not.toContain("MYNCBI%5FUSER%3D123456");
+    expect(redacted).toContain("email%3D%3Credacted%3Ancbi_email%3E");
+    expect(redacted).toContain("MYNCBI%5FUSER%3D<redacted:ncbi_user>");
+  });
 });
 
 async function caughtAsync(run: () => Promise<unknown>): Promise<{ code?: string; details?: Record<string, unknown> }> {

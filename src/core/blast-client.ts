@@ -211,8 +211,11 @@ export function redactNcbiBlastResponseText(text: string, email: string): string
     .replaceAll(email, "<redacted:ncbi_email>")
     .replaceAll(encodeURIComponent(email), "%3Credacted%3Ancbi_email%3E")
     .replaceAll(encodeURIComponent(encodeURIComponent(email)), "%3Credacted%3Ancbi_email%3E")
-    .replace(/MYNCBI_USER=\d+/g, "MYNCBI_USER=<redacted:ncbi_user>")
-    .replace(/MYNCBI%5FUSER%3D\d+/g, "MYNCBI%5FUSER%3D<redacted:ncbi_user>");
+    .replace(/(email=)[^&"<>]+/gi, "$1<redacted:ncbi_email>")
+    .replace(/(email%3D)(?:(?!%26|&|"|<|>).)+/gi, "$1%3Credacted%3Ancbi_email%3E")
+    .replace(/(name="email"[^>]*value=")[^"]*(")/gi, "$1<redacted:ncbi_email>$2")
+    .replace(/MYNCBI_USER=\d+/gi, "MYNCBI_USER=<redacted:ncbi_user>")
+    .replace(/MYNCBI%5FUSER%3D\d+/gi, "MYNCBI%5FUSER%3D<redacted:ncbi_user>");
 }
 
 function blastTimeoutError(

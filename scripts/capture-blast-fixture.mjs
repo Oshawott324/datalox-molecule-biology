@@ -103,6 +103,7 @@ async function main() {
     filter: result.filter ?? null,
     entrezQuery: args["entrez-query"] ?? null,
     queryLength: sequence.length,
+    hitCount: result.result.hits.length,
     resultFile: "result.json",
     redactions: responseRedactions,
   });

@@ -1,0 +1,1709 @@
+{
+"BlastOutput2": [
+{
+    "report": {
+      "program": "blastn",
+      "version": "BLASTN 2.17.0+",
+      "reference": "Stephen F. Altschul, Thomas L. Madden, Alejandro A. Sch&auml;ffer, Jinghui Zhang, Zheng Zhang, Webb Miller, and David J. Lipman (1997), \"Gapped BLAST and PSI-BLAST: a new generation of protein database search programs\", Nucleic Acids Res. 25:3389-3402.",
+      "search_target": {
+        "db": "core_nt"
+      },
+      "params": {
+        "expect": 1000,
+        "sc_match": 1,
+        "sc_mismatch": -3,
+        "gap_open": 5,
+        "gap_extend": 2,
+        "filter": "L;m;"
+      },
+      "results": {
+        "search": {
+          "query_id": "Query_6652535",
+          "query_title": "query",
+          "query_len": 23,
+          "hits": [
+            {
+              "num": 1,
+              "description": [
+                {
+                  "id": "gi|2513956273|gb|OQ696820.1|",
+                  "accession": "OQ696820",
+                  "title": "Vector pSEVAUO-M21504, complete sequence",
+                  "taxid": 3050993,
+                  "sciname": "Vector pSEVAUO-M21504"
+                }
+              ],
+              "len": 6381,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4008,
+                  "hit_to": 3986,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 2,
+              "description": [
+                {
+                  "id": "gi|1779817396|gb|MN436816.1|",
+                  "accession": "MN436816",
+                  "title": "Cloning vector pL0R-lacZ, complete sequence",
+                  "taxid": 2681755,
+                  "sciname": "Cloning vector pL0R-lacZ"
+                }
+              ],
+              "len": 2646,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 312,
+                  "hit_to": 290,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 3,
+              "description": [
+                {
+                  "id": "gi|1370705635|gb|KY930501.1|",
+                  "accession": "KY930501",
+                  "title": "Auxiliary vector pECaad, complete sequence",
+                  "taxid": 2127035,
+                  "sciname": "Auxiliary vector pECaad"
+                }
+              ],
+              "len": 4343,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 4,
+              "description": [
+                {
+                  "id": "gi|2513956339|gb|OQ696833.1|",
+                  "accession": "OQ696833",
+                  "title": "Vector pSEVAUO-M31405, complete sequence",
+                  "taxid": 3051001,
+                  "sciname": "Vector pSEVAUO-M31405"
+                }
+              ],
+              "len": 5423,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 3421,
+                  "hit_to": 3399,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 5,
+              "description": [
+                {
+                  "id": "gi|2239727503|gb|OL452021.1|",
+                  "accession": "OL452021",
+                  "title": "Synthetic construct pAeT7ku70dsRNA, complete sequence",
+                  "taxid": 32630,
+                  "sciname": "synthetic construct"
+                }
+              ],
+              "len": 3373,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 993,
+                  "hit_to": 971,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 6,
+              "description": [
+                {
+                  "id": "gi|2319112290|pdb|8ACP|T",
+                  "accession": "8ACP_T",
+                  "title": "Chain T, Template DNA",
+                  "taxid": 562,
+                  "sciname": "Escherichia coli"
+                }
+              ],
+              "len": 266,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 253,
+                  "hit_to": 231,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 7,
+              "description": [
+                {
+                  "id": "gi|2719181518|gb|PP442610.1|",
+                  "accession": "PP442610",
+                  "title": "Cloning vector pUC-B3-I0-mCMV-GFPt2aGLuc, complete sequence",
+                  "taxid": 3140824,
+                  "sciname": "Cloning vector pUC-B3-I0-mCMV-GFPt2aGLuc"
+                }
+              ],
+              "len": 5014,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 80,
+                  "hit_to": 102,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 8,
+              "description": [
+                {
+                  "id": "gi|1779817201|gb|MN436803.1|",
+                  "accession": "MN436803",
+                  "title": "Cloning vector pCAe-4, complete sequence",
+                  "taxid": 2681741,
+                  "sciname": "Cloning vector pCAe-4"
+                }
+              ],
+              "len": 2686,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 330,
+                  "hit_to": 308,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 9,
+              "description": [
+                {
+                  "id": "gi|2689330340|dbj|LC800622.1|",
+                  "accession": "LC800622",
+                  "title": "Entry vector pENTR-NeCo4-lacZa DNA, complete sequence",
+                  "taxid": 3125766,
+                  "sciname": "Entry vector pENTR-NeCo4-lacZa"
+                }
+              ],
+              "len": 3948,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 2856,
+                  "hit_to": 2878,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                },
+                {
+                  "num": 2,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 3329,
+                  "hit_to": 3307,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 10,
+              "description": [
+                {
+                  "id": "gi|3242606348|gb|PX910745.1|",
+                  "accession": "PX910745",
+                  "title": "Vector pUC4-KIXX, complete sequence",
+                  "taxid": 3687344,
+                  "sciname": "Vector pUC4-KIXX"
+                }
+              ],
+              "len": 4415,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 2270,
+                  "hit_to": 2248,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 11,
+              "description": [
+                {
+                  "id": "gi|2820057652|gb|PQ381272.1|",
+                  "accession": "PQ381272",
+                  "title": "Expression vector pAraBAD_23, complete sequence",
+                  "taxid": 3370965,
+                  "sciname": "Expression vector pAraBAD_23"
+                }
+              ],
+              "len": 4988,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4593,
+                  "hit_to": 4571,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 12,
+              "description": [
+                {
+                  "id": "gi|1801971422|gb|MN043929.1|",
+                  "accession": "MN043929",
+                  "title": "Cloning vector pFLP19, complete sequence",
+                  "taxid": 2703864,
+                  "sciname": "Cloning vector pFLP19"
+                }
+              ],
+              "len": 5256,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 2800,
+                  "hit_to": 2778,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 13,
+              "description": [
+                {
+                  "id": "gi|2044093403|gb|MW145140.1|",
+                  "accession": "MW145140",
+                  "title": "Cloning vector pSH121(2020), complete sequence",
+                  "taxid": 2838320,
+                  "sciname": "Cloning vector pSH121(2020)"
+                }
+              ],
+              "len": 12199,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 8674,
+                  "hit_to": 8652,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 14,
+              "description": [
+                {
+                  "id": "gi|2165228940|gb|OL312686.1|",
+                  "accession": "OL312686",
+                  "title": "Cloning vector pLib6.4-Cquin_728, complete sequence",
+                  "taxid": 2904057,
+                  "sciname": "Cloning vector pLib6.4-Cquin_728"
+                }
+              ],
+              "len": 7578,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 7200,
+                  "hit_to": 7178,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 15,
+              "description": [
+                {
+                  "id": "gi|2513956207|gb|OQ696809.1|",
+                  "accession": "OQ696809",
+                  "title": "Vector pSEVAUO-M21102, complete sequence",
+                  "taxid": 3050984,
+                  "sciname": "Vector pSEVAUO-M21102"
+                }
+              ],
+              "len": 5544,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4083,
+                  "hit_to": 4105,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 16,
+              "description": [
+                {
+                  "id": "gi|1779817411|gb|MN436820.1|",
+                  "accession": "MN436820",
+                  "title": "Cloning vector pSBe-4, complete sequence",
+                  "taxid": 2681759,
+                  "sciname": "Cloning vector pSBe-4"
+                }
+              ],
+              "len": 3924,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 330,
+                  "hit_to": 308,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 17,
+              "description": [
+                {
+                  "id": "gi|2173909416|gb|OK651221.1|",
+                  "accession": "OK651221",
+                  "title": "Vector pVC-AmR-LacI-Ptrc-id2-RecE564T, complete sequence",
+                  "taxid": 2908161,
+                  "sciname": "Vector pVC-AmR-LacI-Ptrc-id2-RecE564T"
+                }
+              ],
+              "len": 9145,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 8178,
+                  "hit_to": 8156,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 18,
+              "description": [
+                {
+                  "id": "gi|2719181159|gb|PP442601.1|",
+                  "accession": "PP442601",
+                  "title": "Cloning vector pBWH-E4delE3-I3-mCMV-GFPt2aGLuc, complete sequence",
+                  "taxid": 3140815,
+                  "sciname": "Cloning vector pBWH-E4delE3-I3-mCMV-GFPt2aGLuc"
+                }
+              ],
+              "len": 40938,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 28617,
+                  "hit_to": 28639,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 19,
+              "description": [
+                {
+                  "id": "gi|2047025294|gb|MT362436.1|",
+                  "accession": "MT362436",
+                  "title": "Binary vector pGC13.0117_TcBBM, complete sequence",
+                  "taxid": 2837968,
+                  "sciname": "Binary vector pGC13.0117_TcBBM"
+                }
+              ],
+              "len": 20124,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 11307,
+                  "hit_to": 11285,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 20,
+              "description": [
+                {
+                  "id": "gi|1274081520|gb|MF435040.1|",
+                  "accession": "MF435040",
+                  "title": "Cloning vector Alpha-3000-gli2act, complete sequence",
+                  "taxid": 2052061,
+                  "sciname": "Cloning vector Alpha-3000-gli2act"
+                }
+              ],
+              "len": 10802,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 7365,
+                  "hit_to": 7387,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 21,
+              "description": [
+                {
+                  "id": "gi|2314234108|gb|MZ567173.1|",
+                  "accession": "MZ567173",
+                  "title": "Cloning vector pUC57-tcmO-1, complete sequence",
+                  "taxid": 2983584,
+                  "sciname": "Cloning vector pUC57-tcmO-1"
+                }
+              ],
+              "len": 3733,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 22,
+              "description": [
+                {
+                  "id": "gi|1779817221|gb|MN436806.1|",
+                  "accession": "MN436806",
+                  "title": "Cloning vector pCAo-3, complete sequence",
+                  "taxid": 2681744,
+                  "sciname": "Cloning vector pCAo-3"
+                }
+              ],
+              "len": 2717,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 331,
+                  "hit_to": 309,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 23,
+              "description": [
+                {
+                  "id": "gi|2060502472|emb|OU070185.1|",
+                  "accession": "OU070185",
+                  "title": "Synthetic plasmid pUC57loxDeltaCARDS, complete sequence",
+                  "taxid": 66198,
+                  "sciname": "Cloning vector pUC57"
+                }
+              ],
+              "len": 4455,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 24,
+              "description": [
+                {
+                  "id": "gi|1743235829|dbj|LC498721.1|",
+                  "accession": "LC498721",
+                  "title": "Expression vector pUC57-Kan-mcr-1 DNA, complete sequence",
+                  "taxid": 2609793,
+                  "sciname": "Expression vector pUC57-Kan-mcr-1"
+                }
+              ],
+              "len": 4515,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 25,
+              "description": [
+                {
+                  "id": "gi|1797025090|gb|MN728544.1|",
+                  "accession": "MN728544",
+                  "title": "Cloning vector pRTL, complete sequence",
+                  "taxid": 2698399,
+                  "sciname": "Cloning vector pRTL"
+                }
+              ],
+              "len": 4783,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4029,
+                  "hit_to": 4007,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 26,
+              "description": [
+                {
+                  "id": "gi|2820057264|gb|PQ381266.1|",
+                  "accession": "PQ381266",
+                  "title": "Expression vector pRhaBAD_23, complete sequence",
+                  "taxid": 3370971,
+                  "sciname": "Expression vector pRhaBAD_23"
+                }
+              ],
+              "len": 4822,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4427,
+                  "hit_to": 4405,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 27,
+              "description": [
+                {
+                  "id": "gi|2701043200|gb|PP297152.1|",
+                  "accession": "PP297152",
+                  "title": "Expression vector pSA1_mTagBFP2-sGFP1, complete sequence",
+                  "taxid": 3133993,
+                  "sciname": "Expression vector pSA1_mTagBFP2-sGFP1"
+                }
+              ],
+              "len": 6370,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 28,
+              "description": [
+                {
+                  "id": "gi|1797025094|gb|MN728546.1|",
+                  "accession": "MN728546",
+                  "title": "Cloning vector pSMXL6-LUC, complete sequence",
+                  "taxid": 2698400,
+                  "sciname": "Cloning vector pSMXL6-LUC"
+                }
+              ],
+              "len": 7573,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4955,
+                  "hit_to": 4933,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 29,
+              "description": [
+                {
+                  "id": "gi|2042630160|gb|MT361987.1|",
+                  "accession": "MT361987",
+                  "title": "Vector pPM906, complete sequence",
+                  "taxid": 2837306,
+                  "sciname": "Vector pPM906"
+                }
+              ],
+              "len": 3488,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 344,
+                  "hit_to": 322,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 30,
+              "description": [
+                {
+                  "id": "gi|2930839317|gb|CP184332.1|",
+                  "accession": "CP184332",
+                  "title": "Xanthomonas campestris pv. campestris isolate BJSJQ20200612-pXX3-4 chromosome, complete genome",
+                  "taxid": 340,
+                  "sciname": "Xanthomonas campestris pv. campestris"
+                }
+              ],
+              "len": 5137629,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 2565702,
+                  "hit_to": 2565724,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 31,
+              "description": [
+                {
+                  "id": "gi|2079583339|gb|MZ671996.1|",
+                  "accession": "MZ671996",
+                  "title": "Synthetic construct IDRI plasmid clone 412, complete sequence",
+                  "taxid": 32630,
+                  "sciname": "synthetic construct"
+                }
+              ],
+              "len": 7427,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 32,
+              "description": [
+                {
+                  "id": "gi|2173909426|gb|OK651223.1|",
+                  "accession": "OK651223",
+                  "title": "Vector pVC-KmR-(Xis/Int), complete sequence",
+                  "taxid": 2908162,
+                  "sciname": "Vector pVC-KmR-(Xis/Int)"
+                }
+              ],
+              "len": 8107,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 7140,
+                  "hit_to": 7118,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 33,
+              "description": [
+                {
+                  "id": "gi|2710592846|gb|PP567253.1|",
+                  "accession": "PP567253",
+                  "title": "Vector TGEV-Nucleoprotein-PEDV-Membrane-PDCoV-Nucleoprotein-PoRVA-VP6-pUC57, complete sequence",
+                  "taxid": 3137184,
+                  "sciname": "Vector TGEV-Nucleoprotein-PEDV-Membrane-PDCoV-Nucleoprotein-PoRVA-VP6-pUC57"
+                }
+              ],
+              "len": 3295,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 34,
+              "description": [
+                {
+                  "id": "gi|2125415761|gb|MF480755.2|",
+                  "accession": "MF480755",
+                  "title": "Shuttle vector pG106, complete sequence",
+                  "taxid": 2045299,
+                  "sciname": "Shuttle vector pG106"
+                }
+              ],
+              "len": 9432,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 9001,
+                  "hit_to": 9023,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 35,
+              "description": [
+                {
+                  "id": "gi|2719181200|gb|PP442602.1|",
+                  "accession": "PP442602",
+                  "title": "Cloning vector pBWH-E4delE3-I4-mCMV-GFPt2aGLuc, complete sequence",
+                  "taxid": 3140816,
+                  "sciname": "Cloning vector pBWH-E4delE3-I4-mCMV-GFPt2aGLuc"
+                }
+              ],
+              "len": 40938,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 31500,
+                  "hit_to": 31522,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 36,
+              "description": [
+                {
+                  "id": "gi|2820057514|gb|PQ381270.1|",
+                  "accession": "PQ381270",
+                  "title": "Expression vector pTrc_34, complete sequence",
+                  "taxid": 3370975,
+                  "sciname": "Expression vector pTrc_34"
+                }
+              ],
+              "len": 5093,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4698,
+                  "hit_to": 4676,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 37,
+              "description": [
+                {
+                  "id": "gi|1228198501|gb|KX755250.1|",
+                  "accession": "KX755250",
+                  "title": "Cloning vector PRFP, complete sequence",
+                  "taxid": 2024710,
+                  "sciname": "Cloning vector PRFP"
+                }
+              ],
+              "len": 3469,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 38,
+              "description": [
+                {
+                  "id": "gi|2304843599|gb|ON109395.1|",
+                  "accession": "ON109395",
+                  "title": "Expression vector pCM160_RBS_yciAEc_MesaPx, complete sequence",
+                  "taxid": 2979133,
+                  "sciname": "Expression vector pCM160_RBS_yciAEc_MesaPx"
+                }
+              ],
+              "len": 9925,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4499,
+                  "hit_to": 4477,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 39,
+              "description": [
+                {
+                  "id": "gi|2159175322|gb|MT889352.1|",
+                  "accession": "MT889352",
+                  "title": "Cloning vector pCG002, complete sequence",
+                  "taxid": 2898841,
+                  "sciname": "Cloning vector pCG002"
+                }
+              ],
+              "len": 11374,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 1222,
+                  "hit_to": 1244,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 40,
+              "description": [
+                {
+                  "id": "gi|1379010330|dbj|LC360807.1|",
+                  "accession": "LC360807",
+                  "title": "Uncultured bacterium gene for 16S ribosomal RNA, partial sequence, clone: A03",
+                  "taxid": 77133,
+                  "sciname": "uncultured bacterium"
+                }
+              ],
+              "len": 1207,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 548,
+                  "hit_to": 570,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 41,
+              "description": [
+                {
+                  "id": "gi|1221748185|emb|LN866853.1|",
+                  "accession": "LN866853",
+                  "title": "Expression vector pNDC_SUB4, complete sequence",
+                  "taxid": 1672048,
+                  "sciname": "Expression vector pNDC_SUB4"
+                }
+              ],
+              "len": 9246,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 2958,
+                  "hit_to": 2980,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 42,
+              "description": [
+                {
+                  "id": "gi|2513956267|gb|OQ696819.1|",
+                  "accession": "OQ696819",
+                  "title": "Vector pSEVAUO-M21404, complete sequence",
+                  "taxid": 3050991,
+                  "sciname": "Vector pSEVAUO-M21404"
+                }
+              ],
+              "len": 6391,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4018,
+                  "hit_to": 3996,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 43,
+              "description": [
+                {
+                  "id": "gi|1569267466|gb|MH383220.1|",
+                  "accession": "MH383220",
+                  "title": "Cloning vector pHEN2-rED3_294, complete sequence",
+                  "taxid": 2517908,
+                  "sciname": "Cloning vector pHEN2-rED3_294"
+                }
+              ],
+              "len": 4858,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4006,
+                  "hit_to": 3984,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 44,
+              "description": [
+                {
+                  "id": "gi|2589093577|gb|OR507564.1|",
+                  "accession": "OR507564",
+                  "title": "Synthetic construct clone TmpR, complete sequence",
+                  "taxid": 32630,
+                  "sciname": "synthetic construct"
+                }
+              ],
+              "len": 2062,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 306,
+                  "hit_to": 284,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 45,
+              "description": [
+                {
+                  "id": "gi|1201334468|gb|KY941508.1|",
+                  "accession": "KY941508",
+                  "title": "Synthetic construct clone pPSU2, complete sequence",
+                  "taxid": 32630,
+                  "sciname": "synthetic construct"
+                }
+              ],
+              "len": 7750,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 5370,
+                  "hit_to": 5348,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 46,
+              "description": [
+                {
+                  "id": "gi|1317840191|gb|KY611404.1|",
+                  "accession": "KY611404",
+                  "title": "Synthetic construct clone Insert_4 Esat-6/Ag85B fusion protein gene, complete cds",
+                  "taxid": 32630,
+                  "sciname": "synthetic construct"
+                }
+              ],
+              "len": 2976,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 1,
+                  "hit_to": 23,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 47,
+              "description": [
+                {
+                  "id": "gi|1484640732|gb|MG649424.1|",
+                  "accession": "MG649424",
+                  "title": "Vector pStA1BZ, complete sequence",
+                  "taxid": 2340749,
+                  "sciname": "Vector pStA1BZ"
+                }
+              ],
+              "len": 3488,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 3228,
+                  "hit_to": 3206,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 48,
+              "description": [
+                {
+                  "id": "gi|1331530304|gb|MG356850.1|",
+                  "accession": "MG356850",
+                  "title": "Cloning vector pTag 2.0, complete sequence",
+                  "taxid": 2072968,
+                  "sciname": "Cloning vector pTag 2.0"
+                }
+              ],
+              "len": 6284,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 379,
+                  "hit_to": 401,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 49,
+              "description": [
+                {
+                  "id": "gi|2108242990|gb|OK148693.1|",
+                  "accession": "OK148693",
+                  "title": "Vector pAH1-Tn7, complete sequence",
+                  "taxid": 2881041,
+                  "sciname": "Vector pAH1-Tn7"
+                }
+              ],
+              "len": 5029,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4320,
+                  "hit_to": 4342,
+                  "hit_strand": "Plus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            },
+            {
+              "num": 50,
+              "description": [
+                {
+                  "id": "gi|2697408639|dbj|LC801621.1|",
+                  "accession": "LC801621",
+                  "title": "Deinococcus grandis-E.coli shuttle vector pRADN8 DNA, complete sequence",
+                  "taxid": 3128483,
+                  "sciname": "Deinococcus grandis-E.coli shuttle vector pRADN8"
+                }
+              ],
+              "len": 6046,
+              "hsps": [
+                {
+                  "num": 1,
+                  "bit_score": 46.087,
+                  "score": 23,
+                  "evalue": 0.0252966,
+                  "identity": 23,
+                  "query_from": 1,
+                  "query_to": 23,
+                  "query_strand": "Plus",
+                  "hit_from": 4122,
+                  "hit_to": 4100,
+                  "hit_strand": "Minus",
+                  "align_len": 23,
+                  "gaps": 0,
+                  "qseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "hseq": "GTAAAACGACGGCCAGTGAATTC",
+                  "midline": "|||||||||||||||||||||||"
+                }
+              ]
+            }
+          ],
+          "stat": {
+            "db_num": 128547243,
+            "db_len": 948086538397,
+            "hsp_len": 21,
+            "eff_space": 1890774092588,
+            "kappa": 0.710602795216363,
+            "lambda": 1.37406312246009,
+            "entropy": 1.30724660390929
+          }
+        }
+      }
+    }
+  }
+]
+}
+
