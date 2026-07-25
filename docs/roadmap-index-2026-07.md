@@ -22,8 +22,12 @@ V1 hardening and roadmap status are shipped on `main`:
 - `135aedf` ships `edit_sequence`.
 - `516a2fe` ships eval corpus v0 task coverage.
 - `851f70b` adds independent biological anchor tests for the corpus.
+- B1 `blast_sequence` and UI-4 `export_review_bundle` (with the dependency-free
+  ZIP writer) ship on `main`.
+- `020e4b3` adds the B2 short-primer BLAST fixture; `6c1dbc2` ships B2
+  `validate_primer_specificity` (3'-competence + amplicon geometry).
 
-33 MCP tools are registered and dispatched generically. Grouped by track:
+34 MCP tools are registered and dispatched generically. Grouped by track:
 
 | Track | Tools |
 |---|---|
@@ -33,7 +37,7 @@ V1 hardening and roadmap status are shipped on `main`:
 | Cloning | `simulate_assembly` (restriction-ligation) |
 | Design | `design_primers` (Primer3), `design_grnas` (CR1 SpCas9 scan), `export_grna_report` |
 | mRNA / protein | `validate_mrna_construct` (M1), `export_protein_fasta` (X1) |
-| BLAST | `blast_sequence` (B1 NCBI BLAST URL API) |
+| BLAST | `blast_sequence` (B1 NCBI BLAST URL API), `validate_primer_specificity` (B2 primer off-target) |
 | Export | `export_genbank` |
 | Rendering / UI | `render_plasmid_map`, `render_digest_gel`, `render_review_bundle`, `export_review_bundle`, `open_sequence_editor` |
 
@@ -83,24 +87,30 @@ time. The four goals and their first move:
 
 | Goal | First build | Why |
 |---|---|---|
-| Marketing / demo | Demo revision using `edit_sequence` | Eval corpus v0 is shipped; demo spine is ready |
-| Lab usefulness | B1/B2 BLAST | Wet-lab feedback names Primer-BLAST as the missing layer |
+| Marketing / demo | Demo revision using the shipped vertical | Enough real end-to-end biology now ships: edit, digest, gel, map, BLAST, primer specificity, review bundle |
+| Lab usefulness | Sanger / AB1 verification spec | B1/B2 Primer-BLAST layer has shipped; "is my construct correct?" is the next wet-lab gap |
 | Benchmark credibility | Eval corpus (section 4) | Nothing is claimable as parity without it |
-| SnapGene surface | Auto-annotation -> Sanger -> Gibson/Golden Gate | Largest remaining product-surface blocks |
+| SnapGene surface | Auto-annotation (`find_known_features`) -> Sanger -> Gibson/Golden Gate | Largest remaining product-surface blocks |
 
 ### Recommended sequence
 
-`edit_sequence`, eval corpus v0, and B1 `blast_sequence` have shipped locally.
-B1 used the required frozen NCBI BLAST URL API fixture under `fixtures/blast/`,
-so its parser/client/tool path is grounded in observed API behavior rather than
-a guessed async contract.
+`edit_sequence`, eval corpus v0, B1 `blast_sequence`, and B2
+`validate_primer_specificity` have shipped. The B-series used frozen NCBI BLAST
+URL API fixtures under `fixtures/blast/` (a 300 bp `bla` window for B1, a 23 nt
+M13 primer for B2's short-query path), so the parser/client/tool paths are
+grounded in observed API behavior rather than a guessed async contract. B2's
+verdict is driven by 3'-end competence and amplicon geometry, not identity
+percent.
 
 Proposed order:
 
 ```text
-1. B2 validate_primer_specificity
-2. find_known_features    (needs a curated-library source decision first)
-3. Gibson / Golden Gate, Sanger, CR2 -- customer-pull gated, each needs an impl spec
+1. Demo revision using the shipped tools (marketing/investor leverage; no new biology needed)
+2. Then one fork:
+   - find_known_features  (SnapGene "open a plasmid and understand it"; needs a curated-library source decision first)
+   - Sanger / AB1 verification spec  (wet-lab "is my construct correct?")
+   - Gibson / Golden Gate impl specs before code
+   - CR2 scoring  (only after coefficient/license/reference-score gates)
 ```
 
 CR2 and M2 stay gated on explicit customer pull plus their validation fixtures
