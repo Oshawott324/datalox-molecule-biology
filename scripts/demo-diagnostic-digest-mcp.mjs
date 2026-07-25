@@ -20,6 +20,7 @@ const pUC19Path = path.join(repoRoot, "fixtures/genbank/puc19.gb");
 const insertPath = path.join(repoRoot, "fixtures/fasta/datalox_insert_v1.fa");
 const stagedPuc19Path = await stageInputFile(pUC19Path, path.join(workspaceDir, "imports", "puc19.gb"));
 
+const REQUEST_TIMEOUT_MS = 120000; // generous per-request budget so a recording is not interrupted by the MCP client default timeout under load
 const expectedSelectedPair = ["HindIII", "XhoI"];
 const candidatePairs = [
   ["HindIII", "XhoI"],
@@ -49,39 +50,53 @@ try {
     format: "genbank",
     moleculeId: "mol_empty",
   });
-  const pUC19 = await recordMcpTool("get_sequence_context", {
-    workspacePath,
-    moleculeId: "mol_empty",
-    includeSequence: true,
-  });
 
   const insert = await readFastaSequence(insertPath);
   assertEqual(insert.length, 700, "insert length");
-  const vector = assertString(pUC19.data?.sequence, "mol_empty sequence");
-  const forwardSequence = `${vector.slice(0, 396)}${insert}${vector.slice(417)}`;
-  const reverseSequence = `${vector.slice(0, 396)}${reverseComplement(insert)}${vector.slice(417)}`;
-  assertEqual(forwardSequence.length, 3365, "forward construct length");
-  assertEqual(reverseSequence.length, 3365, "reverse construct length");
 
-  const forwardPath = path.join(workspaceDir, "mol_forward.gb");
-  const reversePath = path.join(workspaceDir, "mol_reverse.gb");
-  await fs.writeFile(forwardPath, formatCircularGenBank("mol_forward", "pUC19 payload forward orientation-control construct", forwardSequence), "utf8");
-  await fs.writeFile(reversePath, formatCircularGenBank("mol_reverse", "pUC19 payload reverse orientation-control construct", reverseSequence), "utf8");
-
+  // Build the constructs live: open fresh authentic pUC19 copies and splice the
+  // payload into the MCS with edit_sequence replace(397, 417, INSERT). This is
+  // the in-silico EcoRI/BamHI directional clone (remove the 21 bp MCS stuffer
+  // between the two cuts, ligate the payload). See docs/demo-d1-revised.md. The
+  // featureImpact assertions below fail the demo before any artifact is rendered
+  // if the biology ever drifts.
   const forwardOpen = await recordMcpTool("open_sequence", {
-    inputPath: forwardPath,
+    inputPath: stagedPuc19Path,
     workspaceDir,
     format: "genbank",
     moleculeId: "mol_forward",
     expectedRevision: emptyOpen.revision,
   });
-  await recordMcpTool("open_sequence", {
-    inputPath: reversePath,
+  const forwardEdit = await recordMcpTool("edit_sequence", {
+    workspacePath,
+    moleculeId: "mol_forward",
+    expectedRevision: forwardOpen.revision,
+    operation: "replace",
+    start: 397,
+    end: 417,
+    sequence: insert,
+  });
+  assertEqual(forwardEdit.data?.lengthAfter, 3365, "forward construct length after edit_sequence");
+  assertFeatureImpact(forwardEdit, "bla", "shifted", { noFrameshift: true });
+  assertFeatureImpact(forwardEdit, "lacZalpha", "shifted");
+
+  const reverseOpen = await recordMcpTool("open_sequence", {
+    inputPath: stagedPuc19Path,
     workspaceDir,
     format: "genbank",
     moleculeId: "mol_reverse",
-    expectedRevision: forwardOpen.revision,
+    expectedRevision: forwardEdit.revision,
   });
+  const reverseEdit = await recordMcpTool("edit_sequence", {
+    workspacePath,
+    moleculeId: "mol_reverse",
+    expectedRevision: reverseOpen.revision,
+    operation: "replace",
+    start: 397,
+    end: 417,
+    sequence: reverseComplement(insert),
+  });
+  assertEqual(reverseEdit.data?.lengthAfter, 3365, "reverse construct length after edit_sequence");
 
   const moleculeIds = ["mol_empty", "mol_forward", "mol_reverse"];
   const selectedSites = {};
@@ -148,7 +163,10 @@ try {
     });
   }
 
-  await recordMcpTool("validate_workspace", { workspacePath });
+  const validation = await recordMcpTool("validate_workspace", { workspacePath });
+  if (validation.data?.valid !== true) {
+    throw new Error(`validate_workspace did not pass: ${JSON.stringify(validation.data?.issues ?? validation.data)}`);
+  }
 
   const bundle = await packReplayBundle(recorder, { workspaceDir, workspacePath });
   const verification = await verifyReplayBundle(bundle.bundlePath);
@@ -156,16 +174,42 @@ try {
     throw new Error(`Replay verification failed: ${verification.issues.join("; ")}`);
   }
 
+  // Close: package everything the agent did into one portable ZIP (review.html
+  // + raw artifacts + workspace snapshot + provenance). Called after the replay
+  // bundle is packed, and not itself recorded into that bundle.
+  const reviewArtifacts = [
+    artifactDescriptor(gel, "gel"),
+    ...moleculeIds.map((moleculeId) => artifactDescriptor(maps[moleculeId], "plasmid_map")),
+  ];
+  const reviewResult = resultEnvelope(await client.callTool({
+    name: "export_review_bundle",
+    arguments: {
+      workspacePath,
+      artifacts: reviewArtifacts,
+      replayBundlePath: bundle.bundlePath,
+    },
+  }, undefined, { timeout: REQUEST_TIMEOUT_MS }));
+  if (!reviewResult.ok) {
+    throw new Error(`export_review_bundle failed: ${JSON.stringify(reviewResult.error)}`);
+  }
+
   const summary = {
     ok: verification.ok,
     workspaceDir,
     workspacePath,
     scenario: "pUC19 diagnostic digest orientation-control demo",
+    constructMethod: "edit_sequence replace(397, 417, INSERT)",
     insert: {
       id: "datalox_insert_v1",
       length: insert.length,
       xhoICutPosition: 250,
     },
+    featureImpact: {
+      forwardBla: "shifted (no frameShifted:true)",
+      forwardLacZalpha: "shifted",
+    },
+    reviewBundle: reviewResult.data?.outputPath ?? reviewResult.data?.relativePath,
+    reviewBundleRelativePath: reviewResult.data?.relativePath,
     selectedPair,
     selectionRule: "maximize_min_orientation_small_band_then_small_band_difference",
     candidateResults,
@@ -185,7 +229,7 @@ try {
 
 async function recordMcpTool(toolName, args) {
   return await recordToolCall(recorder, toolName, args, async () => {
-    const result = await client.callTool({ name: toolName, arguments: args });
+    const result = await client.callTool({ name: toolName, arguments: args }, undefined, { timeout: REQUEST_TIMEOUT_MS });
     const envelope = resultEnvelope(result);
     if (!envelope.ok) {
       throw new Error(`${toolName} failed: ${JSON.stringify(envelope.error)}`);
@@ -217,23 +261,6 @@ async function readFastaSequence(filePath) {
     .toUpperCase();
 }
 
-function formatCircularGenBank(name, description, sequence) {
-  const origin = sequence.toLowerCase().match(/.{1,60}/g)
-    .map((line, index) => `${String(index * 60 + 1).padStart(9)} ${line.match(/.{1,10}/g).join(" ")}`)
-    .join("\n");
-  return `LOCUS       ${name.padEnd(14).slice(0, 14)} ${String(sequence.length).padStart(7)} bp    DNA    circular 01-JAN-2026
-DEFINITION  ${description}.
-FEATURES             Location/Qualifiers
-     source          1..${sequence.length}
-                     /organism="synthetic construct"
-     misc_feature    397..1096
-                     /label="datalox_insert_v1"
-ORIGIN
-${origin}
-//
-`;
-}
-
 function sortedFragmentSizes(envelope) {
   const fragments = envelope.data?.fragments;
   if (!Array.isArray(fragments)) throw new Error(`Missing digest fragments in ${envelope.tool}`);
@@ -248,6 +275,12 @@ function cutSitesFromEnvelope(envelope) {
   const sites = envelope.data?.sites;
   if (!Array.isArray(sites)) throw new Error(`Missing restriction sites in ${envelope.tool}`);
   return sites.map((site) => ({ enzyme: site.enzyme, position: site.cutPosition }));
+}
+
+function artifactDescriptor(envelope, kind) {
+  const artifact = envelope.artifacts?.[0];
+  if (!artifact?.path) throw new Error(`Missing ${kind} artifact path`);
+  return { kind, path: artifact.path, mimeType: artifact.mimeType ?? "image/svg+xml" };
 }
 
 function candidateScore(fragmentsByMolecule) {
@@ -283,6 +316,8 @@ function cameraSummary(summary) {
   return `Replay verified
 Scenario: ${summary.scenario}
 Insert:   datalox_insert_v1, 700 bp payload, XhoI at insert cut position 250
+Construct: built live with ${summary.constructMethod}
+           forward bla shifted (in frame), lacZalpha shifted
 Enzyme pair: ${summary.selectedPair.join(" + ")}
 
 Molecule   Size    HindIII+XhoI fragments
@@ -294,12 +329,8 @@ Gel artifact: ${summary.gelArtifact?.path}
 Map artifacts: ${Object.values(summary.mapArtifacts).map((artifact) => artifact?.path).filter(Boolean).join(", ")}
 Replay bundle verified
 Bundle: ${summary.bundlePath}
+Review bundle: ${summary.reviewBundle}
 `;
-}
-
-function assertString(value, label) {
-  if (typeof value !== "string" || value.length === 0) throw new Error(`${label} must be a non-empty string`);
-  return value;
 }
 
 function assertEqual(actual, expected, label) {
@@ -311,6 +342,25 @@ function assertEqual(actual, expected, label) {
 function assertArrayEqual(actual, expected, label) {
   if (actual.length !== expected.length || actual.some((value, index) => value !== expected[index])) {
     throw new Error(`${label}: expected [${expected.join(", ")}], received [${actual.join(", ")}]`);
+  }
+}
+
+// Falsifiability for the edit_sequence beat: fail before rendering artifacts if
+// the tool's reported feature impact ever drifts from the verified biology.
+function assertFeatureImpact(editEnvelope, featureName, expectedImpact, options = {}) {
+  const impacts = editEnvelope.data?.featureImpact;
+  if (!Array.isArray(impacts)) throw new Error(`Missing featureImpact in ${editEnvelope.tool}`);
+  const matches = impacts.filter((entry) => entry.name === featureName);
+  if (matches.length === 0) throw new Error(`featureImpact: no entry named ${featureName}`);
+  for (const entry of matches) {
+    if (entry.impact !== expectedImpact) {
+      throw new Error(`featureImpact ${featureName}: expected impact ${expectedImpact}, received ${entry.impact}`);
+    }
+    // edit_sequence omits frameShifted unless a frameshift is detected, so the
+    // in-frame assertion checks the field is not literally true.
+    if (options.noFrameshift && entry.frameShifted === true) {
+      throw new Error(`featureImpact ${featureName}: unexpected frameShifted:true`);
+    }
   }
 }
 
